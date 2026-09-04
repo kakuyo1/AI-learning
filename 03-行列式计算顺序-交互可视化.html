@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>行列式的计算顺序 · 交互可视化</title>
+  <style>
+    :root {
+      --primary: #6741d9;
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #212529;
+      --muted: #868e96;
+      --border: #dee2e6;
+      --green: #2f9e44;
+      --orange: #e67700;
+      --red: #e03131;
+      --blue: #339af0;
+      --pink: #d6336c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 20px;
+    }
+    .container { max-width: 1040px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #6741d9, #e8590c);
+      color: #fff;
+      padding: 30px 28px;
+      border-radius: 16px;
+      margin-bottom: 26px;
+    }
+    header h1 { font-size: 1.7rem; margin-bottom: 8px; }
+    header p { opacity: 0.93; font-size: 1.02rem; }
+    nav {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 26px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      position: sticky; top: 10px; z-index: 100;
+    }
+    nav strong { display: block; margin-bottom: 8px; font-size: 0.92rem; }
+    nav a {
+      display: inline-block; margin: 3px 8px 3px 0; padding: 4px 12px;
+      background: #e7f5ff; color: #1971c2; border-radius: 20px;
+      text-decoration: none; font-size: 0.87rem;
+    }
+    nav a:hover { background: #d0ebff; }
+    section { background: var(--card); border-radius: 14px; padding: 26px; margin-bottom: 22px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    h2 { font-size: 1.4rem; color: var(--primary); border-bottom: 2px solid #e7f5ff; padding-bottom: 10px; margin-bottom: 16px; }
+    h3 { font-size: 1.12rem; margin: 18px 0 10px; color: #343a40; }
+    p, li { margin-bottom: 8px; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.94rem; }
+    th, td { border: 1px solid var(--border); padding: 9px 12px; text-align: left; }
+    th { background: #f1f3f5; font-weight: 600; }
+    .formula {
+      background: #f1f3f5; padding: 13px 18px; border-radius: 8px;
+      font-family: "SF Mono", "Fira Code", monospace; font-size: 0.94rem;
+      margin: 11px 0; overflow-x: auto; white-space: pre-wrap;
+    }
+    .highlight { background: #ebfbee; border-left: 4px solid var(--green); padding: 11px 15px; border-radius: 0 8px 8px 0; margin: 13px 0; }
+    .warning { background: #fff3bf; border-left: 4px solid var(--orange); padding: 11px 15px; border-radius: 0 8px 8px 0; margin: 13px 0; }
+    .grid-2 { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; margin: 12px 0; }
+    @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+    .card-mini { background: #f8f9fa; border-radius: 10px; padding: 13px 15px; }
+    code { background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    footer { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 24px 0 40px; }
+
+    .viz { background: #fafbfc; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin: 13px 0; }
+    .viz-title { font-size: 1.02rem; font-weight: 600; margin-bottom: 4px; }
+    .viz-desc { color: var(--muted); font-size: 0.88rem; margin-bottom: 12px; }
+    .viz-svg { display: block; margin: 0 auto; background: #fff; border-radius: 8px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; justify-content: center; }
+    .slider-group { display: flex; flex-direction: column; align-items: center; font-size: 0.76rem; color: var(--muted); }
+    .slider-group label { margin-bottom: 2px; font-weight: 600; color: var(--text); }
+    .slider-group input[type=range] { width: 118px; }
+    .slider-group .val { margin-top: 2px; font-family: "SF Mono", monospace; color: var(--text); }
+    .readout { text-align: center; font-size: 1rem; margin-top: 10px; font-family: "SF Mono", "Fira Code", monospace; }
+    .readout .big { font-size: 1.25rem; font-weight: 700; }
+    .legend { display: flex; gap: 16px; justify-content: center; margin-top: 8px; font-size: 0.84rem; flex-wrap: wrap; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+    /* 计算过程面板 */
+    .calcpanel { font-family: "SF Mono", "Fira Code", monospace; font-size: 0.9rem; }
+    .calcrow { padding: 7px 10px; border-radius: 6px; margin: 3px 0; transition: background 0.2s; }
+    .calcrow.op { background: #e7f5ff; border-left: 4px solid var(--blue); }
+    .calcrow.vanish { color: var(--muted); text-decoration: line-through; }
+    .calcrow.pos { background: #ebfbee; border-left: 4px solid var(--green); }
+    .calcrow.neg { background: #fff5f5; border-left: 4px solid var(--red); }
+    .calcrow.zero { background: #f1f3f5; border-left: 4px solid #adb5bd; color: var(--text); }
+    .calcrow .why { font-family: system-ui, sans-serif; font-size: 0.78rem; color: var(--muted); float: right; }
+    .calcsum { font-size: 1.15rem; font-weight: 700; }
+
+    /* 枚举项卡片 */
+    .terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+    .term { border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
+    .term.sig-pos { border-color: var(--green); background: #f4fbf6; }
+    .term.sig-neg { border-color: var(--red); background: #fdf4f4; }
+    .term.gone { border-color: #adb5bd; background: #f1f3f5; opacity: 0.7; }
+    .term .perm { font-family: "SF Mono", monospace; font-weight: 700; font-size: 1.05rem; }
+    .term .meta { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .sig { font-weight: 800; font-size: 1.15rem; }
+
+    .btn-prev, .btn-next {
+      background: var(--primary); color: #fff; border: none; padding: 9px 22px;
+      border-radius: 8px; font-size: 0.98rem; cursor: pointer; margin: 6px;
+    }
+    .btn-prev { background: #adb5bd; }
+    .btn-next:hover { background: #5f3dc4; }
+    .step-hint { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+    .winstr { font-weight: 800; color: var(--text); padding: 12px; border-radius: 8px; text-align: center; font-family: "SF Mono", monospace; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>行列式 · 计算过程与顺序，从几何逼出来</h1>
+  <p>为什么是 ad − bc？为什么带减号？—— 3 个交互可视化讲透</p>
+</header>
+
+<nav>
+  <strong>目录导航</strong>
+  <a href="#idea">核心想法</a>
+  <a href="#vizA">联动：面积 ↔ det 展开</a>
+  <a href="#vizB">2×2 展开全过程</a>
+  <a href="#vizC">3×3 全排列</a>
+  <a href="#summary">一页总结</a>
+</nav>
+
+<!-- ===== 核心想法 ===== -->
+<section id="idea">
+  <h2>1. 核心想法：先把行列式当「体积函数」</h2>
+  <p>别把行列式看成「矩阵里那 4 个数算出来的一个数」。它真正的身份，是<strong>「以矩阵的列向量为输入、输出一个数的「有符号体积」函数」</strong>：</p>
+  <div class="formula">det(v1, v2, …, vn) = 由这些列向量张成的「有符号体积」
+2×2：两个列向量 → 平行四边形面积
+3×3：三个列向量 → 平行六面体体积</div>
+  <p>只要接受「行列式 = 有符号体积」，那套计算规则（每一项带什么系数、什么正负号、顺序怎样）<strong>就全部是必然的</strong>，而不是背诵的咒语。一个诚实的面积函数必须满足 3 条性质，正是它们决定了计算顺序：</p>
+  <table>
+    <tr><th>性质</th><th>含义</th><th>决定了什么</th></tr>
+    <tr><td><strong>① 线性</strong></td><td>每一列可拆：det(u+w, v)=det(u,v)+det(w,v)；一列乘 k，整体乘 k</td><td>→ 所有「求和展开」</td></tr>
+    <tr><td><strong>② 交替性</strong></td><td>交换两列 → 变号：det(v2,v1) = −det(v1,v2)</td><td>→ 各项的「正负号」</td></tr>
+    <tr><td><strong>③ 单位体积 = 1</strong></td><td>det(e1,…,en) = 1</td><td>→ 数值基准</td></tr>
+    <tr><td><strong>推论</strong></td><td>两列相同 → det = 0</td><td>→ 剔除「重复项」</td></tr>
+  </table>
+  <div class="highlight">这三个性质 + 一个推论，<strong>唯一地</strong>决定了行列式。换句话说：任何遵守这三条规则的「体积计算」，本质就是同一个行列式。</div>
+</section>
+
+<!-- ===== 可视化 A：联动 ===== -->
+<section id="vizA">
+  <h2>2. 可视化 A · 面积 ↔ det 展开 实时联动</h2>
+  <p>拖动 4 个滑块，左边看到矩阵两个列向量张成的平行四边形（<strong>几何</strong>），右边同步展开 <code>det = ad − bc</code> 的每一步（<strong>代数</strong>）。看它们如何对应：</p>
+  <div class="grid-2">
+    <div style="min-width:0">
+      <div style="text-align:center;font-weight:600;margin-bottom:6px">矩阵 &amp; 平行四边形</div>
+      <svg id="detSvg" class="viz-svg" width="380" height="380" viewBox="0 0 380 380"></svg>
+      <div class="controls">
+        <div class="slider-group"><label>v1.x = a</label><input type="range" id="sa" min="-3" max="3" step="0.1" value="2"><span class="val" id="va">2</span></div>
+        <div class="slider-group"><label>v1.y = c</label><input type="range" id="sc" min="-3" max="3" step="0.1" value="1"><span class="val" id="vc">1</span></div>
+        <div class="slider-group"><label>v2.x = b</label><input type="range" id="sb" min="-3" max="3" step="0.1" value="1"><span class="val" id="vb">1</span></div>
+        <div class="slider-group"><label>v2.y = d</label><input type="range" id="sd" min="-3" max="3" step="0.1" value="2"><span class="val" id="vd">2</span></div>
+      </div>
+      <div class="readout">det = <span class="big" id="bigdet">3</span></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#dee2e6"></span>单位方块 (面积 1)</span>
+        <span><span class="swatch" style="background:rgba(51,154,240,0.5)"></span>变换后 (det&gt;0)</span>
+        <span><span class="swatch" style="background:rgba(224,49,49,0.5)"></span>det≤0 / 压线</span>
+      </div>
+    </div>
+    <div style="min-width:0">
+      <div style="text-align:center;font-weight:600;margin-bottom:6px">det 展开过程（右侧面板）</div>
+      <div class="calcpanel" id="calcA"></div>
+      <div id="calcAMsg" class="readout" style="font-size:0.9rem;text-align:left;margin-top:8px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 可视化 B：2×2 展开 ===== -->
+<section id="vizB">
+  <h2>3. 可视化 B · 2×2 展开全过程</h2>
+  <p>行列式对每一列都线性，所以 <code>det(列1,列2)</code> 可以「拆」成候选项的求和。逐项看它为什么消失或带什么符号，最后收敛到 <code>ad − bc</code>：</p>
+  <div class="viz">
+    <div class="viz-title">一步一步展开 det(|a b / c d|)</div>
+    <div class="viz-desc">点击「下一步」——每个候选项从哪来、为何贡献、符号如何被「列排列奇偶性」决定。</div>
+    <div id="stepContent" style="min-height:150px"></div>
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn-prev" id="btnPrev" onclick="stepPrev()">← 上一步</button>
+      <button class="btn-next" id="btnNext" onclick="stepNext()">下一步 →</button>
+    </div>
+    <div class="step-hint" id="stepHint"></div>
+    <div class="terms" id="termsBox"></div>
+    <div class="winstr" id="conclusion"></div>
+  </div>
+</section>
+
+<!-- ===== 可视化 C：3×3 全排列 ===== -->
+<section id="vizC">
+  <h2>4. 可视化 C · 为什么是 6 项，谁正谁负</h2>
+  <p>同样逻辑放到 3×3：三列各拆成 3 个基 → 本来是 <code>3×3×3 = 27</code> 个候选。但<span style="text-decoration:line-through">含重复列的全死掉</span>，只剩 <code>3! = 6</code> 个「从每行每列各取一个」的项。逐项看符号由几次交换决定：</p>
+  <div class="viz">
+    <div class="viz-title">3×3 行列式的 6 项展开</div>
+    <div class="viz-desc">每项 = 从 3 行 3 列各取一个元素相乘。符号 = 该列排列是「偶排列(+)」还是「奇排列(−)」——把排列从 123 开始交换，偶数次 = 偶排列(+)，奇数次 = 奇排列(−)。</div>
+    <div class="terms" id="terms3"></div>
+    <div class="formula" id="exp3form" style="margin-top:14px"></div>
+    <div style="text-align:center;margin-top:10px;font-size:0.88rem;color:var(--muted)">
+      用同样的 3 条性质，从 a₁₁…a₃₃ 九个位置直接推出来的：
+      <div class="formula" style="margin-top:8px">a₁₁a₂₂a₃₃ + a₁₂a₂₃a₃₁ + a₁₃a₂₁a₃₂ − a₁₃a₂₂a₃₁ − a₁₂a₂₁a₃₃ − a₁₁a₂₃a₃₂</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 总结 ===== -->
+<section id="summary">
+  <h2>5. 一页总结</h2>
+  <div class="grid-2">
+    <div class="card-mini">
+      <h3>为什么是这个计算顺序？</h3>
+      <ol>
+        <li>行列式「是」有符号体积 → 必须满足 3 条性质</li>
+        <li>线性 → 拆成候选项求和</li>
+        <li>重复列 → 消失 (det=0)</li>
+        <li>交替性 → 决定每项正负号</li>
+        <li>2×2 里 4 个候选只活 2 个 → ad − bc</li>
+      </ol>
+    </div>
+    <div class="card-mini">
+      <h3>为什么是「减号」？</h3>
+      <p><code>−bc</code> 里的负号，是因为那一项对应 <code>det(e2, e1)</code>：<strong>把两列交换了</strong>（e1→e2 变成 e2→e1），奇排列，所以是负。它和几何里「两个列向量左右手序翻面」是同一件事。</p>
+      <div class="highlight" style="margin-top:6px">ad 是「正常序」→ 正<br>bc 是「交换序」→ 负<br>这就是 det = ad − bc 的全部秘密</div>
+    </div>
+  </div>
+</section>
+
+<footer>行列式计算顺序 · 交互可视化 · 原生 SVG/JS</footer>
+</div>
+
+<script>
+/* ================= 工具箱 ================= */
+function $(id){ return document.getElementById(id); }
+function el(n, a){ var e=document.createElementNS('http://www.w3.org/2000/svg',n); for(var k in a) e.setAttribute(k,a[k]); return e; }
+function colorFor(det){ return Math.abs(det)<0.05 ? 'rgba(224,49,49,0.55)' : (det<0 ? 'rgba(224,49,49,0.3)' : 'rgba(51,154,240,0.5)'); }
+
+/* ================= 可视化 A ================= */
+(function(){
+  var svg=$('detSvg'), W=380,H=380,cx=190,cy=190,unit=55;
+  svg.appendChild(el('rect',{x:0,y:0,width:W,height:H,fill:'#fff'}));
+  for(var gx=-4;gx<=4;gx++){ var x=cx+gx*unit; svg.appendChild(el('line',{x1:x,y1:0,x2:x,y2:H,stroke:'#f1f3f5'})); }
+  for(var gy=-4;gy<=4;gy++){ var y=cy+gy*unit; svg.appendChild(el('line',{x1:0,y1:y,x2:W,y2:y,stroke:'#f1f3f5'})); }
+  svg.appendChild(el('line',{x1:0,y1:cy,x2:W,y2:cy,stroke:'#adb5bd'}));
+  svg.appendChild(el('line',{x1:cx,y1:0,x2:cx,y2:H,stroke:'#adb5bd'}));
+
+  var orig=svg.appendChild(el('polygon',{fill:'#dee2e6',stroke:'#ced4da'}));
+  var poly=svg.appendChild(el('polygon',{stroke:'#1c7ed6','stroke-width':2}));
+  var v1l=svg.appendChild(el('line',{stroke:'#339af0','stroke-width':3}));
+  var v2l=svg.appendChild(el('line',{stroke:'#d6336c','stroke-width':3}));
+  var lab1=svg.appendChild(el('text',{fill:'#1971c2','font-size':14,'font-weight':700}));
+  var lab2=svg.appendChild(el('text',{fill:'#a61e4d','font-size':14,'font-weight':700}));
+
+  function PX(v){return cx+v*unit;} function PY(v){return cy-v*unit;}
+  orig.setAttribute('points', PX(0)+','+PY(0)+' '+PX(1)+','+PY(0)+' '+PX(1)+','+PY(1)+' '+PX(0)+','+PY(1));
+
+  var sliders={sa:'a',sb:'b',sc:'c',sd:'d'};
+  function draw(){
+    var a=parseFloat($('sa').value), b=parseFloat($('sb').value), c=parseFloat($('sc').value), d=parseFloat($('sd').value);
+    $('va').textContent=a; $('vb').textContent=b; $('vc').textContent=c; $('vd').textContent=d;
+    var det=a*d-b*c;
+    var p0=PX(0)+','+PY(0), p1=PX(a)+','+PY(c), p2=PX(a+b)+','+PY(c+d), p3=PX(b)+','+PY(d);
+    poly.setAttribute('points', p0+' '+p1+' '+p2+' '+p3);
+    poly.setAttribute('fill', colorFor(det));
+    v1l.setAttribute('x2',PX(a)); v1l.setAttribute('y2',PY(c));
+    v2l.setAttribute('x2',PX(b)); v2l.setAttribute('y2',PY(d));
+    lab1.textContent='v1=('+a+','+c+')'; lab1.setAttribute('x',PX(a)/2+6); lab1.setAttribute('y',PY(c)/2-6);
+    lab2.textContent='v2=('+b+','+d+')'; lab2.setAttribute('x',PX(b)/2+6); lab2.setAttribute('y',PY(d)/2-6);
+    $('bigdet').textContent=det.toFixed(2);
+    $('bigdet').style.color= Math.abs(det)<0.05? 'var(--red)' : (det<0?'#e03131':'#2f9e44');
+
+    // 计算面板
+    var pa=$('calcA'); pa.innerHTML='';
+    // 展开四项
+    pa.appendChild(calcRow('拆列：det(v1,v2)，v1=a·e1+c·e2，v2=b·e1+d·e2','op',''));
+    // 第一列 a*e1 与第二列两项
+    pa.appendChild(calcRow('a·b·det(e1,e1) = 0','zero','列重复 → 消失'));
+    pa.appendChild(calcRow('a·d·det(e1,e2) = a·d·(+1)','pos','正常序 → +a·d'));
+    pa.appendChild(calcRow('c·b·det(e2,e1) = c·b·(−1)','neg','交换序 → −b·c'));
+    pa.appendChild(calcRow('c·d·det(e2,e2) = 0','zero','列重复 → 消失'));
+    pa.appendChild(calcRow('<b>det = a·d − b·c = '+ (a*d-b*c).toFixed(2) +'</b>','op',''));
+
+    var msg=$('calcAMsg');
+    var msgv1='面积 |det| = '+Math.abs(det).toFixed(2);
+    if(Math.abs(det)<0.05){ msg.innerHTML='两列共线 → 平行四边形压成一条线，<b>det=0</b>，无法逆转（无逆矩阵）'; msg.style.color='var(--red)'; }
+    else if(det<0){ msg.innerHTML='det&lt;0：有符号面积 = −'+Math.abs(det).toFixed(2)+'，列序翻面（镜像），仍可逆'; msg.style.color='var(--orange)'; }
+    else { msg.innerHTML='det&gt;0：有符号面积 = +'+det.toFixed(2)+'（可逆）'; msg.style.color='var(--green)'; }
+  }
+  function calcRow(txt,cls,why){
+    var d=document.createElement('div'); d.className='calcrow '+cls;
+    d.innerHTML=txt;
+    if(why){ var w=document.createElement('span'); w.className='why'; w.textContent=why; d.appendChild(w); }
+    return d;
+  }
+  ['sa','sb','sc','sd'].forEach(function(id){ $(id).addEventListener('input',draw); });
+  draw();
+})();
+
+/* ================= 可视化 B：2×2 分步 ================= */
+var STEP_B=[
+ {title:'第 0 步 · 把两列拆成标准基的组合',
+  body:'第一列 v1=(a,c) = a·e1 + c·e2；第二列 v2=(b,d) = b·e1 + d·e2，其中 e1=(1,0)、e2=(0,1)。',
+  terms:null, concl:'开始'} ,
+ {title:'第 1 步 · 用「线性」性质展开成候选项',
+  body:'行列式对每一列线性，所以 det(第一列,第二列) 拆成：从第一列取 e1 或 e2，从第二列取 e1 或 e2 → 共 2×2 = 4 个候选项。',
+  terms:[['a·b','det(e1,e1)','gone'],['a·d','det(e1,e2)','pos'],['c·b','det(e2,e1)','neg'],['c·d','det(e2,e2)','gone']],
+  concl:'4 个候选，但只有 2 个活着。'} ,
+ {title:'第 2 步 · 清除「重复列」',
+  body:'det(e1,e1) 和 det(e2,e2)：两列相同 → 由推论面积 = 0（压成线）→ 整项消失。',
+  terms:[['a·b','det(e1,e1) = 0','gone'],['a·d','det(e1,e2) = +1','pos'],['c·b','det(e2,e1) = −1','neg'],['c·d','det(e2,e2) = 0','gone']],
+  concl:'重复项归零，剩两项。'} ,
+ {title:'第 3 步 · 用「交替性」定符号',
+  body:'det(e1,e2)：从 e1→e2 是正常序 → +1。<br>det(e2,e1)：把两列交换了 → 奇排列 → −1。<br>（几何：一个左旋一个右旋，翻面）',
+  terms:[['a·b','e1,e1 死','gone'],['a·d','e1→e2 正常 → +1','pos'],['c·b','e2→e1 交换 → −1','neg'],['c·d','e2,e2 死','gone']],
+  concl:'符号由「列排列奇偶性」决定。'} ,
+ {title:'第 4 步 · 合并结果 = ad − bc',
+  body:'把唯一活着的两项相加：+a·d（正常序）与 −b·c（交换序）。这就是 2×2 行列式公式。',
+  terms:null, concl:'det = a·d − b·c'}
+];
+var stepIdx=0;
+function renderStepB(){
+  var s=STEP_B[stepIdx];
+  $('stepContent').innerHTML='<h3 style="margin-top:6px">'+s.title+'</h3><p>'+s.body+'</p>';
+  var box=$('termsBox'); box.innerHTML='';
+  if(s.terms){ s.terms.forEach(function(t){ box.appendChild(termCard(t[0],t[1],t[2])); }); }
+  $('conclusion').innerHTML=s.concl;
+  $('stepHint').textContent='第 '+(stepIdx+1)+' / '+STEP_B.length+' 步';
+  $('btnPrev').style.visibility= stepIdx===0? 'hidden':'visible';
+  $('btnNext').textContent= stepIdx===STEP_B.length-1? '重新开始':'下一步 →';
+}
+function termCard(perm,meta,sig){
+  var d=document.createElement('div');
+  d.className='term '+(sig==='pos'?'sig-pos':(sig==='neg'?'sig-neg':'gone'));
+  var cls=sig==='pos'?'color:var(--green)':(sig==='neg'?'color:var(--red)':'color:var(--muted)');
+  d.innerHTML='<div class="perm">'+perm+'</div><div class="meta">'+meta+'</div>'+(sig==='pos'?'<div class="sig" style="color:var(--green)">+</div>':(sig==='neg'?'<div class="sig" style="color:var(--red)">−</div>':'<div class="sig" style="color:var(--muted)">×0</div>'));
+  return d;
+}
+function stepNext(){ stepIdx=(stepIdx+1)%STEP_B.length; renderStepB(); }
+function stepPrev(){ stepIdx=stepIdx>0? stepIdx-1:0; renderStepB(); }
+renderStepB();
+
+/* ================= 可视化 C：3×3 全排列 ================= */
+(function(){
+  // 6 个排列，每个记录 (列号排列, 元素乘积, 符号)
+  // 行列式 3×3 项：取第 1 列下标 i1, 第2列 i2, 第3列 i3（1..3）
+  // 乘积 = a[i1][1] * a[i2][2] * a[i3][3]，符号=排列 i1 i2 i3 的奇偶性
+  var items=[
+    {perm:'1 2 3', val:'a₁₁·a₂₂·a₃₃', sig:1, swaps:'0 次交换：偶排列'},
+    {perm:'1 3 2', val:'a₁₁·a₂₃·a₃₂', sig:-1, swaps:'1 次交换 (2↔3)：奇排列'},
+    {perm:'2 1 3', val:'a₁₂·a₂₁·a₃₃', sig:-1, swaps:'1 次交换 (1↔2)：奇排列'},
+    {perm:'2 3 1', val:'a₁₂·a₂₃·a₃₁', sig:1, swaps:'2 次交换：偶排列'},
+    {perm:'3 1 2', val:'a₁₃·a₂₁·a₃₂', sig:1, swaps:'2 次交换：偶排列'},
+    {perm:'3 2 1', val:'a₁₃·a₂₂·a₃₁', sig:-1, swaps:'3 次交换：奇排列'}
+  ];
+  var box=$('terms3');
+  items.forEach(function(it){
+    var d=document.createElement('div');
+    d.className='term '+(it.sig>0?'sig-pos':'sig-neg');
+    d.innerHTML='<div class="perm">('+it.perm+')</div><div class="meta">'+it.val+'</div>'+
+      '<div class="sig" style="color:'+(it.sig>0?'var(--green)':'var(--red)')+'">'+(it.sig>0?'+':'−')+'</div>'+
+      '<div class="meta">'+it.swaps+'</div>';
+    box.appendChild(d);
+  });
+  var pos='a₁₁a₂₂a₃₃ + a₁₂a₂₃a₃₁ + a₁₃a₂₁a₃₂';
+  var neg='− a₁₃a₂₂a₃₁ − a₁₂a₂₁a₃₃ − a₁₁a₂₃a₃₂';
+  $('exp3form').innerHTML='<span style="color:var(--green)">'+pos+'</span> <span style="color:var(--red)">'+neg+'</span>';
+})();
+</script>
+</body>
+</html>
