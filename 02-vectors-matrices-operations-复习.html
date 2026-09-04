@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02 · Vectors, Matrices & Operations 复习 + 交互可视化</title>
+  <style>
+    :root {
+      --primary: #339af0;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #212529;
+      --muted: #868e96;
+      --border: #dee2e6;
+      --green: #2f9e44;
+      --orange: #e67700;
+      --red: #e03131;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #6741d9, #3b5bdb);
+      color: white;
+      padding: 32px 28px;
+      border-radius: 16px;
+      margin-bottom: 28px;
+    }
+    header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    header p { opacity: 0.92; font-size: 1.05rem; }
+    nav {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+    }
+    nav strong { display: block; margin-bottom: 10px; font-size: 0.95rem; }
+    nav a {
+      display: inline-block;
+      margin: 4px 8px 4px 0;
+      padding: 4px 12px;
+      background: #e7f5ff;
+      color: #1971c2;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 0.88rem;
+    }
+    nav a:hover { background: #d0ebff; }
+    section {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    h2 {
+      font-size: 1.45rem;
+      color: #3b5bdb;
+      border-bottom: 2px solid #e7f5ff;
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+    }
+    h3 { font-size: 1.15rem; margin: 20px 0 10px; color: #343a40; }
+    p, li { margin-bottom: 8px; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th { background: #f1f3f5; font-weight: 600; }
+    .formula {
+      background: #f1f3f5;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.95rem;
+      margin: 12px 0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .highlight {
+      background: #ebfbee;
+      border-left: 4px solid var(--green);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+    }
+    .warning {
+      background: #fff3bf;
+      border-left: 4px solid var(--orange);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 14px 0;
+    }
+    @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+    .card-mini {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 24px 0 40px;
+    }
+    code { background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+
+    /* ---- 交互可视化样式 ---- */
+    .viz {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin: 14px 0;
+    }
+    .viz h4 { font-size: 1.05rem; margin-bottom: 6px; }
+    .viz .desc { color: var(--muted); font-size: 0.88rem; margin-bottom: 12px; }
+    .viz-svg { display: block; margin: 0 auto; background: #fff; border-radius: 8px; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 12px;
+      justify-content: center;
+    }
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .slider-group label { margin-bottom: 2px; font-weight: 600; color: var(--text); }
+    .slider-group input[type=range] { width: 120px; }
+    .slider-group .val { margin-top: 2px; font-family: "SF Mono", monospace; color: var(--text); }
+    .readout {
+      text-align: center;
+      font-size: 1.02rem;
+      margin-top: 10px;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .readout .big { font-size: 1.3rem; font-weight: 700; }
+    .legend { display: flex; gap: 16px; justify-content: center; margin-top: 8px; font-size: 0.85rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+    .toggle-wrap { text-align: center; margin-top: 10px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 4px 0; }
+    .bar-label { width: 90px; text-align: right; font-size: 0.85rem; font-weight: 600; }
+    .bar-track { width: 220px; height: 18px; background: #f1f3f5; border-radius: 4px; position: relative; }
+    .bar-fill { position: absolute; top: 0; bottom: 0; left: 50%; border-radius: 4px; }
+    .bar-val { width: 70px; font-family: "SF Mono", monospace; font-size: 0.85rem; }
+    .btn-toggle {
+      background: #e7f5ff;
+      color: #1971c2;
+      border: 1px solid #a5d8ff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .btn-toggle:hover { background: #d0ebff; }
+    .badge-detect { display:inline-block; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:600; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>02 · Vectors, Matrices &amp; Operations</h1>
+  <p>复习手册 + 3 个交互可视化 · 从手写矩阵到神经网络一层</p>
+</header>
+
+<nav>
+  <strong>目录导航</strong>
+  <a href="#core">核心概念速览</a>
+  <a href="#terms">关键术语</a>
+  <a href="#viz1">可视化 1 · 行列式 = 面积</a>
+  <a href="#viz2">可视化 2 · 矩阵乘法 = 行检测器</a>
+  <a href="#viz3">可视化 3 · 广播</a>
+  <a href="#build">手写实现复盘</a>
+  <a href="#nn">两层网络</a>
+  <a href="#exercise">练习</a>
+</nav>
+
+<!-- ===== 1. 核心概念 ===== -->
+<section id="core">
+  <h2>1. 核心概念速览</h2>
+  <div class="highlight">
+    每个神经网络 = 矩阵乘法 + 额外步骤。<br>
+    <code>output = activation(weights @ input + bias)</code> 这一行，就是一层网络的前向传播。
+  </div>
+
+  <h3>向量与矩阵</h3>
+  <ul>
+    <li><strong>向量</strong>：一串有序数字。在 AI 里代表数据点、特征、参数。</li>
+    <li><strong>矩阵</strong>：二维网格。m×n = m 行 n 列。</li>
+    <li><strong>把矩阵看成线性变换</strong>：它把一个空间的向量映射到另一个空间（旋转/缩放/投影）。</li>
+  </ul>
+
+  <h3>形状严格性（为什么出错）</h3>
+  <div class="formula">(m × n) @ (n × p) = (m × p)
+内维必须相等：n 必须等于 n
+
+例：128×784 权重 @ 784×1 输入 = 128×1 输出</div>
+  <p class="warning" style="margin-top:10px">在 PyTorch/NumPy 里看到 shape mismatch 报错，就是内维不匹配导致的——这正是这一条规则在工作。</p>
+
+  <h3>运算一览</h3>
+  <table>
+    <tr><th>运算</th><th>作用</th><th>神经网络用途</th></tr>
+    <tr><td>加法</td><td>逐元素相加</td><td>加 bias</td></tr>
+    <tr><td>标量乘法</td><td>每一项乘以一个数</td><td>学习率 × 梯度</td></tr>
+    <tr><td>矩阵乘法 @</td><td>行 × 列 点点积</td><td>一层的正向传播</td></tr>
+    <tr><td>转置 T</td><td>行列互换</td><td>反向传播</td></tr>
+    <tr><td>行列式 det</td><td>一个数字概括</td><td>判断是否可逆 / 面积缩放</td></tr>
+    <tr><td>逆矩阵</td><td>撤销变换</td><td>解线性方程组</td></tr>
+    <tr><td>单位矩阵 I</td><td>什么都不变</td><td>初始化、残差连接 (ResNet)</td></tr>
+  </table>
+
+  <h3>元素级乘法 * VS 矩阵乘法 @</h3>
+  <p>这是新手最容易混的坑。下面是同一个 A、B 两种乘法的对比（运行结果）：</p>
+  <div class="grid-2">
+    <div class="card-mini">
+      <h3>元素级乘法 <code>*</code></h3>
+      <div class="formula">| 1 2 |   | 5 6 |   |  5 12 |
+| 3 4 | * | 7 8 | = | 21 32 |</div>
+      <p><code>[i][j]</code> 与 <code>[i][j]</code> 对位相乘。<strong>形状必须相同</strong>。</p>
+      <p>只是对位，不做混合 → 神经网络一般不直接用它做层变换。</p>
+    </div>
+    <div class="card-mini">
+      <h3>矩阵乘法 <code>@</code></h3>
+      <div class="formula">| 1 2 |   | 5 6 |   | 19 22 |
+| 3 4 | @ | 7 8 | = | 43 50 |</div>
+      <p>第 [i][j] 个元素 = 第 1 矩阵<strong>第 i 行</strong> 与 第 2 矩阵<strong>第 j 列</strong> 的点积。<strong>内维相等</strong>。</p>
+      <p>让每个输出同时看到所有输入 → 神经网络的变换核心。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. 关键术语 ===== -->
+<section id="terms">
+  <h2>2. 关键术语</h2>
+  <table>
+    <tr><th>术语</th><th>人们怎么说</th><th>实际含义</th></tr>
+    <tr><td>向量</td><td>「一个箭头」</td><td>一串有序数字，高维空间里的一个点</td></tr>
+    <tr><td>矩阵</td><td>「一张数字表」</td><td>一个线性变换，把向量从一个空间映射到另一个</td></tr>
+    <tr><td>矩阵乘法</td><td>「就是把数字乘一下」</td><td>第一个矩阵的每一行与第二个矩阵每一列做点积。<strong>顺序很重要</strong></td></tr>
+    <tr><td>转置</td><td>「翻转」</td><td>m×n → n×m。反向传播中至关重要</td></tr>
+    <tr><td>行列式</td><td>「从矩阵算出的某个数」</td><td>衡量矩阵把面积(2D)或体积(3D) 缩放了多少。<strong>0 = 变换压扁了一个维度</strong></td></tr>
+    <tr><td>逆矩阵</td><td>「把矩阵撤销」</td><td>逆转变换的矩阵。<strong>只有 det ≠ 0 时才存在</strong></td></tr>
+    <tr><td>单位矩阵 I</td><td>「无聊的矩阵」</td><td>等于「乘 1」。用于残差连接</td></tr>
+    <tr><td>广播</td><td>「魔法修正形状」</td><td>把较小的数组沿缺失维度重复扩展以匹配较大的</td></tr>
+    <tr><td>元素级</td><td>「普通乘法」</td><td>匹配位置相乘，形状需相同（或可广播）</td></tr>
+  </table>
+</section>
+
+<!-- ===== 3. 可视化 1：行列式 = 面积 ===== -->
+<section id="viz1">
+  <h2>3. 可视化 1 · 行列式 = 面积缩放（可逆性）</h2>
+  <p>一个 <code>2×2</code> 矩阵 <code>A = [v1 v2]</code> 的列向量把「单位方格」（由 [1,0] 和 [0,1] 张成）变成一个<strong>平行四边形</strong>。</p>
+  <ul>
+    <li><strong>det(A) = 变换后面积 / 原面积</strong></li>
+    <li><strong>det = 0</strong>：两个列向量共线 → 平行四边形被压成一条线 → 维度被压扁 → <strong>没有逆矩阵</strong>（信息丢失，无法逆转）。</li>
+    <li><strong>det &lt; 0</strong>：变换把空间「翻了个面」（镜像）。</li>
+  </ul>
+  <p class="highlight">这直接连接上一课的「秩不足 → 压扁维度」：det=0 就是 2×2 矩阵秩不足的数值表现。</p>
+
+  <div class="viz">
+    <h4>拖动滑块调整矩阵的 4 个元素</h4>
+    <div class="desc">半透明方块 = 原始单位方格；着色平行四边形 = 变换结果。</div>
+    <svg id="detSvg" class="viz-svg" width="420" height="420" viewBox="0 0 420 420"></svg>
+    <div class="controls">
+      <div class="slider-group"><label>v1.x = a</label><input type="range" id="detA" min="-3" max="3" step="0.1" value="2"><span class="val" id="detAval">2</span></div>
+      <div class="slider-group"><label>v1.y = b</label><input type="range" id="detB" min="-3" max="3" step="0.1" value="0"><span class="val" id="detBval">0</span></div>
+      <div class="slider-group"><label>v2.x = c</label><input type="range" id="detC" min="-3" max="3" step="0.1" value="0"><span class="val" id="detCval">0</span></div>
+      <div class="slider-group"><label>v2.y = d</label><input type="range" id="detD" min="-3" max="3" step="0.1" value="2"><span class="val" id="detDval">2</span></div>
+    </div>
+    <div class="readout">det(A) = a·d − b·c = <span class="big" id="detOut">4</span></div>
+    <div class="readout" id="detMsg" style="color:var(--green)"></div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#dee2e6"></span>原单位方格 (面积 1)</span>
+      <span><span class="swatch" style="background:rgba(51,154,240,0.5)"></span>变换后平行四边形</span>
+      <span><span class="swatch" style="background:rgba(224,49,49,0.5)"></span>det=0 / 负</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4. 可视化 2：矩阵乘法 = 行检测器 ===== -->
+<section id="viz2">
+  <h2>4. 可视化 2 · 矩阵乘法 = 行检测器</h2>
+  <p>一个权重矩阵 <code>W</code> 的<strong>每一行</strong>都是一个「检测器向量」。输出 <code>y = W @ x</code> 的第 <code>i</code> 个分量，就是输入 <code>x</code> 与 第 <code>i</code> 个检测器向量的<strong>点积</strong>（衡量 x 与它的同向程度）。</p>
+
+  <div class="viz">
+    <h4>在画布上拖动点 x，看它投到每个检测器上得到多少</h4>
+    <div class="desc">
+      W 的两行：<code>w1 = (1, 0)</code>（只检测「横」）、<code>w2 = (0.5, 1)</code>（同时看横+竖）。
+      右侧竖条 = 每个检测器「看」到的 x 分量 = 点积结果。
+    </div>
+    <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;align-items:flex-start">
+      <svg id="mmSvg" class="viz-svg" width="330" height="330" viewBox="0 0 330 330"></svg>
+      <div style="min-width:260px">
+        <div style="font-weight:600;margin-bottom:8px">输出 y = W @ x（各检测器激活量）</div>
+        <div class="bar-row">
+          <div class="bar-label">out₁ · w1</div>
+          <div class="bar-track"><div class="bar-fill" id="bar1" style="background:#339af0"></div></div>
+          <div class="bar-val" id="bar1v">0</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">out₂ · w2</div>
+          <div class="bar-track"><div class="bar-fill" id="bar2" style="background:#d6336c"></div></div>
+          <div class="bar-val" id="bar2v">0</div>
+        </div>
+        <div class="readout" style="font-size:0.95rem" id="mmMsg"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#339af0"></span>检测器 w1 = (1,0)</span>
+      <span><span class="swatch" style="background:#d6336c"></span>检测器 w2 = (0.5,1)</span>
+      <span><span class="swatch" style="background:#212529"></span>输入 x（可拖动）</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5. 可视化 3：广播 ===== -->
+<section id="viz3">
+  <h2>5. 可视化 3 · 广播（Broadcasting）</h2>
+  <p>矩阵 <code>(2×3)</code> 加 偏置向量 <code>(1×3)</code>——形状不匹配，但框架自动把 bias <strong>复制到每一行</strong>再相加。这就是 「加 bias」 在神经网络的真实运作。</p>
+
+  <div class="viz">
+    <h4>调整 bias 的三个值，观察它如何被广播到每一行</h4>
+    <div class="controls">
+      <div class="slider-group"><label>bias b₀</label><input type="range" id="br0" min="-5" max="40" step="1" value="10"><span class="val" id="br0v">10</span></div>
+      <div class="slider-group"><label>bias b₁</label><input type="range" id="br1" min="-5" max="40" step="1" value="20"><span class="val" id="br1v">20</span></div>
+      <div class="slider-group"><label>bias b₂</label><input type="range" id="br2" min="-5" max="40" step="1" value="30"><span class="val" id="br2v">30</span></div>
+    </div>
+    <div class="toggle-wrap">
+      <button class="btn-toggle" id="btnBroadcast" onclick="toggleBroadcast()">展开广播：把 bias 复制到每一行 →</button>
+    </div>
+    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      <div>
+        <div style="text-align:center;font-weight:600;font-size:0.85rem;margin-bottom:4px">输出矩阵 Out</div>
+        <table id="outTable" style="margin:0;font-family:'SF Mono',monospace;font-size:0.9rem"></table>
+      </div>
+      <div id="bside" style="display:none">
+        <div style="text-align:center;font-weight:600;font-size:0.85rem;margin-bottom:4px">+ 广播后的 bias（每行相同）</div>
+        <table id="biasTable" style="margin:0;font-family:'SF Mono',monospace;font-size:0.9rem"></table>
+      </div>
+      <div>
+        <div style="text-align:center;font-weight:600;font-size:0.85rem;margin-bottom:4px">原始 Matrix</div>
+        <table id="baseTable" style="margin:0;font-family:'SF Mono',monospace;font-size:0.9rem"></table>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:0.85rem;margin-top:10px">Out = Matrix + bias（bias 自动复制到每一行）</p>
+  </div>
+</section>
+
+<!-- ===== 6. Build It 复盘 ===== -->
+<section id="build">
+  <h2>6. 手写实现复盘（Build It）</h2>
+  <p>用纯 Python 手写 <code>Vector</code> 和 <code>Matrix</code> 类，理解每一种运算的底层逻辑。</p>
+
+  <div class="grid-2">
+    <div class="card-mini">
+      <h3>Vector 类</h3>
+      <ul>
+        <li>加 / 减 / 标量乘</li>
+        <li><code>dot</code> 点积 = <code>sum(a*b for zip)</code></li>
+        <li><code>magnitude</code> 长度 = 平方和开根</li>
+        <li><code>normalize</code> 单位化</li>
+      </ul>
+    </div>
+    <div class="card-mini">
+      <h3>Matrix 类</h3>
+      <ul>
+        <li>加 / 减 / 标量乘 / 元素级乘</li>
+        <li><code>matmul</code>：三重循环，第 [i][j] = Σ a[i][k]·b[k][j]</li>
+        <li><code>transpose</code>：行列互换</li>
+        <li><code>determinant</code>：1×1、2×2 直接算，更大用展开</li>
+        <li><code>inverse_2x2</code>：adjugate / det</li>
+        <li><code>identity / zeros / random</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>手写逆矩阵的公式（2×2）</h3>
+  <div class="formula">A = | a b |    A⁻¹ = 1/det · |  d  −b |
+    | c d |               | −c   a |
+det = a·d − b·c</div>
+  <p>注意：只要 <code>det = 0</code> 就会 <code>raise ValueError("Matrix is singular")</code> —— 数学上就是「无法撤销」。</p>
+  <p>验证：<code>A @ A⁻¹ = I</code>。运行结果正是单位矩阵（对角线 1，其余 0）：</p>
+  <div class="formula">/ 1  0 \
+\ 0  1 /</div>
+</section>
+
+<!-- ===== 7. 两层网络 ===== -->
+<section id="nn">
+  <h2>7. 用矩阵类搭两层神经网络</h2>
+  <p>只用上面手写的 Matrix 类（不用 NumPy）跑通完整前向传播。形状流动：</p>
+  <div class="formula">输入 x (3,1)
+→ W1@x (4,3)@(3,1) = (4,1)，加 bias b1 (4,1)
+→ ReLU → h1 (4,1)
+→ W2@h1 (2,4)@(4,1) = (2,1)，加 bias b2 (2,1)
+→ 输出 z2 (2,1)</div>
+  <p>ReLU 就是逐元素取 <code>max(0, v)</code>。看运行结果里隐藏层 pre-activation 有几个负值，经过 ReLU 都变成了 0——这就是「激活函数引入非线性」的几何体现。</p>
+
+  <h3>权重矩阵 = 一排检测器（连接「矩阵=模型」）</h3>
+  <p>课程 demo 里有一个最直观的权重矩阵：</p>
+  <div class="formula">W = | 1   0   0 |   ← 只复制特征 0
+    | 0   1   0 |   ← 只复制特征 1
+    | 0.5 0.5 0 |   ← 取特征 0 和 1 的平均</div>
+  <p>三个输出 = 三个「特征检测器」，每个都对输入做一次不同组合。训练神经网络，就是在学习<strong>这一排检测器该长什么样</strong>。</p>
+</section>
+
+<!-- ===== 8. 练习 ===== -->
+<section id="exercise">
+  <h2>8. 建议练习</h2>
+  <ol>
+    <li><strong>验证逆矩阵</strong>：用 3 个不同的 2×2 矩阵计算 <code>A @ A.inverse_2x2()</code>，确认都得单位矩阵。当 det=0 时发生了什么？</li>
+    <li><strong>实现 3×3 逆矩阵</strong>：用伴随矩阵法扩展，和 <code>np.linalg.inv</code> 对比结果。</li>
+    <li><strong>搭两层网络</strong>（只用 Matrix 类，不用 NumPy）：输入(3) → 隐藏(4) → 输出(2)。随机初始化权重，跑前向传播，验证所有形状正确。</li>
+    <li>用 NumPy 实现第五节广播：<code>matrix + np.array([10,20,30])</code>，理解它为何自动复制到每行。</li>
+  </ol>
+  <div class="warning">
+    手写是为了理解原理；真正工作用 NumPy：<code>A@B</code>、<code>A.T</code>、<code>np.linalg.det</code>、<code>np.linalg.inv</code>、<code>np.eye(n)</code>，并且 `@` 用 C/Fortran 写的 BLAS，快 100 倍。
+  </div>
+</section>
+
+<footer>
+  02-vectors-matrices-operations 复习 + 交互可视化<br>
+  基于课程讨论整理 · 原生 SVG/JS 实现 · 供个人学习使用
+</footer>
+
+</div>
+
+<script>
+/* ============ 可视化 1：行列式 = 面积 ============ */
+(function(){
+  var svg = document.getElementById('detSvg');
+  var W = 420, H = 420, cx = 210, cy = 210, unit = 52;
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs){ var e=document.createElementNS(NS,name); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+  // 网格背景（不变，只画一次）
+  (function(){
+    var g = el('rect', {x:0,y:0,width:W,height:H,fill:'#ffffff'});
+    svg.appendChild(g);
+    // 细网格线
+    for(var gx=-4;gx<=4;gx++){
+      var x = cx + gx*unit;
+      svg.appendChild(el('line',{x1:x,y1:0,x2:x,y2:H,stroke:'#f1f3f5','stroke-width':1}));
+    }
+    for(var gy=-4;gy<=4;gy++){
+      var y = cy + gy*unit;
+      svg.appendChild(el('line',{x1:0,y1:y,x2:W,y2:y,stroke:'#f1f3f5','stroke-width':1}));
+    }
+    // 坐标轴
+    svg.appendChild(el('line',{x1:0,y1:cy,x2:W,y2:cy,stroke:'#adb5bd','stroke-width':1}));
+    svg.appendChild(el('line',{x1:cx,y1:0,x2:cx,y2:H,stroke:'#adb5bd','stroke-width':1}));
+  })();
+
+  function px(v){ return cx + v*unit; }
+  function py(v){ return cy - v*unit; }
+
+  // 原始单位方格
+  var orig = svg.appendChild(el('polygon',{points:'',fill:'#dee2e6',stroke:'#ced4da'}));
+  orig.setAttribute('points',
+    px(0)+','+py(0)+' '+px(1)+','+py(0)+' '+px(1)+','+py(1)+' '+px(0)+','+py(1));
+
+  var poly = svg.appendChild(el('polygon',{points:'',stroke:'#1c7ed6','stroke-width':2}));
+  var v1l = svg.appendChild(el('line',{stroke:'#339af0','stroke-width':3}));
+  var v2l = svg.appendChild(el('line',{stroke:'#d6336c','stroke-width':3}));
+
+  var outs = {A:document.getElementById('detA'),B:document.getElementById('detB'),C:document.getElementById('detC'),D:document.getElementById('detD')};
+  var outs2 = {A:document.getElementById('detAval'),B:document.getElementById('detBval'),C:document.getElementById('detCval'),D:document.getElementById('detDval')};
+
+  function draw(){
+    var a=parseFloat(outs.A.value), b=parseFloat(outs.B.value), c=parseFloat(outs.C.value), d=parseFloat(outs.D.value);
+    outs2.A.textContent=a; outs2.B.textContent=b; outs2.C.textContent=c; outs2.D.textContent=d;
+    var det = a*d - b*c;
+    var p0=[px(0),py(0)], p1=[px(a),py(b)], p2=[px(a+c),py(b+d)], p3=[px(c),py(d)];
+    poly.setAttribute('points', p0.join(',')+' '+p1.join(',')+' '+p2.join(',')+' '+p3.join(','));
+    var zero = Math.abs(det) < 0.05;
+    var neg = det < 0;
+    poly.setAttribute('fill', zero?'rgba(224,49,49,0.55)':(neg?'rgba(224,49,49,0.3)':'rgba(51,154,240,0.5)'));
+    v1l.setAttribute('x1',px(0)); v1l.setAttribute('y1',py(0));
+    v1l.setAttribute('x2',px(a)); v1l.setAttribute('y2',py(b));
+    v2l.setAttribute('x1',px(0)); v2l.setAttribute('y1',py(0));
+    v2l.setAttribute('x2',px(c)); v2l.setAttribute('y2',py(d));
+
+    var out=document.getElementById('detOut');
+    out.textContent = a+'·'+d+' − '+b+'·'+c+' = '+det.toFixed(2);
+    var msg=document.getElementById('detMsg');
+    if(zero){ msg.textContent='🚫 det = 0：平行四边形被压成一条线 → 维度压扁 → 不存在逆矩阵（信息丢失）'; msg.style.color='var(--red)'; }
+    else if(neg){ msg.textContent='det < 0：空间被翻面（镜像翻转），仍可逆'; msg.style.color='var(--orange)'; }
+    else { msg.textContent='✓ det > 0：空间只缩放不翻转，可逆（面积缩放 |det| 倍）'; msg.style.color='var(--green)'; }
+  }
+  [outs.A,outs.B,outs.C,outs.D].forEach(function(s){ s.addEventListener('input', draw); });
+  draw();
+})();
+
+/* ============ 可视化 2：矩阵乘法 = 行检测器 ============ */
+(function(){
+  var svg = document.getElementById('mmSvg');
+  var W=330,H=330,cx=165,cy=165,unit=70;
+  var NS='http://www.w3.org/2000/svg';
+  function el(name,attrs){ var e=document.createElementNS(NS,name); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+  (function(){
+    svg.appendChild(el('rect',{x:0,y:0,width:W,height:H,fill:'#ffffff'}));
+    for(var gx=-2;gx<=2;gx++){ var x=cx+gx*unit; svg.appendChild(el('line',{x1:x,y1:0,x2:x,y2:H,stroke:'#f1f3f5','stroke-width':1})); }
+    for(var gy=-2;gy<=2;gy++){ var y=cy+gy*unit; svg.appendChild(el('line',{x1:0,y1:y,x2:W,y2:y,stroke:'#f1f3f5','stroke-width':1})); }
+    svg.appendChild(el('line',{x1:0,y1:cy,x2:W,y2:cy,stroke:'#adb5bd','stroke-width':1}));
+    svg.appendChild(el('line',{x1:cx,y1:0,x2:cx,y2:H,stroke:'#adb5bd','stroke-width':1}));
+  })();
+
+  var w1=[1,0], w2=[0.5,1];
+  var w1l=svg.appendChild(el('line',{stroke:'#339af0','stroke-width':3}));
+  var w2l=svg.appendChild(el('line',{stroke:'#d6336c','stroke-width':3}));
+  var w1dot=svg.appendChild(el('circle',{r:5,fill:'#339af0'}));
+  var w2dot=svg.appendChild(el('circle',{r:5,fill:'#d6336c'}));
+  var xdot=svg.appendChild(el('circle',{r:6,fill:'#212529',cursor:'grab'}));
+  var proj1=svg.appendChild(el('line',{stroke:'#339af0','stroke-width':1,'stroke-dasharray':'4,3',opacity:0.9}));
+  var proj2=svg.appendChild(el('line',{stroke:'#d6336c','stroke-width':1,'stroke-dasharray':'4,3',opacity:0.9}));
+
+  function px(v){return cx+v*unit;} function py(v){return cy-v*unit;}
+
+  // w1 端点到 (1,0)，长度=1；w2 端点到 (0.5,1)，长度约1.118
+  function drawW(){
+    w1l.setAttribute('x1',px(0)); w1l.setAttribute('y1',py(0));
+    w1l.setAttribute('x2',px(w1[0])); w1l.setAttribute('y2',py(w1[1]));
+    w1dot.setAttribute('cx',px(w1[0])); w1dot.setAttribute('cy',py(w1[1]));
+    w2l.setAttribute('x1',px(0)); w2l.setAttribute('y1',py(0));
+    w2l.setAttribute('x2',px(w2[0])); w2l.setAttribute('y2',py(w2[1]));
+    w2dot.setAttribute('cx',px(w2[0])); w2dot.setAttribute('cy',py(w2[1]));
+  }
+
+  function xtoPx(x){ return cx + x*unit; }
+  function ytoPy(y){ return cy - y*unit; }
+
+  function compute(x,y){
+    var o1 = w1[0]*x + w1[1]*y;
+    var o2 = w2[0]*x + w2[1]*y;
+    return {o1,o2};
+  }
+  function update(x,y){
+    x=Math.max(-2.5,Math.min(2.5,x)); y=Math.max(-2.5,Math.min(2.5,y));
+    xdot.setAttribute('cx',px(x)); xdot.setAttribute('cy',py(y));
+    var r=compute(x,y);
+    // 沿检测器方向的投影线段（点积方向）
+    var len1 = r.o1; // since w1 unit? w1 length = 1 -> dot = signed projection length
+    var ex1 = w1[0]/1, ey1=w1[1]/1;
+    var projToW1 = [ex1*len1, ey1*len1];
+    proj1.setAttribute('x1',px(0)); proj1.setAttribute('y1',py(0));
+    proj1.setAttribute('x2',px(projToW1[0])); proj1.setAttribute('y2',py(projToW1[1]));
+    var w2len = Math.hypot(w2[0],w2[1]);
+    var len2 = r.o2 / w2len; // projection length onto w2 unit
+    var ex2=w2[0]/w2len, ey2=w2[1]/w2len;
+    var projToW2=[ex2*len2, ey2*len2];
+    proj2.setAttribute('x1',px(0)); proj2.setAttribute('y1',py(0));
+    proj2.setAttribute('x2',px(projToW2[0])); proj2.setAttribute('y2',py(projToW2[1]));
+
+    // bars expand from the 50% center; negative values stretch left
+    var b1=document.getElementById('bar1'), b2=document.getElementById('bar2');
+    var maxLen = Math.max(5, Math.abs(r.o1), Math.abs(r.o2));
+    var p1 = Math.abs(r.o1)/maxLen*110;
+    b1.style.width = p1+'px';
+    b1.style.left = (r.o1>=0 ? 50 : 50-p1)+'%';
+    var p2= Math.abs(r.o2)/maxLen*110;
+    b2.style.width = p2+'px';
+    b2.style.left = (r.o2>=0 ? 50 : 50-p2)+'%';
+    document.getElementById('bar1v').textContent = r.o1.toFixed(2);
+    document.getElementById('bar2v').textContent = r.o2.toFixed(2);
+    document.getElementById('mmMsg').innerHTML =
+      'x = ('+x.toFixed(2)+', '+y.toFixed(2)+')<br>'+
+      'out₁ = w1·x = '+r.o1.toFixed(2)+'　(w1 只测横向)<br>'+
+      'out₂ = w2·x = '+r.o2.toFixed(2)+'　(w2 横向+纵向混杂)';
+  }
+  drawW();
+  update(0.8,0.6);
+
+  var dragging=false;
+  function onDown(e){ dragging=true; onMove(e); xdot.setAttribute('cursor','grabbing'); }
+  function onMove(e){
+    if(!dragging) return;
+    var rect = svg.getBoundingClientRect();
+    var sx = (e.clientX - rect.left) * (W/rect.width);
+    var sy = (e.clientY - rect.top) * (H/rect.height);
+    var vx = (sx-cx)/unit, vy = -(sy-cy)/unit;
+    update(vx,vy);
+  }
+  function onUp(){ dragging=false; xdot.setAttribute('cursor','grab'); }
+  svg.addEventListener('mousedown',onDown);
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onUp);
+})();
+
+/* ============ 可视化 3：广播 ============ */
+(function(){
+  var base = [[1,2,3],[4,5,6]];
+  var shown = false;
+  function cell(v){
+    var td=document.createElement('td');
+    td.textContent = Math.round(v);
+    td.style.padding='8px 14px';
+    td.style.border='1px solid #dee2e6';
+    td.style.textAlign='center';
+    return td;
+  }
+  function row(cells){ var tr=document.createElement('tr'); cells.forEach(function(c){tr.appendChild(c)}); return tr; }
+
+  var outT=document.getElementById('outTable');
+  var biasT=document.getElementById('biasTable');
+  var baseT=document.getElementById('baseTable');
+
+  function refresh(){
+    var b=[parseFloat(document.getElementById('br0').value),
+           parseFloat(document.getElementById('br1').value),
+           parseFloat(document.getElementById('br2').value)];
+    document.getElementById('br0v').textContent=b[0];
+    document.getElementById('br1v').textContent=b[1];
+    document.getElementById('br2v').textContent=b[2];
+
+    // base
+    baseT.innerHTML='';
+    base.forEach(function(r){ baseT.appendChild(row(r.map(cell))); });
+    // bias expanded
+    biasT.innerHTML='';
+    [0,1].forEach(function(i){
+      biasT.appendChild(row(b.map(function(v){ return cell(v); })));
+    });
+    // out
+    outT.innerHTML='';
+    base.forEach(function(r,i){
+      outT.appendChild(row(r.map(function(v,j){ return cell(v+b[j]); })));
+    });
+  }
+  ['br0','br1','br2'].forEach(function(id){
+    document.getElementById(id).addEventListener('input', refresh);
+  });
+  refresh();
+})();
+
+function toggleBroadcast(){
+  var bside=document.getElementById('bside');
+  var shown = bside.style.display === 'block';
+  bside.style.display = shown?'none':'block';
+  document.getElementById('btnBroadcast').textContent =
+    shown? '展开广播：把 bias 复制到每一行 →' : '收起广播 ←';
+}
+</script>
+
+</body>
+</html>

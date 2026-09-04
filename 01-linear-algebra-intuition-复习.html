@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01-Linear-Algebra-Intuition 快速复习</title>
+  <style>
+    :root {
+      --primary: #339af0;
+      --bg: #f8f9fa;
+      --card: #ffffff;
+      --text: #212529;
+      --muted: #868e96;
+      --border: #dee2e6;
+      --green: #2f9e44;
+      --orange: #e67700;
+      --red: #e03131;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, #228be6, #15aabf);
+      color: white;
+      padding: 32px 28px;
+      border-radius: 16px;
+      margin-bottom: 28px;
+    }
+    header h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    header p { opacity: 0.9; font-size: 1.05rem; }
+    nav {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+    }
+    nav strong { display: block; margin-bottom: 10px; font-size: 0.95rem; }
+    nav a {
+      display: inline-block;
+      margin: 4px 8px 4px 0;
+      padding: 4px 12px;
+      background: #e7f5ff;
+      color: #1971c2;
+      border-radius: 20px;
+      text-decoration: none;
+      font-size: 0.88rem;
+    }
+    nav a:hover { background: #d0ebff; }
+    section {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    h2 {
+      font-size: 1.45rem;
+      color: #1971c2;
+      border-bottom: 2px solid #e7f5ff;
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+    }
+    h3 { font-size: 1.15rem; margin: 20px 0 10px; color: #343a40; }
+    p, li { margin-bottom: 8px; }
+    ul, ol { padding-left: 22px; margin-bottom: 12px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 0.95rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th { background: #f1f3f5; font-weight: 600; }
+    .formula {
+      background: #f1f3f5;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.95rem;
+      margin: 12px 0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    .highlight {
+      background: #ebfbee;
+      border-left: 4px solid var(--green);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+    }
+    .warning {
+      background: #fff3bf;
+      border-left: 4px solid var(--orange);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 14px 0;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 14px 0;
+    }
+    @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+    .card-mini {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 24px 0 40px;
+    }
+    code { background: #f1f3f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>01 · Linear Algebra Intuition</h1>
+  <p>快速复习手册 · 从向量到神经网络的一层</p>
+</header>
+
+<nav>
+  <strong>目录导航</strong>
+  <a href="#embedding">Embedding Space</a>
+  <a href="#dot">点积 Dot Product</a>
+  <a href="#matrix">矩阵 = 模型</a>
+  <a href="#dim">维度选择</a>
+  <a href="#independence">线性无关</a>
+  <a href="#basis-rank">基与秩</a>
+  <a href="#projection">投影</a>
+  <a href="#gram">Gram-Schmidt</a>
+  <a href="#build">手写实现</a>
+  <a href="#connections">AI 连接</a>
+</nav>
+
+<!-- 1. Embedding Space -->
+<section id="embedding">
+  <h2>1. Embedding Space（嵌入空间）</h2>
+  <p><strong>一句话</strong>：把抽象的“含义”变成可以计算距离和方向的高维数字空间。</p>
+  
+  <div class="highlight">
+    一个词 → 一个 768 维（或更高）的向量<br>
+    意思相近的词，在空间里的距离更近。
+  </div>
+
+  <h3>词嵌入矩阵</h3>
+  <p>矩阵的<strong>每一行</strong>对应一个词的向量。查词 = 取出对应的那一行。</p>
+  <p>真实模型中，单个维度通常<strong>没有</strong>清晰的人类可解释含义，整个向量才代表语义。</p>
+</section>
+
+<!-- 2. Dot Product -->
+<section id="dot">
+  <h2>2. Dot Product（点积）</h2>
+
+  <div class="formula">a · b = a₁b₁ + a₂b₂ + ... + aₙbₙ
+       = |a| |b| cosθ</div>
+
+  <p><strong>几何意义</strong>：衡量两个向量的<strong>同向程度</strong>。</p>
+
+  <table>
+    <tr><th>点积结果</th><th>含义</th></tr>
+    <tr><td>&gt; 0</td><td>方向大致相同（夹角 &lt; 90°）</td></tr>
+    <tr><td>= 0</td><td>互相垂直</td></tr>
+    <tr><td>&lt; 0</td><td>方向大致相反（夹角 &gt; 90°）</td></tr>
+  </table>
+
+  <h3>点积 vs 叉积</h3>
+  <table>
+    <tr><th></th><th>点积 Dot Product</th><th>叉积 Cross Product</th></tr>
+    <tr><td>结果</td><td>标量（一个数字）</td><td>3D 是向量，2D 是标量</td></tr>
+    <tr><td>主要用途</td><td>同向程度、投影、判断垂直</td><td>垂直方向、面积、旋转方向</td></tr>
+    <tr><td>本课是否使用</td><td>核心工具</td><td>几乎不涉及</td></tr>
+  </table>
+
+  <h3>在 AI 中的直接应用</h3>
+  <ul>
+    <li><strong>Attention 分数</strong>：Query · Key，决定关注哪些词</li>
+    <li><strong>余弦相似度</strong>：在 RAG、检索、推荐中衡量两个向量有多像</li>
+    <li><strong>投影计算</strong>：投影公式的核心就是点积</li>
+  </ul>
+
+  <div class="highlight">
+    余弦相似度 = (a · b) / (|a| |b|)<br>
+    它只看方向，忽略长度，是衡量语义相似度的常用指标。
+  </div>
+</section>
+
+<!-- 3. 矩阵就是模型 -->
+<section id="matrix">
+  <h2>3. 矩阵 = 模型本身</h2>
+  <p>矩阵是一种<strong>变换规则</strong>：输入一个向量，输出另一个向量（可旋转、缩放、投影）。</p>
+
+  <table>
+    <tr><th>在 AI 中的角色</th><th>具体含义</th></tr>
+    <tr><td>神经网络权重</td><td>每一层：输出 = 权重矩阵 × 输入向量</td></tr>
+    <tr><td>Attention 分数</td><td>决定当前词该关注哪些其他词</td></tr>
+    <tr><td>Embeddings</td><td>词 → 向量的映射矩阵</td></tr>
+  </table>
+
+  <div class="formula">output = weights @ input_vector
+# 这就是神经网络一层在做的事情</div>
+</section>
+
+<!-- 4. 维度 -->
+<section id="dim">
+  <h2>4. 为什么是 768 / 1024 / 4096 维？</h2>
+  
+  <h3>原因</h3>
+  <ul>
+    <li><strong>架构约束</strong>：总维度 = 注意力头数 × 每个头的维度（常取 64）</li>
+    <li>768 = 12 头 × 64；1024 = 16 头 × 64</li>
+    <li>方便 GPU Tensor Core 高效计算</li>
+  </ul>
+
+  <h3>维度大小的影响</h3>
+  <table>
+    <tr><th>维度 ↑</th><th>维度 ↓</th></tr>
+    <tr>
+      <td>表达能力更强，能区分更细微语义</td>
+      <td>表达能力有限</td>
+    </tr>
+    <tr>
+      <td>存储、计算、检索成本线性增加</td>
+      <td>更快、更省资源</td>
+    </tr>
+    <tr>
+      <td>收益递减（768→4096 提升越来越小）</td>
+      <td>太小会明显掉点</td>
+    </tr>
+  </table>
+</section>
+
+<!-- 5. 线性无关 -->
+<section id="independence">
+  <h2>5. Linear Independence（线性无关）</h2>
+  
+  <div class="highlight">
+    一组向量线性无关 ⇔ 其中任何一个都不能由其他向量通过加减和倍数运算得到。
+  </div>
+
+  <div class="formula">v1 = [1, 0, 0]
+v2 = [0, 1, 0]
+v3 = [2, 1, 0]   # v3 = 2*v1 + v2  → 线性相关</div>
+
+  <p>三个向量都在 xy 平面上，无法到达 [0,0,1]。看起来有 3 个，实际自由度只有 2。</p>
+
+  <h3>对 AI 的意义</h3>
+  <ul>
+    <li>特征矩阵的列应尽量线性无关</li>
+    <li>若特征高度相关（多重共线性）→ 权重不稳定、解不唯一</li>
+    <li>冗余特征不带来新信息</li>
+  </ul>
+</section>
+
+<!-- 6. 基与秩 -->
+<section id="basis-rank">
+  <h2>6. Basis（基）与 Rank（秩）</h2>
+
+  <h3>基（Basis）</h3>
+  <p>一组<strong>最小且完整</strong>的线性无关向量，能张成整个空间。基的数量 = 空间的维度。</p>
+  <p>3D 标准基：{[1,0,0], [0,1,0], [0,0,1]}。任何 3 个线性无关的 3D 向量都可做基（换坐标系）。</p>
+
+  <h3>秩（Rank）</h3>
+  <p>矩阵的秩 = 线性无关列（或行）的最大数量 = 真正提供的独立方向数。</p>
+
+  <table>
+    <tr><th>情况</th><th>含义</th><th>对 ML 的影响</th></tr>
+    <tr><td>满秩</td><td>秩达到最大</td><td>有唯一稳定解，模型条件良好</td></tr>
+    <tr><td>秩不足</td><td>秩 &lt; min(行,列)</td><td>特征冗余，无穷多解，需正则化</td></tr>
+    <tr><td>秩为 1</td><td>所有列共线</td><td>数据挤在一条线上，表达极弱</td></tr>
+    <tr><td>接近秩不足</td><td>有很小的奇异值</td><td>病态矩阵，输入噪声会被放大</td></tr>
+  </table>
+</section>
+
+<!-- 7. 投影 -->
+<section id="projection">
+  <h2>7. Projection（投影）</h2>
+
+  <div class="formula">proj_b(a) = (a · b / b · b) * b</div>
+
+  <p>这里的 <code>*</code> 是<strong>标量乘向量</strong>（数字 × 向量），不是向量乘法。</p>
+
+  <ul>
+    <li><code>a · b</code> 和 <code>b · b</code> 都是点积，结果是数字</li>
+    <li>相除得到投影系数（标量）</li>
+    <li>再乘以向量 b，得到投影结果</li>
+  </ul>
+
+  <div class="highlight">
+    残差 = a − proj_b(a)，它与 b 垂直（点积为 0）。<br>
+    任何向量都可分解为：顺着 b 的部分 + 垂直于 b 的部分。
+  </div>
+
+  <h3>例子</h3>
+  <div class="formula">a = [3, 4],  b = [1, 0]
+proj = (3/1) * [1, 0] = [3, 0]
+残差 = [0, 4]  （完全垂直）</div>
+
+  <h3>在 AI 中的位置</h3>
+  <ul>
+    <li><strong>线性回归</strong>：把观测值投影到特征张成的空间（最小二乘本质）</li>
+    <li><strong>PCA</strong>：投影到方差最大的方向</li>
+    <li><strong>Attention</strong>：Query 投影到 Key 上计算相似度</li>
+  </ul>
+</section>
+
+<!-- 8. Gram-Schmidt -->
+<section id="gram">
+  <h2>8. Gram-Schmidt 过程</h2>
+
+  <p><strong>目标</strong>：把任意线性无关向量变成<strong>标准正交基</strong>（互相垂直 + 长度都为 1）。</p>
+
+  <div class="highlight">
+    本质：不断计算并保留每个新向量相对于已有正交向量的 residual，再单位化。
+  </div>
+
+  <div class="formula">u1 = v1 / |v1|
+
+w2 = v2 − (v2 · u1) * u1
+u2 = w2 / |w2|
+
+w3 = v3 − (v3 · u1)*u1 − (v3 · u2)*u2
+u3 = w3 / |w3|</div>
+
+  <h3>几何意义</h3>
+  <ol>
+    <li>第一个向量直接单位化</li>
+    <li>后续向量：减去在已有 u 上的所有投影 → 只留纯 residual → 再单位化</li>
+  </ol>
+
+  <h3>维度限制</h3>
+  <table>
+    <tr><th>正交向量个数</th><th>最少需要维度</th><th>可视化</th></tr>
+    <tr><td>2</td><td>2D</td><td>容易</td></tr>
+    <tr><td>3</td><td>3D</td><td>可以</td></tr>
+    <tr><td>4+</td><td>4D+</td><td>无法直接可视化</td></tr>
+  </table>
+
+  <p>在 n 维空间最多只能有 n 个两两正交的向量。超出部分正交化后 residual 会变成零（线性相关被检测出来）。</p>
+
+  <h3>与 QR 分解</h3>
+  <p>Q = 标准正交矩阵，R = 投影系数构成的上三角矩阵。用于稳定求解线性方程组、特征值、最小二乘。</p>
+</section>
+
+<!-- 9. 手写实现要点 -->
+<section id="build">
+  <h2>9. Build It 核心要点</h2>
+
+  <div class="grid-2">
+    <div class="card-mini">
+      <h3>Vector 类</h3>
+      <ul>
+        <li>加减、点积、长度</li>
+        <li>normalize、cosine_similarity</li>
+      </ul>
+    </div>
+    <div class="card-mini">
+      <h3>Matrix 类</h3>
+      <ul>
+        <li>矩阵 × 向量 / 矩阵 × 矩阵</li>
+        <li>转置</li>
+      </ul>
+    </div>
+    <div class="card-mini">
+      <h3>关键函数</h3>
+      <ul>
+        <li><code>project(a, b)</code></li>
+        <li><code>gram_schmidt(vectors)</code></li>
+        <li><code>is_linearly_independent</code></li>
+      </ul>
+    </div>
+    <div class="card-mini">
+      <h3>实际使用</h3>
+      <ul>
+        <li>NumPy：<code>@</code>、<code>np.dot</code>、<code>np.linalg.qr</code></li>
+        <li>PyTorch：张量 + 自动求导</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="warning">
+    自己实现是为了理解原理；真正工作中直接用 NumPy / PyTorch。
+  </div>
+</section>
+
+<!-- 10. AI 连接 -->
+<section id="connections">
+  <h2>10. 与现代 AI 的连接</h2>
+
+  <table>
+    <tr><th>概念</th><th>出现位置</th></tr>
+    <tr><td>点积</td><td>Attention 分数、RAG 余弦相似度</td></tr>
+    <tr><td>矩阵乘法</td><td>神经网络每一层</td></tr>
+    <tr><td>线性无关 / 秩</td><td>特征选择、多重共线性、LoRA</td></tr>
+    <tr><td>投影</td><td>线性回归、PCA、Attention</td></tr>
+    <tr><td>Gram-Schmidt / QR</td><td>数值稳定求解、特征值计算</td></tr>
+    <tr><td>标准正交基</td><td>稳定计算、白化变换</td></tr>
+  </table>
+
+  <h3>LoRA 特别说明</h3>
+  <p>大模型微调时，不更新完整的巨大权重矩阵（如 4096×4096），而是用两个小的低秩矩阵（4096×16 和 16×4096）近似。</p>
+  <p>假设有效更新只发生在低维子空间 → 这就是「秩」在工业界的直接应用。</p>
+</section>
+
+<!-- GPT vs BERT 补充 -->
+<section>
+  <h2>补充：GPT vs BERT（相关背景）</h2>
+  <table>
+    <tr><th></th><th>BERT</th><th>GPT</th></tr>
+    <tr><td>架构</td><td>Encoder-only</td><td>Decoder-only</td></tr>
+    <tr><td>上下文</td><td>双向</td><td>从左到右（单向）</td></tr>
+    <tr><td>擅长</td><td>理解、分类、Embedding</td><td>生成、对话、续写</td></tr>
+    <tr><td>训练目标</td><td>掩码语言模型</td><td>预测下一个 token</td></tr>
+  </table>
+  <p>两者都基于 Transformer，但是理解和生成两条不同路线。</p>
+</section>
+
+<footer>
+  01-linear-algebra-intuition 快速复习手册<br>
+  基于课程讨论整理 · 供个人复习使用
+</footer>
+
+</div>
+</body>
+</html>
