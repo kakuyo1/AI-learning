@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>特征值 · 特征向量 · 特征分解 复习</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e2e5eb;
+      --text: #1a1a1a;
+      --muted: #5f6368;
+      --accent: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3rem;
+    }
+    .container { max-width: 860px; margin: 0 auto; }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.35rem;
+      color: #202124;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 2rem;
+      font-size: 0.92rem;
+    }
+    h2 {
+      font-size: 1.2rem;
+      margin: 2.3rem 0 0.9rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--accent);
+      color: var(--accent);
+    }
+    h3 {
+      font-size: 1.02rem;
+      margin: 1.3rem 0 0.5rem;
+      color: #202124;
+    }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.35rem; margin-bottom: 0.9rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.15rem 1.35rem;
+      margin: 0.9rem 0;
+    }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1.15rem;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+      font-size: 0.93rem;
+      overflow-x: auto;
+      margin: 0.7rem 0;
+      color: #174ea6;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+    th {
+      background: var(--light-blue);
+      color: #174ea6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--accent);
+      font-size: 0.76rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      margin-right: 0.25rem;
+      font-weight: 500;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--accent);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.98rem;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .note-orange {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .green { color: var(--green); font-weight: 600; }
+    .red { color: var(--red); font-weight: 600; }
+    .muted { color: var(--muted); font-size: 0.88rem; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    code {
+      background: #f1f3f4;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.88em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>特征值 · 特征向量 · 特征分解</h1>
+    <p class="subtitle">
+      基于课程 <code>03-matrix-transformations</code> 的复习整理<br>
+      覆盖特征值和行列式、满秩关系的全部关键问题
+    </p>
+
+    <!-- 1. 核心概念 -->
+    <h2>1. 核心概念（通俗版）</h2>
+
+    <div class="card">
+      <h3>特征向量（Eigenvector）</h3>
+      <p>矩阵作用后<strong>方向完全不变</strong>的特殊向量。它只被拉长或缩短，不会被旋转或扭歪。</p>
+
+      <h3>特征值（Eigenvalue）</h3>
+      <p>在这个特殊方向上被拉长/缩短的<strong>倍数</strong>，记作 λ。</p>
+
+      <div class="formula">A v = λ v</div>
+      <p class="muted">左边：矩阵作用在向量上；右边：只是把向量乘上一个数。方向完全一样。</p>
+    </div>
+
+    <div class="one-liner">
+      <strong>一句话：</strong>特征向量 = 不被扭转的方向；特征值 = 这个方向上的拉伸倍数。
+    </div>
+
+    <h3>生活比喻</h3>
+    <p>想象拉一块橡皮膜：大多数方向会被拉歪，但总有几个方向只变长短、不被扭歪。这些方向就是特征向量，变化的倍数就是特征值。</p>
+
+    <!-- 2. 怎么计算 -->
+    <h2>2. 怎么找到特征值和特征向量？</h2>
+
+    <p>以课程例子为例：</p>
+    <div class="formula">
+      A = [[2, 1],<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1, 2]]
+    </div>
+
+    <h3>第一步：解特征方程求 λ</h3>
+    <p>把方程改写成：</p>
+    <div class="formula">(A − λI) v = 0</div>
+    <p>要有<strong>非零解</strong>，必须让行列式等于 0：</p>
+    <div class="formula">det(A − λI) = 0</div>
+
+    <p>计算过程：</p>
+    <div class="formula">
+      A − λI = [[2−λ, 1], [1, 2−λ]]<br><br>
+      det = (2−λ)² − 1 = 0<br>
+      (2−λ)² = 1<br>
+      2−λ = ±1<br><br>
+      → λ = 3 &nbsp;或&nbsp; λ = 1
+    </div>
+
+    <h3>第二步：把每个 λ 代回去求 v</h3>
+    <table>
+      <tr>
+        <th>λ</th>
+        <th>A − λI</th>
+        <th>解出的特征向量</th>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>[[−1, 1], [1, −1]]</td>
+        <td>[1, 1]（方向 y = x）</td>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>[[1, 1], [1, 1]]</td>
+        <td>[1, −1]（方向 y = −x）</td>
+      </tr>
+    </table>
+
+    <!-- 3. det=0 与不可逆的关系 -->
+    <h2>3. 为什么必须 det(A − λI) = 0？</h2>
+
+    <div class="card">
+      <p>这直接关系到「行列式 = 0 → 矩阵不可逆」这个核心性质。</p>
+
+      <table>
+        <tr>
+          <th>情况</th>
+          <th>det(A−λI)</th>
+          <th>是否可逆</th>
+          <th>方程 (A−λI)v = 0 的解</th>
+          <th>是否是特征值</th>
+        </tr>
+        <tr>
+          <td>λ 是特征值</td>
+          <td class="green">= 0</td>
+          <td>不可逆</td>
+          <td>有<strong>非零解</strong>（特征向量）</td>
+          <td>是</td>
+        </tr>
+        <tr>
+          <td>λ 不是特征值</td>
+          <td class="red">≠ 0</td>
+          <td>可逆</td>
+          <td>只有零解</td>
+          <td>否</td>
+        </tr>
+      </table>
+
+      <p style="margin-top:0.9rem;">如果矩阵可逆，两边乘逆矩阵只能得到 v = 0，没有意义。<br>
+      只有当矩阵被“压扁”（不可逆）时，才存在非零向量被映射成零，这些向量就是特征向量。</p>
+    </div>
+
+    <div class="one-liner">
+      <strong>本质：</strong>求特征值 = 寻找那些让 (A − λI) 变得不可逆的特殊 λ。
+    </div>
+
+    <!-- 4. 行列式、满秩、可逆的完整关系 -->
+    <h2>4. 行列式 · 满秩 · 可逆 的完整关系</h2>
+
+    <p>这三个概念其实是同一件事的不同说法：</p>
+
+    <table>
+      <tr>
+        <th>说法</th>
+        <th>条件</th>
+        <th>几何含义</th>
+        <th>对线性方程组的影响</th>
+      </tr>
+      <tr>
+        <td><strong>满秩（Full Rank）</strong></td>
+        <td>rank = n<br>（n 为方阵边长）</td>
+        <td>列向量线性无关，撑满整个空间</td>
+        <td>有唯一解</td>
+      </tr>
+      <tr>
+        <td><strong>行列式不为 0</strong></td>
+        <td>det(A) ≠ 0</td>
+        <td>平行四边形（平行六面体）面积/体积不为 0，没有被压扁</td>
+        <td>有唯一解</td>
+      </tr>
+      <tr>
+        <td><strong>可逆（Invertible）</strong></td>
+        <td>存在 A⁻¹</td>
+        <td>变换可以完全还原回去</td>
+        <td>有唯一解</td>
+      </tr>
+      <tr>
+        <td><strong>特征值全不为 0</strong></td>
+        <td>所有 λ ≠ 0</td>
+        <td>没有任何方向被完全压成 0</td>
+        <td>有唯一解</td>
+      </tr>
+    </table>
+
+    <div class="note-green">
+      <strong>等价关系（方阵）：</strong><br>
+      det(A) ≠ 0 &nbsp;⇔&nbsp; 满秩 &nbsp;⇔&nbsp; 可逆 &nbsp;⇔&nbsp; 所有特征值 ≠ 0
+    </div>
+
+    <div class="note-orange">
+      <strong>反过来：</strong><br>
+      det(A) = 0 &nbsp;⇔&nbsp; 秩不足（rank-deficient） &nbsp;⇔&nbsp; 不可逆 &nbsp;⇔&nbsp; 至少有一个特征值 = 0<br>
+      几何上：空间被压扁到更低的维度。
+    </div>
+
+    <h3>和特征值的直接联系</h3>
+    <p>因为：</p>
+    <div class="formula">det(A) = λ₁ × λ₂ × … × λₙ</div>
+    <p>所以：</p>
+    <ul>
+      <li>只要有一个特征值是 0，行列式就变成 0，矩阵不满秩、不可逆</li>
+      <li>所有特征值都不为 0，行列式就不为 0，矩阵满秩、可逆</li>
+    </ul>
+
+    <p>这也解释了为什么「λ = 0 是特征值」意味着矩阵把某个方向完全压扁了。</p>
+
+    <!-- 5. 几何意义 -->
+    <h2>5. 几何意义（和行列式的关系）</h2>
+
+    <p>我们知道：</p>
+    <ul>
+      <li>行列式的绝对值 = 矩阵把单位正方形变成的平行四边形的<strong>面积</strong></li>
+      <li>也就是整体空间被放大了多少倍</li>
+    </ul>
+
+    <p>特征值则把这个“整体放大”拆解成各个特殊方向上的单独放大：</p>
+
+    <div class="card">
+      <p>对于 2×2 矩阵：</p>
+      <div class="formula">det(A) = λ₁ × λ₂</div>
+      <p>整体面积变化 = 各主轴拉伸倍数的<strong>乘积</strong>。</p>
+    </div>
+
+    <p>用例子验证：</p>
+    <ul>
+      <li>λ₁ = 3（沿 [1,1] 拉长 3 倍）</li>
+      <li>λ₂ = 1（沿 [1,−1] 保持不变）</li>
+      <li>det(A) = 3 × 1 = 3，与直接计算 2×2 − 1×1 = 3 完全一致</li>
+    </ul>
+
+    <div class="one-liner">
+      <strong>几何画面：</strong>先转到特征向量坐标系 → 只做轴向拉伸 → 再转回去。<br>
+      行列式就是所有轴向拉伸倍数的总效果。
+    </div>
+
+    <!-- 6. 特征分解 -->
+    <h2>6. 特征分解（Eigendecomposition）</h2>
+
+    <p>如果矩阵有足够多的独立特征向量，可以写成：</p>
+    <div class="formula">A = V D V⁻¹</div>
+
+    <ul>
+      <li><strong>V</strong>：列是特征向量（新的坐标系）</li>
+      <li><strong>D</strong>：对角矩阵，对角线上是特征值（只有缩放，没有旋转）</li>
+      <li><strong>V⁻¹</strong>：把坐标系转回去</li>
+    </ul>
+
+    <p>含义：任何复杂线性变换 =「换到特征坐标系 → 简单拉伸 → 换回来」。</p>
+
+    <!-- 7. 在 AI 中的作用 -->
+    <h2>7. 在 AI 领域的作用</h2>
+
+    <table>
+      <tr>
+        <th>应用</th>
+        <th>特征值 / 特征向量在做什么</th>
+      </tr>
+      <tr>
+        <td><strong>PCA（主成分分析）</strong></td>
+        <td>协方差矩阵的特征向量 = 数据变化最大的方向；特征值 = 该方向的方差大小。用来降维并保留最多信息。</td>
+      </tr>
+      <tr>
+        <td><strong>RNN 稳定性</strong></td>
+        <td>权重矩阵特征值 |λ| > 1 → 信号爆炸；|λ| < 1 → 信号消失。这是梯度爆炸/消失的根源之一。</td>
+      </tr>
+      <tr>
+        <td><strong>谱聚类 / 图神经网络</strong></td>
+        <td>用图拉普拉斯矩阵或邻接矩阵的特征向量来发现社区结构和图结构信息。</td>
+      </tr>
+      <tr>
+        <td>条件数 / 数值稳定性</td>
+        <td>最大特征值 / 最小特征值，判断矩阵是否病态（接近不满秩）。</td>
+      </tr>
+      <tr>
+        <td>优化与收敛</td>
+        <td>Hessian 矩阵的特征值影响优化算法的收敛速度。</td>
+      </tr>
+    </table>
+
+    <div class="one-liner">
+      <strong>AI 里的核心价值：</strong>告诉我们一个矩阵/变换在各个“本质方向”上放大或缩小的程度。
+    </div>
+
+    <!-- 8. 速查总结 -->
+    <h2>8. 一句话速查</h2>
+
+    <div class="card">
+      <ul>
+        <li><span class="tag">特征向量</span> 矩阵作用后方向不变的特殊方向</li>
+        <li><span class="tag">特征值</span> 该方向上的拉伸/压缩倍数</li>
+        <li><span class="tag">特征方程</span> det(A − λI) = 0，因为只有不可逆时才有非零解</li>
+        <li><span class="tag">行列式与满秩</span> det ≠ 0 ⇔ 满秩 ⇔ 可逆 ⇔ 所有特征值 ≠ 0</li>
+        <li><span class="tag">几何</span> det(A) = 所有特征值的乘积（面积/体积总缩放）</li>
+        <li><span class="tag">特征分解</span> A = V D V⁻¹（换坐标系 → 拉伸 → 换回来）</li>
+        <li><span class="tag">AI 用途</span> PCA 降维、RNN 稳定性、谱方法、条件数分析</li>
+      </ul>
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 03-matrix-transformations<br>
+      复习文档生成于学习过程中的问答整理 · 白色主题版
+    </footer>
+  </div>
+</body>
+</html>
