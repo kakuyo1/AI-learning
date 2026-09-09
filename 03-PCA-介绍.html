@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCA 主成分分析 · 形象介绍</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-purple: #f3e8fd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 880px; margin: 0 auto; }
+    h1 {
+      font-size: 1.8rem;
+      color: #202124;
+      margin-bottom: 0.3rem;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+    h2 {
+      font-size: 1.25rem;
+      color: var(--blue);
+      margin: 2.4rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 {
+      font-size: 1.05rem;
+      margin: 1.4rem 0 0.6rem;
+      color: #202124;
+    }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+    }
+    svg { max-width: 100%; height: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+    }
+    th {
+      background: var(--light-blue);
+      color: #174ea6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin: 1rem 0;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      background: var(--blue);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .step-content { flex: 1; }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      justify-content: center;
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+    }
+    .matrix {
+      display: inline-block;
+      border-collapse: collapse;
+      margin: 0.8rem auto;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.9rem;
+    }
+    .matrix td {
+      border: 1px solid #ccc;
+      padding: 0.45rem 0.7rem;
+      text-align: center;
+      min-width: 70px;
+    }
+    .matrix .diag { background: #e8f0fe; font-weight: 600; color: #174ea6; }
+    .matrix .off { background: #fef7e0; }
+    .matrix .header { background: #f1f3f4; color: #5f6368; font-size: 0.8rem; border: none; }
+    .calc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.8rem 0;
+      font-size: 0.88rem;
+    }
+    .calc-table th, .calc-table td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.6rem;
+      text-align: center;
+    }
+    .calc-table th { background: var(--light-blue); color: #174ea6; }
+    .calc-table .pos { color: var(--green); font-weight: 600; }
+    .calc-table .neg { color: var(--red); }
+    .formula-box {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.92rem;
+      margin: 0.8rem 0;
+      color: #174ea6;
+      overflow-x: auto;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    code {
+      background: #f1f3f4;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-size: 0.88em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PCA 主成分分析</h1>
+    <p class="subtitle">用最形象的方式理解「找到数据最重要的方向」· 含协方差矩阵详解与计算示例</p>
+
+    <!-- 1. 一句话是什么 -->
+    <h2>1. PCA 到底在干什么？</h2>
+
+    <div class="one-liner">
+      <strong>PCA = 给数据找一组新的坐标轴</strong>，让这些轴按「信息量从多到少」排序，然后只保留最重要的几根轴。
+    </div>
+
+    <p>想象你有一堆二维点（比如人的身高和体重）。这些点不是均匀散开的，而是大致沿着某个斜方向延伸。PCA 会自动找到这个「延伸最厉害」的方向，把它当作第一主成分，再找和它垂直的次要方向。</p>
+
+    <!-- 可视化：原始数据 -->
+    <div class="viz-box">
+      <div class="viz-title">原始数据：点大致沿着斜方向分布</div>
+      <svg viewBox="0 0 420 280" width="420" height="280">
+        <line x1="40" y1="240" x2="400" y2="240" stroke="#ccc" stroke-width="1.5"/>
+        <line x1="40" y1="240" x2="40" y2="20" stroke="#ccc" stroke-width="1.5"/>
+        <text x="390" y="255" fill="#888" font-size="13">x</text>
+        <text x="25" y="30" fill="#888" font-size="13">y</text>
+        <g fill="#1a73e8" opacity="0.75">
+          <circle cx="120" cy="190" r="5"/><circle cx="140" cy="175" r="5"/>
+          <circle cx="155" cy="165" r="5"/><circle cx="170" cy="155" r="5"/>
+          <circle cx="185" cy="148" r="5"/><circle cx="200" cy="140" r="5"/>
+          <circle cx="215" cy="130" r="5"/><circle cx="230" cy="125" r="5"/>
+          <circle cx="245" cy="115" r="5"/><circle cx="260" cy="110" r="5"/>
+          <circle cx="275" cy="100" r="5"/><circle cx="290" cy="95" r="5"/>
+          <circle cx="305" cy="85" r="5"/><circle cx="320" cy="80" r="5"/>
+          <circle cx="335" cy="70" r="5"/>
+          <circle cx="150" cy="195" r="4.5"/><circle cx="175" cy="170" r="4.5"/>
+          <circle cx="205" cy="155" r="4.5"/><circle cx="235" cy="140" r="4.5"/>
+          <circle cx="265" cy="125" r="4.5"/><circle cx="295" cy="110" r="4.5"/>
+          <circle cx="160" cy="150" r="4"/><circle cx="190" cy="135" r="4"/>
+          <circle cx="220" cy="115" r="4"/><circle cx="250" cy="100" r="4"/>
+          <circle cx="280" cy="85" r="4"/><circle cx="310" cy="70" r="4"/>
+          <circle cx="180" cy="185" r="4"/><circle cx="210" cy="160" r="4"/>
+          <circle cx="240" cy="145" r="4"/><circle cx="270" cy="130" r="4"/>
+          <circle cx="300" cy="115" r="4"/>
+        </g>
+      </svg>
+      <div class="legend">
+        <span><i class="dot" style="background:#1a73e8"></i> 数据点</span>
+      </div>
+    </div>
+
+    <!-- 2. 为什么需要 PCA -->
+    <h2>2. 为什么需要它？</h2>
+
+    <div class="card">
+      <ul>
+        <li><strong>维度太高</strong>：特征有几百、几千维，计算慢、容易过拟合</li>
+        <li><strong>特征冗余</strong>：很多特征其实在说同一件事（高度相关）</li>
+        <li><strong>噪声</strong>：有些方向几乎没有变化，全是噪声</li>
+        <li><strong>可视化</strong>：高维数据没法直接画图，降到 2D/3D 才能看</li>
+      </ul>
+    </div>
+
+    <p>PCA 的目标就是：<strong>用更少的维度，保留最多的信息</strong>。</p>
+
+    <!-- 3. 协方差矩阵 -->
+    <h2>3. 协方差矩阵是什么？（PCA 的关键输入）</h2>
+
+    <div class="one-liner">
+      <strong>协方差矩阵 = 一张描述「所有特征之间互相关系」的对称表格。</strong>
+    </div>
+
+    <h3>先分清两个概念</h3>
+    <ul>
+      <li><strong>方差（Variance）</strong>：一个特征自己变化有多大（身高大家差得多不多？）</li>
+      <li><strong>协方差（Covariance）</strong>：两个特征一起变化的程度（身高高的人，体重是不是也更重？）</li>
+    </ul>
+
+    <h3>矩阵长什么样？</h3>
+    <p>假设有 3 个特征：身高、体重、年龄。协方差矩阵就是：</p>
+
+    <div class="viz-box">
+      <table class="matrix">
+        <tr>
+          <td class="header"></td>
+          <td class="header">身高</td>
+          <td class="header">体重</td>
+          <td class="header">年龄</td>
+        </tr>
+        <tr>
+          <td class="header">身高</td>
+          <td class="diag">身高方差</td>
+          <td class="off">身高↔体重</td>
+          <td class="off">身高↔年龄</td>
+        </tr>
+        <tr>
+          <td class="header">体重</td>
+          <td class="off">体重↔身高</td>
+          <td class="diag">体重方差</td>
+          <td class="off">体重↔年龄</td>
+        </tr>
+        <tr>
+          <td class="header">年龄</td>
+          <td class="off">年龄↔身高</td>
+          <td class="off">年龄↔体重</td>
+          <td class="diag">年龄方差</td>
+        </tr>
+      </table>
+      <div class="legend" style="margin-top:1rem;">
+        <span><i class="dot" style="background:#1a73e8"></i> 蓝色 = 自己的方差（对角线）</span>
+        <span><i class="dot" style="background:#e37400"></i> 橙色 = 两两之间的协方差</span>
+      </div>
+    </div>
+
+    <p>因为「身高和体重的关系」跟「体重和身高的关系」完全一样，所以这个矩阵<strong>一定是对称的</strong>。<br>
+    <code>体重↔年龄</code> 就是「体重和年龄这两个特征之间的协方差」。</p>
+
+    <h3>数字怎么理解？</h3>
+    <table>
+      <tr>
+        <th>协方差的值</th>
+        <th>含义</th>
+      </tr>
+      <tr>
+        <td style="color:#188038;font-weight:600">很大正数</td>
+        <td>两个特征强烈正相关（一个大，另一个也倾向大）</td>
+      </tr>
+      <tr>
+        <td>接近 0</td>
+        <td>两个特征几乎没关系</td>
+      </tr>
+      <tr>
+        <td style="color:#d93025;font-weight:600">很大负数</td>
+        <td>两个特征强烈负相关（一个大，另一个倾向小）</td>
+      </tr>
+    </table>
+
+    <!-- 新增：计算示例 -->
+    <h3>协方差怎么计算？（具体例子）</h3>
+
+    <p>公式（人话版）：</p>
+    <div class="formula-box">
+      Cov(体重, 年龄) = 把「每个人体重偏差 × 年龄偏差」全部加起来，再除以 (n−1)
+    </div>
+
+    <p>用 4 个人的数据演示：</p>
+
+    <table class="calc-table">
+      <tr>
+        <th>人</th>
+        <th>体重 (kg)</th>
+        <th>年龄</th>
+      </tr>
+      <tr><td>A</td><td>60</td><td>20</td></tr>
+      <tr><td>B</td><td>70</td><td>25</td></tr>
+      <tr><td>C</td><td>80</td><td>30</td></tr>
+      <tr><td>D</td><td>90</td><td>35</td></tr>
+    </table>
+
+    <p><strong>第 1 步：算平均值</strong></p>
+    <ul>
+      <li>平均体重 = (60+70+80+90) / 4 = <strong>75</strong></li>
+      <li>平均年龄 = (20+25+30+35) / 4 = <strong>27.5</strong></li>
+    </ul>
+
+    <p><strong>第 2 步：算每个人的偏差，再相乘</strong></p>
+    <table class="calc-table">
+      <tr>
+        <th>人</th>
+        <th>体重偏差<br>(体重 − 75)</th>
+        <th>年龄偏差<br>(年龄 − 27.5)</th>
+        <th>乘积</th>
+      </tr>
+      <tr>
+        <td>A</td>
+        <td class="neg">−15</td>
+        <td class="neg">−7.5</td>
+        <td class="pos">(+112.5)</td>
+      </tr>
+      <tr>
+        <td>B</td>
+        <td class="neg">−5</td>
+        <td class="neg">−2.5</td>
+        <td class="pos">(+12.5)</td>
+      </tr>
+      <tr>
+        <td>C</td>
+        <td class="pos">+5</td>
+        <td class="pos">+2.5</td>
+        <td class="pos">(+12.5)</td>
+      </tr>
+      <tr>
+        <td>D</td>
+        <td class="pos">+15</td>
+        <td class="pos">+7.5</td>
+        <td class="pos">(+112.5)</td>
+      </tr>
+    </table>
+
+    <p><strong>第 3 步：加总再平均</strong></p>
+    <ul>
+      <li>所有乘积之和 = 112.5 + 12.5 + 12.5 + 112.5 = <strong>250</strong></li>
+      <li>除以 (n−1) = 250 / 3 ≈ <strong>83.33</strong></li>
+    </ul>
+
+    <div class="note-green">
+      <strong>结果：</strong>Cov(体重, 年龄) ≈ 83.33（较大的正数）→ 体重和年龄明显<strong>正相关</strong>（这个例子里年龄越大体重越重）。
+    </div>
+
+    <p>实际写代码时直接用 NumPy：</p>
+    <div class="formula-box">
+import numpy as np<br>
+weight = np.array([60, 70, 80, 90])<br>
+age&nbsp;&nbsp;&nbsp;&nbsp;= np.array([20, 25, 30, 35])<br>
+print(np.cov(weight, age))<br>
+# 得到的矩阵中，右上角（或左下角）就是 83.33
+    </div>
+
+    <h3>几何直觉（最重要）</h3>
+    <p>协方差矩阵描述了数据点在空间中<strong>「长成什么形状」</strong>：</p>
+    <ul>
+      <li>数据像圆（各方向差不多）→ 协方差矩阵接近单位矩阵的倍数</li>
+      <li>数据像斜着的长椭圆 → 协方差矩阵会清楚反映出「哪个方向拉得最长」</li>
+    </ul>
+
+    <div class="note-green">
+      <strong>和 PCA 的直接关系：</strong><br>
+      数据 → 先算<strong>协方差矩阵</strong> → 对它做特征分解 → 得到主成分（特征向量）和重要性（特征值）
+    </div>
+
+    <div class="note">
+      PCA 的所有后续步骤，都建立在这张「关系表格」之上。没有协方差矩阵，就找不到「变化最大的方向」。
+    </div>
+
+    <!-- 4. 核心直觉 -->
+    <h2>4. 核心直觉：找到「变化最大」的方向</h2>
+
+    <p>数据点在空间中散开，有的方向拉得很长（方差大），有的方向压得很扁（方差小）。</p>
+    <p>PCA 会自动找到：</p>
+    <ul>
+      <li><strong>第一主成分（PC1）</strong>：方差最大的方向（数据拉得最开的方向）</li>
+      <li><strong>第二主成分（PC2）</strong>：和 PC1 垂直，且方差次大的方向</li>
+      <li>以此类推……</li>
+    </ul>
+
+    <!-- 可视化：主成分轴 -->
+    <div class="viz-box">
+      <div class="viz-title">找到主成分：红色 = 第一主成分（最重要），绿色 = 第二主成分</div>
+      <svg viewBox="0 0 420 280" width="420" height="280">
+        <line x1="40" y1="240" x2="400" y2="240" stroke="#ddd" stroke-width="1"/>
+        <line x1="40" y1="240" x2="40" y2="20" stroke="#ddd" stroke-width="1"/>
+        <g fill="#1a73e8" opacity="0.55">
+          <circle cx="120" cy="190" r="4.5"/><circle cx="140" cy="175" r="4.5"/>
+          <circle cx="155" cy="165" r="4.5"/><circle cx="170" cy="155" r="4.5"/>
+          <circle cx="185" cy="148" r="4.5"/><circle cx="200" cy="140" r="4.5"/>
+          <circle cx="215" cy="130" r="4.5"/><circle cx="230" cy="125" r="4.5"/>
+          <circle cx="245" cy="115" r="4.5"/><circle cx="260" cy="110" r="4.5"/>
+          <circle cx="275" cy="100" r="4.5"/><circle cx="290" cy="95" r="4.5"/>
+          <circle cx="305" cy="85" r="4.5"/><circle cx="320" cy="80" r="4.5"/>
+          <circle cx="335" cy="70" r="4.5"/>
+          <circle cx="150" cy="195" r="4"/><circle cx="175" cy="170" r="4"/>
+          <circle cx="205" cy="155" r="4"/><circle cx="235" cy="140" r="4"/>
+          <circle cx="265" cy="125" r="4"/><circle cx="295" cy="110" r="4"/>
+          <circle cx="160" cy="150" r="3.5"/><circle cx="190" cy="135" r="3.5"/>
+          <circle cx="220" cy="115" r="3.5"/><circle cx="250" cy="100" r="3.5"/>
+          <circle cx="280" cy="85" r="3.5"/><circle cx="180" cy="185" r="3.5"/>
+          <circle cx="210" cy="160" r="3.5"/><circle cx="240" cy="145" r="3.5"/>
+          <circle cx="270" cy="130" r="3.5"/><circle cx="300" cy="115" r="3.5"/>
+        </g>
+        <line x1="90" y1="210" x2="360" y2="55" stroke="#d93025" stroke-width="3" stroke-linecap="round"/>
+        <text x="345" y="50" fill="#d93025" font-size="14" font-weight="600">PC1</text>
+        <line x1="175" y1="70" x2="255" y2="195" stroke="#188038" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="160" y="65" fill="#188038" font-size="14" font-weight="600">PC2</text>
+        <circle cx="220" cy="130" r="5" fill="#e37400"/>
+      </svg>
+      <div class="legend">
+        <span><i class="dot" style="background:#d93025"></i> PC1（方差最大）</span>
+        <span><i class="dot" style="background:#188038"></i> PC2（垂直且次大）</span>
+        <span><i class="dot" style="background:#e37400"></i> 数据中心</span>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>关键洞察：</strong>PC1 和 PC2 一定互相垂直（正交）。这保证了新坐标轴互不冗余。
+    </div>
+
+    <!-- 5. 和特征值的关系 -->
+    <h2>5. 和特征值、特征向量的关系</h2>
+
+    <p>PCA 的数学本质就是对<strong>协方差矩阵</strong>做特征分解：</p>
+
+    <div class="card">
+      <ul>
+        <li><strong>特征向量</strong> → 主成分的方向（PC1、PC2…）</li>
+        <li><strong>特征值</strong> → 这个方向上的方差大小（有多「重要」）</li>
+      </ul>
+    </div>
+
+    <p>特征值越大，说明数据在这个方向上拉得越开，信息量越多。</p>
+
+    <table>
+      <tr>
+        <th>特征值大小</th>
+        <th>含义</th>
+        <th>PCA 怎么处理</th>
+      </tr>
+      <tr>
+        <td style="color:#188038;font-weight:600">很大</td>
+        <td>这个方向变化剧烈，信息丰富</td>
+        <td>保留（第一、第二主成分）</td>
+      </tr>
+      <tr>
+        <td>中等</td>
+        <td>有一定信息</td>
+        <td>根据需要决定保留几个</td>
+      </tr>
+      <tr>
+        <td style="color:#d93025;font-weight:600">很小 / 接近 0</td>
+        <td>几乎没变化，主要是噪声或冗余</td>
+        <td>丢掉</td>
+      </tr>
+    </table>
+
+    <div class="one-liner">
+      丢掉小特征值对应的方向 = 主动做低秩近似，去掉冗余和噪声。
+    </div>
+
+    <!-- 6. 完整步骤 -->
+    <h2>6. PCA 的完整步骤（形象版）</h2>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>把数据中心化</strong><br>
+        让所有点的平均值变成原点（减去均值）。这样后续计算更干净。
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>算协方差矩阵</strong><br>
+        它描述了每两个特征之间的相关程度。对角线是各特征自己的方差。这是整个 PCA 的「输入地图」。
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>对协方差矩阵做特征分解</strong><br>
+        得到特征值和特征向量。特征向量就是新的坐标轴方向，特征值告诉你每个轴有多重要。
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>按特征值从大到小排序，选前 k 个</strong><br>
+        只保留最重要的 k 个方向（k 通常远小于原来的维度）。
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <strong>把数据投影到这 k 个方向上</strong><br>
+        得到降维后的新数据。原来几百维，现在可能只剩 2～50 维。
+      </div>
+    </div>
+
+    <!-- 可视化：投影后 -->
+    <div class="viz-box">
+      <div class="viz-title">投影到 PC1 上：从 2D 降到 1D（只保留最重要的方向）</div>
+      <svg viewBox="0 0 420 160" width="420" height="160">
+        <line x1="50" y1="80" x2="390" y2="80" stroke="#d93025" stroke-width="2.5"/>
+        <text x="370" y="70" fill="#d93025" font-size="13" font-weight="600">PC1</text>
+        <g fill="#1a73e8">
+          <circle cx="80" cy="80" r="5"/><circle cx="105" cy="80" r="5"/>
+          <circle cx="125" cy="80" r="5"/><circle cx="145" cy="80" r="5"/>
+          <circle cx="165" cy="80" r="5"/><circle cx="185" cy="80" r="5"/>
+          <circle cx="205" cy="80" r="5"/><circle cx="225" cy="80" r="5"/>
+          <circle cx="245" cy="80" r="5"/><circle cx="265" cy="80" r="5"/>
+          <circle cx="285" cy="80" r="5"/><circle cx="305" cy="80" r="5"/>
+          <circle cx="325" cy="80" r="5"/><circle cx="345" cy="80" r="5"/>
+          <circle cx="95" cy="80" r="4"/><circle cx="135" cy="80" r="4"/>
+          <circle cx="175" cy="80" r="4"/><circle cx="215" cy="80" r="4"/>
+          <circle cx="255" cy="80" r="4"/><circle cx="295" cy="80" r="4"/>
+          <circle cx="335" cy="80" r="4"/>
+        </g>
+      </svg>
+      <p style="margin-top:0.5rem;color:#5f6368;font-size:0.9rem;">所有点都被「拍扁」到最重要的那条轴上。虽然丢了垂直方向的信息，但保留了最大的变化。</p>
+    </div>
+
+    <!-- 7. 和满秩的关系 -->
+    <h2>7. 和「满秩 / 冗余」的关系</h2>
+
+    <p>你之前问过：PCA 是不是在消除不满秩矩阵的重复特征？</p>
+
+    <div class="card">
+      <p><strong>部分正确，但不完整。</strong></p>
+      <ul>
+        <li>如果某个特征值<strong>正好 = 0</strong>，说明这个方向完全没有信息（完美冗余），PCA 会丢掉它，矩阵因此变满秩。</li>
+        <li>即使所有特征值都 > 0（矩阵满秩），只要有些特征值<strong>很小</strong>，PCA 也会主动丢掉它们，做「近似低秩」。</li>
+      </ul>
+    </div>
+
+    <p>所以 PCA 的目标不是「强行让矩阵满秩」，而是<strong>按重要性排序，主动丢掉不重要的方向</strong>。满秩只是顺带的结果之一。</p>
+
+    <!-- 8. 生活类比 -->
+    <h2>8. 一个生活类比</h2>
+
+    <div class="card">
+      <p>假设你用 10 个问题评价一个人的性格：</p>
+      <ul>
+        <li>「你开朗吗？」「你外向吗？」「你喜欢聚会吗？」…… 这些问题其实高度相关，都在测「外向性」。</li>
+        <li>「你做事有条理吗？」「你喜欢计划吗？」…… 测的是「尽责性」。</li>
+      </ul>
+      <p>PCA 会发现：前几个问题其实在说同一件事，可以合并成「外向性」这一个主成分；后几个合并成「尽责性」。最终可能只用 2～3 个主成分就能概括原来 10 个问题的大部分信息。</p>
+      <p style="margin-top:0.6rem;">协方差矩阵在这里的作用，就是先量化「这些问题两两之间相关有多强」，然后特征分解才能找出真正独立的性格维度。</p>
+    </div>
+
+    <!-- 9. 总结 -->
+    <h2>9. 一句话总结</h2>
+
+    <div class="one-liner">
+      PCA = 先用协方差矩阵看清特征之间的关系 → 找到数据变化最大的方向（特征向量）→ 按重要性排序（特征值）→ 只保留最重要的几个，从而降维、去冗余、去噪声。
+    </div>
+
+    <table>
+      <tr>
+        <th>概念</th>
+        <th>在 PCA 里是什么</th>
+      </tr>
+      <tr>
+        <td>协方差矩阵</td>
+        <td>描述特征之间「一起变化」关系的对称表格（PCA 的输入）</td>
+      </tr>
+      <tr>
+        <td>特征向量</td>
+        <td>主成分的方向（新坐标轴）</td>
+      </tr>
+      <tr>
+        <td>特征值</td>
+        <td>该方向上的方差（重要性）</td>
+      </tr>
+      <tr>
+        <td>投影</td>
+        <td>把数据「拍」到选中的主成分上</td>
+      </tr>
+      <tr>
+        <td>降维</td>
+        <td>丢掉小特征值对应的方向</td>
+      </tr>
+    </table>
+
+    <footer>
+      配合课程 03-matrix-transformations 与特征值复习使用<br>
+      形象理解版 · 已包含协方差矩阵详解与手算示例
+    </footer>
+  </div>
+</body>
+</html>
