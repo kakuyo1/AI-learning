@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>04 Calculus for ML · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.9rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--light-blue);
+      color: #174ea6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.98rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .step {
+      display: flex;
+      gap: 1rem;
+      margin: 1rem 0;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      background: var(--blue);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.95rem;
+    }
+    .step-content { flex: 1; }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+    .flow-box {
+      background: var(--light-blue);
+      border: 1px solid #a8c7fa;
+      border-radius: 8px;
+      padding: 0.5rem 0.9rem;
+      font-weight: 500;
+    }
+    .flow-arrow { color: var(--blue); font-size: 1.2rem; font-weight: 700; }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    @media (max-width: 650px) { .grid-2 { grid-template-columns: 1fr; } }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    .mono { font-family: "SF Mono", "Fira Code", Consolas, monospace; color: #174ea6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>04 Calculus for ML · 复习文档</h1>
+    <p class="subtitle">
+      基于课程与问答整理 · 偏导数 · 损失 · 梯度下降 · 链式法则 · 常用函数 · 完整数值例子
+    </p>
+
+    <!-- 1. 损失函数 -->
+    <h2>1. 损失函数是什么？</h2>
+
+    <div class="one-liner">
+      <strong>损失函数 = 模型现在有多「错」的一个数字。</strong><br>
+      数字越大 → 错得越厉害；数字越小 → 越接近正确答案。
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--red)">损失大</h3>
+        <p>预测偏离真实值很远，或非常自信地猜错。<br>就像考试得了很低分。</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--green)">损失小</h3>
+        <p>预测已经很接近真实答案。<br>就像考试得了高分（分数是倒过来的）。</p>
+      </div>
+    </div>
+
+    <p><strong>生活比喻：</strong>把模型想象成射箭的人。</p>
+    <ul>
+      <li>损失 = 箭离靶心的距离</li>
+      <li>损失大 = 经常脱靶（容易错）</li>
+      <li>损失小 = 箭都集中在靶心附近（更可能做对）</li>
+    </ul>
+
+    <div class="note">
+      我们训练的唯一目标：拼命把这个「错误数字」往小了降。
+    </div>
+
+    <!-- 2. 偏导数 -->
+    <h2>2. 偏导数（Partial Derivative）</h2>
+
+    <div class="one-liner">
+      <strong>偏导数 = 只动一个变量、冻住其他所有变量时，函数的变化率。</strong>
+    </div>
+
+    <p>神经网络的损失依赖成千上万个权重。偏导数回答的是：</p>
+    <p style="text-align:center;font-size:1.05rem;margin:1rem 0;">
+      「如果我<strong>只轻轻拧这一颗旋钮</strong>，损失会上升还是下降？变多快？」
+    </p>
+
+    <div class="card">
+      <p>例子：f(x, y) = x² + 3xy + y²</p>
+      <ul>
+        <li>对 x 的偏导数：把 y 当成常数 → <span class="mono">2x + 3y</span></li>
+        <li>对 y 的偏导数：把 x 当成常数 → <span class="mono">3x + 2y</span></li>
+      </ul>
+    </div>
+
+    <p><strong>几何直觉：</strong>把损失看成一座山，x 和 y 是地面两个方向。</p>
+    <ul>
+      <li>∂f/∂x = 沿着 x 方向走时的山坡斜率</li>
+      <li>∂f/∂y = 沿着 y 方向走时的山坡斜率</li>
+    </ul>
+
+    <!-- 3. 梯度与梯度下降 -->
+    <h2>3. 梯度与梯度下降</h2>
+
+    <p>把所有偏导数组成一个向量，就是<strong>梯度</strong>：</p>
+    <div class="formula">
+      ∇f = [ ∂f/∂x , ∂f/∂y , … ]
+    </div>
+
+    <p>梯度指向<strong>最陡的上坡方向</strong>。要让损失变小，就往<strong>相反方向</strong>走。</p>
+
+    <div class="formula">
+      w_新 = w_旧 − 学习率 × (∂L/∂w)
+    </div>
+
+    <h3>为什么顺着梯度下降，模型就会变好？</h3>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">模型用当前权重做出预测，算出损失（现在有多错）</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">对每个权重算偏导数，知道「往哪拧能让损失变小」</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">所有权重一起按这个方向调一点点</div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">损失下降 → 模型比刚才更准了一点点</div>
+    </div>
+
+    <div class="note-green">
+      每走一步都在主动减小错误，所以模型会一点点变好。
+    </div>
+
+    <!-- 4. 全局 / 局部最小值 -->
+    <h2>4. 全局最小值 · 局部最小值 · 斜率</h2>
+
+    <table>
+      <tr>
+        <th>概念</th>
+        <th>通俗理解</th>
+        <th>对训练的影响</th>
+      </tr>
+      <tr>
+        <td><strong>Global minimum</strong><br>全局最小值</td>
+        <td>整座山里最低的那个点</td>
+        <td>理想目标，模型最好的状态</td>
+      </tr>
+      <tr>
+        <td><strong>Local minimum</strong><br>局部最小值</td>
+        <td>附近比周围都低，但不是全山最低</td>
+        <td>可能卡住，得到次优解</td>
+      </tr>
+      <tr>
+        <td><strong>Slope</strong><br>斜率 / 梯度</td>
+        <td>当前位置的倾斜程度和方向</td>
+        <td>告诉算法「往哪走、走多快」</td>
+      </tr>
+    </table>
+
+    <div class="note">
+      <strong>重要现实：</strong>高维空间里局部最小值通常没有想象中可怕，很多已经足够好用。学习率太大可能跳过谷底，太小则走得极慢。
+    </div>
+
+    <div class="note-red">
+      梯度下降<strong>不保证</strong>一定找到全局最小值，但每一步（学习率合理时）几乎都能让损失下降。
+    </div>
+
+    <!-- 5. 数值 vs 解析导数 -->
+    <h2>5. Numerical vs Analytical Derivatives</h2>
+
+    <table>
+      <tr>
+        <th>类型</th>
+        <th>怎么算</th>
+        <th>优点</th>
+        <th>缺点</th>
+      </tr>
+      <tr>
+        <td><strong>Analytical<br>解析导数</strong></td>
+        <td>用手 / 公式直接求导<br>（如 x² → 2x）</td>
+        <td>精确、极快</td>
+        <td>必须知道公式并会推</td>
+      </tr>
+      <tr>
+        <td><strong>Numerical<br>数值导数</strong></td>
+        <td>用微小变化近似斜率<br>(f(x+h) − f(x−h)) / 2h</td>
+        <td>对任何函数都有效，实现简单</td>
+        <td>有误差、速度慢</td>
+      </tr>
+    </table>
+
+    <div class="card">
+      <p><strong>在深度学习中的实际使用：</strong></p>
+      <ul>
+        <li>训练时（反向传播）→ 主要用<strong>解析</strong>（自动微分）</li>
+        <li>检查梯度对不对 → 用<strong>数值</strong>做验证（Gradient Check）</li>
+        <li>现代框架用的是更高级的<strong>自动微分</strong>，结合了两者优点</li>
+      </ul>
+    </div>
+
+    <!-- 6. 常用函数 -->
+    <h2>6. 深度学习中最常用的函数与导数</h2>
+
+    <table>
+      <tr>
+        <th>函数</th>
+        <th>导数</th>
+        <th>主要用途</th>
+        <th>为什么重要</th>
+      </tr>
+      <tr>
+        <td>x²</td>
+        <td>2x</td>
+        <td>MSE 损失</td>
+        <td>回归任务衡量「错了多少」</td>
+      </tr>
+      <tr>
+        <td>w·x + b</td>
+        <td>
+          ∂/∂w = x<br>
+          ∂/∂b = 1<br>
+          ∂/∂x = w
+        </td>
+        <td>线性层</td>
+        <td>神经网络最基本的计算单元</td>
+      </tr>
+      <tr>
+        <td>eˣ</td>
+        <td>eˣ</td>
+        <td>Softmax / Attention</td>
+        <td>把分数变成概率或权重</td>
+      </tr>
+      <tr>
+        <td>ln(x)</td>
+        <td>1/x</td>
+        <td>交叉熵损失</td>
+        <td>分类任务的核心损失</td>
+      </tr>
+      <tr>
+        <td>Sigmoid<br>1 / (1 + e⁻ˣ)</td>
+        <td>σ(1 − σ)</td>
+        <td>激活函数 / 二分类输出</td>
+        <td>输出概率，或控制信息流动</td>
+      </tr>
+    </table>
+
+    <!-- 7. 链式法则 -->
+    <h2>7. 链式法则（The Chain Rule）</h2>
+
+    <div class="one-liner">
+      <strong>链式法则 = 复合函数的导数，等于各层导数相乘。</strong><br>
+      它是反向传播的灵魂。
+    </div>
+
+    <p>当函数一层套一层时：</p>
+    <div class="formula">
+      y = f( g(x) )<br>
+      dy/dx = f'(g(x)) · g'(x)
+    </div>
+
+    <p><strong>生活比喻：</strong>推倒多米诺骨牌。最终结果的变化 = 每一环传递过来的变化<strong>乘在一起</strong>。</p>
+
+    <h3>在神经网络中的意义</h3>
+    <p>网络是典型的函数套函数：</p>
+    <div class="flow">
+      <div class="flow-box">输入 x</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">线性 wx+b</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">激活函数</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">…</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">损失 L</div>
+    </div>
+    <p>要知道早期权重对最终损失的影响，必须把中间所有层的导数乘起来。这就是<strong>反向传播</strong>。</p>
+
+    <!-- 8. 完整数值例子 -->
+    <h2>8. 链式法则完整数值例子（综合演示）</h2>
+
+    <p>这是一个最简单但完整的小网络，把「损失 → 梯度流动 → 权重更新 → 损失下降」全部走一遍。</p>
+
+    <div class="card">
+      <p><strong>网络结构：</strong></p>
+      <div class="formula">
+        z = w · x + b<br>
+        a = σ(z) = 1 / (1 + e⁻ᶻ)　　（Sigmoid）<br>
+        L = (a − y)²　　（均方误差）
+      </div>
+      <p><strong>具体数字：</strong></p>
+      <ul>
+        <li>输入 x = 2</li>
+        <li>权重 w = 0.5</li>
+        <li>偏置 b = −1</li>
+        <li>真实标签 y = 1</li>
+      </ul>
+    </div>
+
+    <h3>第 1 步：前向传播（算出当前损失）</h3>
+    <ol>
+      <li>z = 0.5 × 2 + (−1) = <strong>0</strong></li>
+      <li>a = σ(0) = 1 / (1 + e⁰) = <strong>0.5</strong></li>
+      <li>L = (0.5 − 1)² = <strong>0.25</strong></li>
+    </ol>
+    <p>现在损失是 <strong>0.25</strong>。我们想知道：如果改 w，损失会怎么变？</p>
+
+    <h3>第 2 步：反向传播（用链式法则求 ∂L/∂w）</h3>
+    <div class="formula">
+      ∂L/∂w = (∂L/∂a) × (∂a/∂z) × (∂z/∂w)
+    </div>
+
+    <table>
+      <tr>
+        <th>步骤</th>
+        <th>计算过程</th>
+        <th>结果</th>
+      </tr>
+      <tr>
+        <td>∂L/∂a</td>
+        <td>2(a − 1) = 2(0.5 − 1)</td>
+        <td><strong>−1</strong></td>
+      </tr>
+      <tr>
+        <td>∂a/∂z</td>
+        <td>Sigmoid 导数 a(1−a) = 0.5 × 0.5</td>
+        <td><strong>0.25</strong></td>
+      </tr>
+      <tr>
+        <td>∂z/∂w</td>
+        <td>z = w·x + b，对 w 求导就是 x</td>
+        <td><strong>2</strong></td>
+      </tr>
+      <tr>
+        <td><strong>相乘（链式法则）</strong></td>
+        <td>(−1) × 0.25 × 2</td>
+        <td><strong>−0.5</strong></td>
+      </tr>
+    </table>
+
+    <h3>第 3 步：更新权重</h3>
+    <p>假设学习率 η = 0.1：</p>
+    <div class="formula">
+      w_新 = w_旧 − η × (∂L/∂w)<br>
+      w_新 = 0.5 − 0.1 × (−0.5) = 0.55
+    </div>
+
+    <h3>第 4 步：验证有没有变好</h3>
+    <p>用新的 w = 0.55 再算一遍：</p>
+    <ul>
+      <li>z = 0.55 × 2 − 1 = 0.1</li>
+      <li>a = σ(0.1) ≈ 0.525</li>
+      <li>L = (0.525 − 1)² ≈ 0.226</li>
+    </ul>
+
+    <div class="note-green">
+      损失从 <strong>0.25 → 0.226</strong>，确实下降了！模型比刚才更准了一点点。
+    </div>
+
+    <div class="viz-box">
+      <div class="viz-title">梯度流动路径（从损失一路乘回到权重）</div>
+      <div class="flow">
+        <div class="flow-box">损失 L</div>
+        <div class="flow-arrow">× (−1)</div>
+        <div class="flow-box">激活 a</div>
+        <div class="flow-arrow">× 0.25</div>
+        <div class="flow-box">中间量 z</div>
+        <div class="flow-arrow">× 2</div>
+        <div class="flow-box">权重 w</div>
+      </div>
+      <p style="margin-top:0.9rem;color:var(--muted);font-size:0.92rem;">
+        最终梯度 = (−1) × 0.25 × 2 = <strong>−0.5</strong>
+      </p>
+    </div>
+
+    <div class="one-liner">
+      这就是链式法则在神经网络里的完整工作方式：从最终损失开始，一层一层把局部导数乘回去，得到每个参数该怎么调。
+    </div>
+
+    <!-- 9. 速查总结 -->
+    <h2>9. 一句话速查</h2>
+
+    <div class="card">
+      <ul>
+        <li><span class="tag">损失函数</span> 衡量模型有多错的数字，训练目标是让它变小</li>
+        <li><span class="tag">偏导数</span> 只动一个变量时函数的变化率</li>
+        <li><span class="tag">梯度</span> 所有偏导数组成的向量，指向最陡上坡</li>
+        <li><span class="tag">梯度下降</span> 反着梯度走，让损失一步步下降</li>
+        <li><span class="tag">全局/局部最小</span> 全山最低 vs 附近最低（可能卡住）</li>
+        <li><span class="tag">解析 vs 数值导数</span> 公式直接算 vs 用微小变化近似</li>
+        <li><span class="tag">链式法则</span> 复合函数导数 = 各层导数相乘（反向传播核心）</li>
+      </ul>
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 04-calculus-for-ml<br>
+      由学习过程中的问答整理而成 · 纯文本公式（不依赖外部库）· 含完整数值例子
+    </footer>
+  </div>
+</body>
+</html>

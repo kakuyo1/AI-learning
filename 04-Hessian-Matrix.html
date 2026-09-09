@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hessian Matrix · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--light-blue);
+      color: #174ea6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.98rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .mono { font-family: "SF Mono", "Fira Code", Consolas, monospace; color: #174ea6; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Hessian Matrix · 复习文档</h1>
+    <p class="subtitle">
+      基于 04-calculus-for-ml 课程与问答整理 · 二阶偏导 · 几何含义 · 实际近似方法
+    </p>
+
+    <!-- 1. 是什么 -->
+    <h2>1. Hessian 矩阵是什么？</h2>
+
+    <div class="one-liner">
+      <strong>梯度告诉你「坡度」（一阶信息），Hessian 告诉你「弯曲程度」（二阶信息）。</strong>
+    </div>
+
+    <p>它是由<strong>所有二阶偏导数</strong>组成的矩阵。</p>
+
+    <p>对于两个变量的函数 f(x, y)：</p>
+    <div class="formula">
+      H = |  ∂²f/∂x²     ∂²f/∂x∂y  |<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;|  ∂²f/∂y∂x    ∂²f/∂y²  |
+    </div>
+
+    <p>每个元素都是「对某个变量再求一次导」的结果。</p>
+
+    <!-- 2. 二阶偏导怎么算 -->
+    <h2>2. 二阶偏导如何计算？</h2>
+
+    <p>二阶偏导 = 在一阶偏导的基础上，<strong>再求一次导</strong>。</p>
+
+    <table>
+      <tr>
+        <th>符号</th>
+        <th>含义</th>
+      </tr>
+      <tr>
+        <td>∂²f/∂x²</td>
+        <td>先对 x 求偏导，再对 x 求偏导（纯二阶）</td>
+      </tr>
+      <tr>
+        <td>∂²f/∂y²</td>
+        <td>先对 y 求偏导，再对 y 求偏导（纯二阶）</td>
+      </tr>
+      <tr>
+        <td>∂²f/∂x∂y</td>
+        <td>先对 y 求偏导，再对 x 求偏导（混合偏导）</td>
+      </tr>
+    </table>
+
+    <p>混合偏导通常满足：∂²f/∂x∂y = ∂²f/∂y∂x（顺序可交换）。</p>
+
+    <h3>具体例子</h3>
+    <p>函数：f(x, y) = x² + 3xy + y²</p>
+
+    <p><strong>第一步：一阶偏导</strong></p>
+    <ul>
+      <li>∂f/∂x = 2x + 3y</li>
+      <li>∂f/∂y = 3x + 2y</li>
+    </ul>
+
+    <p><strong>第二步：二阶偏导</strong></p>
+    <ul>
+      <li>∂²f/∂x² = 对 (2x + 3y) 再对 x 求导 → <strong>2</strong></li>
+      <li>∂²f/∂y² = 对 (3x + 2y) 再对 y 求导 → <strong>2</strong></li>
+      <li>∂²f/∂x∂y = 对 (3x + 2y) 再对 x 求导 → <strong>3</strong></li>
+      <li>∂²f/∂y∂x = 对 (2x + 3y) 再对 y 求导 → <strong>3</strong></li>
+    </ul>
+
+    <div class="formula">
+      H = |  2   3  |<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;|  3   2  |
+    </div>
+
+    <h3>另一个例子（马鞍面）</h3>
+    <p>f(x, y) = x² − y²</p>
+    <ul>
+      <li>一阶：∂f/∂x = 2x，∂f/∂y = −2y</li>
+      <li>二阶：∂²f/∂x² = 2，∂²f/∂y² = −2，混合 = 0</li>
+    </ul>
+    <div class="formula">
+      H = |  2   0  |<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;|  0  −2  |
+    </div>
+
+    <!-- 3. 几何含义 -->
+    <h2>3. 几何含义（最重要）</h2>
+
+    <p>把损失函数想成一座山的地形。当梯度 = 0 时，用 Hessian 判断这个点是什么：</p>
+
+    <table>
+      <tr>
+        <th>Hessian 的性质</th>
+        <th>地形长什么样</th>
+        <th>对应的点</th>
+      </tr>
+      <tr>
+        <td>所有特征值 &gt; 0（正定）</td>
+        <td>碗口朝上的碗</td>
+        <td><strong>局部最小值</strong></td>
+      </tr>
+      <tr>
+        <td>所有特征值 &lt; 0（负定）</td>
+        <td>碗口朝下的碗</td>
+        <td><strong>局部最大值</strong></td>
+      </tr>
+      <tr>
+        <td>有正有负（不定）</td>
+        <td>马鞍形状（一边上、一边下）</td>
+        <td><strong>鞍点</strong></td>
+      </tr>
+    </table>
+
+    <div class="note">
+      上面 x² − y² 的例子，特征值是 +2 和 −2（一正一负）→ 鞍点。<br>
+      而 x² + y² 的 Hessian 特征值都是正的 → 局部最小值。
+    </div>
+
+    <!-- 4. 和优化的关系 -->
+    <h2>4. 和梯度下降 / 牛顿法的关系</h2>
+
+    <p>普通梯度下降只看一阶信息（斜率）：</p>
+    <div class="formula">
+      w_新 = w_旧 − 学习率 × 梯度
+    </div>
+
+    <p>牛顿法会用到 Hessian：</p>
+    <div class="formula">
+      w_新 = w_旧 − Hessian⁻¹ × 梯度
+    </div>
+
+    <p>Hessian 的作用是<strong>根据弯曲程度自动调整步长</strong>：</p>
+    <ul>
+      <li>很陡的方向 → 步子自动变小（防止冲过）</li>
+      <li>很平的方向 → 步子自动变大（加快前进）</li>
+    </ul>
+
+    <div class="note-green">
+      因此牛顿法通常收敛更快，但计算代价极高。
+    </div>
+
+    <!-- 5. 为什么深度学习几乎不用完整 Hessian -->
+    <h2>5. 为什么深度学习几乎不直接算完整 Hessian？</h2>
+
+    <div class="note-red">
+      一个有 N 个参数的模型，完整 Hessian 是 N × N 的矩阵。<br>
+      N = 100 万 → 矩阵有 <strong>1 万亿</strong> 个元素，根本存不下、也算不起。
+    </div>
+
+    <p>所以必须使用各种<strong>廉价近似</strong>。</p>
+
+    <!-- 6. 实际中如何解决 -->
+    <h2>6. 实际中如何获得二阶信息的好处？</h2>
+
+    <table>
+      <tr>
+        <th>方法</th>
+        <th>核心思想</th>
+        <th>代表</th>
+        <th>代价</th>
+      </tr>
+      <tr>
+        <td>只用一阶 + 动量</td>
+        <td>完全不管二阶，用历史梯度加速</td>
+        <td>SGD + Momentum</td>
+        <td>最低</td>
+      </tr>
+      <tr>
+        <td><strong>自适应学习率<br>（对角线近似）</strong></td>
+        <td>只估计每个参数自己的二阶信息</td>
+        <td><strong>Adam</strong>、RMSProp、AdaGrad</td>
+        <td>很低</td>
+      </tr>
+      <tr>
+        <td>有限内存拟牛顿</td>
+        <td>用最近几次梯度变化近似 Hessian 的逆</td>
+        <td>L-BFGS</td>
+        <td>中等</td>
+      </tr>
+      <tr>
+        <td>K-FAC / 自然梯度</td>
+        <td>用 Fisher 信息矩阵近似</td>
+        <td>K-FAC</td>
+        <td>较高</td>
+      </tr>
+      <tr>
+        <td>Hessian-向量积</td>
+        <td>不显式构造矩阵，只算 H × 向量</td>
+        <td>曲率分析、二阶优化研究</td>
+        <td>中等</td>
+      </tr>
+    </table>
+
+    <h3>目前工业界最主流的做法：Adam</h3>
+
+    <div class="card">
+      <p>Adam 给每个参数维护一个「自己的学习率」，这个学习率会根据该参数历史梯度的大小自动调整。</p>
+      <p>本质上是在用一种<strong>非常粗糙的对角线 Hessian 近似</strong>：</p>
+      <ul>
+        <li>梯度一直很大的参数 → 学习率自动变小（对应曲率大）</li>
+        <li>梯度一直很小的参数 → 学习率自动变大（对应曲率小）</li>
+      </ul>
+      <p>虽然粗糙，但效果出奇地好，计算开销几乎和普通 SGD 一样。</p>
+    </div>
+
+    <h3>什么时候会用到更接近真正 Hessian 的方法？</h3>
+    <ul>
+      <li>小模型 / 凸优化问题 → 可直接用 L-BFGS 或牛顿法</li>
+      <li>需要极致收敛速度的场景 → K-FAC 或自然梯度</li>
+      <li>研究损失地形、曲率分析 → Hessian-向量积</li>
+      <li>二阶剪枝、量化感知训练等特殊任务 → 估计对角或块对角 Hessian</li>
+    </ul>
+
+    <!-- 7. 速查总结 -->
+    <h2>7. 一句话速查</h2>
+
+    <div class="card">
+      <ul>
+        <li><span class="tag">Hessian</span> 由所有二阶偏导数组成的矩阵，描述函数的弯曲程度</li>
+        <li><span class="tag">二阶偏导</span> 在一阶偏导基础上再求一次导</li>
+        <li><span class="tag">正定</span> 所有特征值 &gt; 0 → 局部最小值（碗）</li>
+        <li><span class="tag">负定</span> 所有特征值 &lt; 0 → 局部最大值</li>
+        <li><span class="tag">不定</span> 有正有负 → 鞍点（马鞍）</li>
+        <li><span class="tag">牛顿法</span> 用 Hessian⁻¹ × 梯度，根据曲率自动调步长</li>
+        <li><span class="tag">实际做法</span> 几乎不算完整 Hessian，而是用 Adam 等对角线近似</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>核心结论：</strong>梯度告诉你往哪走，Hessian 告诉你这个坡弯曲得怎么样。深度学习里用廉价近似（尤其是 Adam）来获得二阶信息的好处。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 04-calculus-for-ml<br>
+      由学习过程中的问答整理而成 · 纯文本公式
+    </footer>
+  </div>
+</body>
+</html>
