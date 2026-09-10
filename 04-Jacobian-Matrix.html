@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jacobian Matrix · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--light-blue);
+      color: #174ea6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.98rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .mono { font-family: "SF Mono", "Fira Code", Consolas, monospace; color: #174ea6; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      justify-content: center;
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Jacobian Matrix · 复习文档</h1>
+    <p class="subtitle">
+      通俗理解版 · 带可视化 · 与梯度、Hessian 的关系 · 在深度学习中的作用
+    </p>
+
+    <!-- 1. 最通俗的理解 -->
+    <h2>1. 最通俗的理解</h2>
+
+    <div class="one-liner">
+      <strong>Jacobian = 一张记录「每个输入对每个输出影响有多大」的表格。</strong>
+    </div>
+
+    <p>想象你在调一台音响，有 3 个旋钮（输入）：低音、中音、高音。<br>
+    音响会输出 2 个结果：音量大小、声音是否刺耳。</p>
+
+    <p>你想知道：「我轻轻转一下某个旋钮，两个结果分别会怎么变？」</p>
+
+    <!-- 可视化：影响关系表 -->
+    <div class="viz-box">
+      <div class="viz-title">Jacobian 就是这张「影响关系表」</div>
+      <svg viewBox="0 0 520 220" width="520" height="220">
+        <!-- headers -->
+        <text x="160" y="28" fill="#5f6368" font-size="13">转低音</text>
+        <text x="260" y="28" fill="#5f6368" font-size="13">转中音</text>
+        <text x="360" y="28" fill="#5f6368" font-size="13">转高音</text>
+
+        <!-- row labels -->
+        <text x="20" y="85" fill="#174ea6" font-size="14" font-weight="600">音量变化</text>
+        <text x="20" y="155" fill="#174ea6" font-size="14" font-weight="600">刺耳程度</text>
+
+        <!-- cells -->
+        <rect x="140" y="55" width="80" height="50" rx="6" fill="#e8f0fe" stroke="#a8c7fa"/>
+        <text x="165" y="85" fill="#174ea6" font-size="16" font-weight="600">∂音量/∂低音</text>
+
+        <rect x="240" y="55" width="80" height="50" rx="6" fill="#e8f0fe" stroke="#a8c7fa"/>
+        <text x="255" y="85" fill="#174ea6" font-size="14" font-weight="600">∂音量/∂中音</text>
+
+        <rect x="340" y="55" width="80" height="50" rx="6" fill="#e8f0fe" stroke="#a8c7fa"/>
+        <text x="355" y="85" fill="#174ea6" font-size="14" font-weight="600">∂音量/∂高音</text>
+
+        <rect x="140" y="125" width="80" height="50" rx="6" fill="#fef7e0" stroke="#fdd663"/>
+        <text x="155" y="155" fill="#e37400" font-size="14" font-weight="600">∂刺耳/∂低音</text>
+
+        <rect x="240" y="125" width="80" height="50" rx="6" fill="#fef7e0" stroke="#fdd663"/>
+        <text x="250" y="155" fill="#e37400" font-size="14" font-weight="600">∂刺耳/∂中音</text>
+
+        <rect x="340" y="125" width="80" height="50" rx="6" fill="#fef7e0" stroke="#fdd663"/>
+        <text x="350" y="155" fill="#e37400" font-size="14" font-weight="600">∂刺耳/∂高音</text>
+
+        <!-- bottom note -->
+        <text x="140" y="205" fill="#5f6368" font-size="12">每一个格子 = 一个偏导数（只转一个旋钮时的影响）</text>
+      </svg>
+    </div>
+
+    <!-- 2. 正式定义 -->
+    <h2>2. 正式一点的定义</h2>
+
+    <p>当函数有<strong>多个输入</strong>、<strong>多个输出</strong>时，Jacobian 把所有一阶偏导数排成一个矩阵。</p>
+
+    <p>假设 2 个输入 (x, y)，2 个输出 (u, v)：</p>
+    <div class="formula">
+      u = f(x, y)<br>
+      v = g(x, y)
+    </div>
+
+    <p>Jacobian 矩阵就是：</p>
+    <div class="formula">
+      J = |  ∂u/∂x    ∂u/∂y  |<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;|  ∂v/∂x    ∂v/∂y  |
+    </div>
+
+    <p>每一行对应一个输出，每一列对应一个输入。</p>
+
+    <!-- 可视化：输入输出箭头 -->
+    <div class="viz-box">
+      <div class="viz-title">输入如何影响输出（箭头粗细示意影响大小）</div>
+      <svg viewBox="0 0 480 200" width="480" height="200">
+        <!-- inputs -->
+        <circle cx="80" cy="60" r="28" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+        <text x="80" y="65" text-anchor="middle" fill="#174ea6" font-size="16" font-weight="600">x</text>
+
+        <circle cx="80" cy="140" r="28" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+        <text x="80" y="145" text-anchor="middle" fill="#174ea6" font-size="16" font-weight="600">y</text>
+
+        <!-- outputs -->
+        <circle cx="400" cy="60" r="28" fill="#e6f4ea" stroke="#188038" stroke-width="2"/>
+        <text x="400" y="65" text-anchor="middle" fill="#137333" font-size="16" font-weight="600">u</text>
+
+        <circle cx="400" cy="140" r="28" fill="#e6f4ea" stroke="#188038" stroke-width="2"/>
+        <text x="400" y="145" text-anchor="middle" fill="#137333" font-size="16" font-weight="600">v</text>
+
+        <!-- arrows x->u (thick) -->
+        <line x1="110" y1="55" x2="370" y2="55" stroke="#1a73e8" stroke-width="3" marker-end="url(#arrow)"/>
+        <text x="230" y="48" fill="#1a73e8" font-size="12">∂u/∂x = 2</text>
+
+        <!-- arrows x->v -->
+        <line x1="108" y1="75" x2="372" y2="125" stroke="#1a73e8" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <text x="200" y="110" fill="#1a73e8" font-size="12">∂v/∂x = 3</text>
+
+        <!-- arrows y->u -->
+        <line x1="108" y1="125" x2="372" y2="75" stroke="#e37400" stroke-width="1.5" marker-end="url(#arrow2)"/>
+        <text x="280" y="90" fill="#e37400" font-size="12">∂u/∂y = 1</text>
+
+        <!-- arrows y->v -->
+        <line x1="110" y1="145" x2="370" y2="145" stroke="#e37400" stroke-width="1.5" marker-end="url(#arrow2)"/>
+        <text x="230" y="165" fill="#e37400" font-size="12">∂v/∂y = −1</text>
+
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6" fill="#1a73e8"/>
+          </marker>
+          <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6" fill="#e37400"/>
+          </marker>
+        </defs>
+      </svg>
+      <div class="legend">
+        <span><i class="dot" style="background:#1a73e8"></i> 来自 x 的影响</span>
+        <span><i class="dot" style="background:#e37400"></i> 来自 y 的影响</span>
+      </div>
+    </div>
+
+    <!-- 3. 具体数字例子 -->
+    <h2>3. 具体数字例子</h2>
+
+    <p>函数：</p>
+    <div class="formula">
+      u = 2x + y<br>
+      v = 3x − y
+    </div>
+
+    <p>直接求偏导后得到：</p>
+    <div class="formula">
+      J = |  2   1  |<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;|  3  −1  |
+    </div>
+
+    <p>含义：</p>
+    <ul>
+      <li>x 增加一点点 → u 大约增加 2 倍，v 大约增加 3 倍</li>
+      <li>y 增加一点点 → u 大约增加 1 倍，v 大约减少 1 倍</li>
+    </ul>
+
+    <!-- 4. 和梯度、Hessian 的对比 -->
+    <h2>4. 和梯度、Hessian 的对比</h2>
+
+    <!-- 可视化对比 -->
+    <div class="viz-box">
+      <div class="viz-title">三者的关系（形状对比）</div>
+      <svg viewBox="0 0 520 180" width="520" height="180">
+        <!-- Gradient -->
+        <rect x="30" y="40" width="120" height="100" rx="10" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+        <text x="90" y="30" text-anchor="middle" fill="#174ea6" font-size="14" font-weight="600">梯度 Gradient</text>
+        <text x="90" y="75" text-anchor="middle" fill="#5f6368" font-size="12">多输入 → 1输出</text>
+        <text x="90" y="100" text-anchor="middle" fill="#174ea6" font-size="13">[ ∂f/∂x ]</text>
+        <text x="90" y="120" text-anchor="middle" fill="#174ea6" font-size="13">[ ∂f/∂y ]</text>
+        <text x="90" y="145" text-anchor="middle" fill="#5f6368" font-size="11">向量</text>
+
+        <!-- Jacobian -->
+        <rect x="200" y="40" width="120" height="100" rx="10" fill="#e6f4ea" stroke="#188038" stroke-width="2"/>
+        <text x="260" y="30" text-anchor="middle" fill="#137333" font-size="14" font-weight="600">Jacobian</text>
+        <text x="260" y="70" text-anchor="middle" fill="#5f6368" font-size="12">多输入 → 多输出</text>
+        <text x="260" y="95" text-anchor="middle" fill="#137333" font-size="12">| ∂u/∂x  ∂u/∂y |</text>
+        <text x="260" y="115" text-anchor="middle" fill="#137333" font-size="12">| ∂v/∂x  ∂v/∂y |</text>
+        <text x="260" y="145" text-anchor="middle" fill="#5f6368" font-size="11">矩阵</text>
+
+        <!-- Hessian -->
+        <rect x="370" y="40" width="120" height="100" rx="10" fill="#fef7e0" stroke="#e37400" stroke-width="2"/>
+        <text x="430" y="30" text-anchor="middle" fill="#e37400" font-size="14" font-weight="600">Hessian</text>
+        <text x="430" y="70" text-anchor="middle" fill="#5f6368" font-size="12">多输入 → 1输出</text>
+        <text x="430" y="95" text-anchor="middle" fill="#e37400" font-size="12">| ∂²f/∂x²  ∂²f/∂x∂y |</text>
+        <text x="430" y="115" text-anchor="middle" fill="#e37400" font-size="12">| ∂²f/∂y∂x ∂²f/∂y² |</text>
+        <text x="430" y="145" text-anchor="middle" fill="#5f6368" font-size="11">二阶矩阵</text>
+      </svg>
+    </div>
+
+    <table>
+      <tr>
+        <th>概念</th>
+        <th>输入 / 输出</th>
+        <th>内容</th>
+        <th>形状</th>
+      </tr>
+      <tr>
+        <td><strong>梯度 Gradient</strong></td>
+        <td>多输入 → 1 个输出</td>
+        <td>一阶偏导数</td>
+        <td>向量</td>
+      </tr>
+      <tr>
+        <td><strong>Jacobian</strong></td>
+        <td>多输入 → 多输出</td>
+        <td>一阶偏导数</td>
+        <td>矩阵</td>
+      </tr>
+      <tr>
+        <td><strong>Hessian</strong></td>
+        <td>多输入 → 1 个输出</td>
+        <td>二阶偏导数</td>
+        <td>矩阵</td>
+      </tr>
+    </table>
+
+    <div class="note">
+      可以简单记：Jacobian = 向量值函数的「梯度」。<br>
+      当只有一个输出时，Jacobian 就退化成普通的梯度向量。
+    </div>
+
+    <!-- 5. 几何直觉 -->
+    <h2>5. 几何直觉</h2>
+
+    <p>输入空间的一个小变化（小箭头），经过函数后会变成输出空间里的另一个小箭头。</p>
+    <p>Jacobian 描述的就是这个「小箭头如何被本地线性变换」——函数在某点附近表现得像一个矩阵乘法。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">小变化如何被 Jacobian「拉伸/旋转」</div>
+      <svg viewBox="0 0 480 160" width="480" height="160">
+        <!-- left: input -->
+        <text x="100" y="25" text-anchor="middle" fill="#5f6368" font-size="13">输入空间</text>
+        <line x1="40" y1="100" x2="160" y2="100" stroke="#ccc" stroke-width="1"/>
+        <line x1="100" y1="40" x2="100" y2="140" stroke="#ccc" stroke-width="1"/>
+        <line x1="100" y1="100" x2="145" y2="70" stroke="#1a73e8" stroke-width="3" marker-end="url(#arr)"/>
+        <text x="150" y="65" fill="#1a73e8" font-size="12">Δx</text>
+
+        <!-- arrow middle -->
+        <text x="240" y="95" text-anchor="middle" fill="#5f6368" font-size="14">× J</text>
+        <path d="M180,100 L220,100" stroke="#5f6368" stroke-width="2" marker-end="url(#arrGray)"/>
+
+        <!-- right: output -->
+        <text x="370" y="25" text-anchor="middle" fill="#5f6368" font-size="13">输出空间</text>
+        <line x1="310" y1="100" x2="430" y2="100" stroke="#ccc" stroke-width="1"/>
+        <line x1="370" y1="40" x2="370" y2="140" stroke="#ccc" stroke-width="1"/>
+        <line x1="370" y1="100" x2="420" y2="55" stroke="#188038" stroke-width="3" marker-end="url(#arrG)"/>
+        <text x="425" y="50" fill="#188038" font-size="12">J·Δx</text>
+
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6" fill="#1a73e8"/>
+          </marker>
+          <marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6" fill="#188038"/>
+          </marker>
+          <marker id="arrGray" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6" fill="#5f6368"/>
+          </marker>
+        </defs>
+      </svg>
+      <p style="margin-top:0.5rem;color:#5f6368;font-size:0.88rem;">Jacobian 把输入的小箭头变成输出的小箭头（可能被拉长、缩短、旋转）</p>
+    </div>
+
+    <!-- 6. 在深度学习中的作用 -->
+    <h2>6. 在深度学习中的作用</h2>
+
+    <div class="card">
+      <ol>
+        <li><strong>反向传播的本质</strong><br>
+          每一层神经网络都是「一堆输入 → 一堆输出」。框架在反向传播时，其实就是在算每一层的 Jacobian，然后和后面传来的梯度相乘（链式法则）。你平时看不到，是因为全自动完成了。</li>
+        <li style="margin-top:0.8rem;"><strong>多输出情况</strong><br>
+          当损失不是单一标量，或需要同时对多个输出求梯度时，就会用到 Jacobian。</li>
+        <li style="margin-top:0.8rem;"><strong>归一化流（Normalizing Flows）等</strong><br>
+          需要计算 Jacobian 的行列式（det J），用来追踪概率密度的变化。</li>
+        <li style="margin-top:0.8rem;"><strong>敏感度分析 / 可解释性</strong><br>
+          看输入的微小变化会如何影响各个输出。</li>
+      </ol>
+    </div>
+
+    <!-- 7. 一句话速查 -->
+    <h2>7. 一句话速查</h2>
+
+    <div class="card">
+      <ul>
+        <li><span class="tag">Jacobian</span> 记录「每个输入对每个输出影响有多大」的矩阵</li>
+        <li><span class="tag">vs 梯度</span> 梯度是多输入单输出；Jacobian 是多输入多输出</li>
+        <li><span class="tag">vs Hessian</span> Jacobian 是一阶，Hessian 是二阶</li>
+        <li><span class="tag">深度学习</span> 反向传播时每一层都在隐式使用它，框架自动计算</li>
+        <li><span class="tag">记忆口诀</span> 有多个输出时才需要完整的 Jacobian；单个输出时它就是梯度</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>Jacobian 就是一张「影响关系表」，把所有输入对所有输出的一阶影响一次性写清楚。
+    </div>
+
+    <footer>
+      基于学习过程中的问答整理 · 纯文本公式 + SVG 可视化
+    </footer>
+  </div>
+</body>
+</html>
