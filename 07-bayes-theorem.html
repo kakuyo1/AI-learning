@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>07 Bayes' Theorem · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.9rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    .flow-box {
+      background: var(--light-blue);
+      border: 1px solid #a8c7fa;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-weight: 500;
+    }
+    .flow-box.green { background: var(--light-green); border-color: #81c995; }
+    .flow-box.orange { background: var(--light-orange); border-color: #fdd663; }
+    .flow-arrow { color: var(--blue); font-size: 1.2rem; font-weight: 700; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>07 Bayes' Theorem</h1>
+    <p class="subtitle">高可视化复习 · 贝叶斯定理 · Naive Bayes · MLE vs MAP · 频率派 vs 贝叶斯派</p>
+
+    <!-- 1. 核心一句话 -->
+    <h2>1. 核心思想</h2>
+    <div class="one-liner">
+      <strong>概率是关于你预期什么，贝叶斯定理是关于你学到了什么。</strong><br>
+      你先有一个看法（先验），看到新证据后，用严格的规则更新看法（后验）。
+    </div>
+
+    <!-- 2. 公式与四部分 -->
+    <h2>2. 贝叶斯定理公式</h2>
+    <div class="formula">
+      P(A|B) = P(B|A) × P(A) / P(B)
+    </div>
+
+    <table>
+      <tr>
+        <th>符号</th>
+        <th>名称</th>
+        <th>含义</th>
+      </tr>
+      <tr>
+        <td>P(A|B)</td>
+        <td><strong>后验 Posterior</strong></td>
+        <td>看到证据 B 之后，对 A 的新看法</td>
+      </tr>
+      <tr>
+        <td>P(B|A)</td>
+        <td><strong>似然 Likelihood</strong></td>
+        <td>如果 A 为真，出现证据 B 的可能性</td>
+      </tr>
+      <tr>
+        <td>P(A)</td>
+        <td><strong>先验 Prior</strong></td>
+        <td>看到证据之前，对 A 的看法</td>
+      </tr>
+      <tr>
+        <td>P(B)</td>
+        <td><strong>证据 Evidence</strong></td>
+        <td>证据本身出现的总概率（归一化项）</td>
+      </tr>
+    </table>
+
+    <div class="formula">
+      P(B) = P(B|A)·P(A) + P(B|¬A)·P(¬A)
+    </div>
+
+    <!-- 3. 医学检测例子 -->
+    <h2>3. 经典例子：医学检测</h2>
+    <p>疾病发病率 1/10000，检测准确率 99%（真阳性 99%，假阳性 1%）。你测出阳性，真正生病的概率是多少？</p>
+
+    <div class="formula">
+      P(sick) = 0.0001<br>
+      P(positive|sick) = 0.99<br>
+      P(positive|healthy) = 0.01<br><br>
+      P(positive) = 0.99×0.0001 + 0.01×0.9999 ≈ 0.0101<br>
+      P(sick|positive) = 0.99×0.0001 / 0.0101 ≈ <strong>0.98%</strong>
+    </div>
+
+    <div class="note-red">
+      很多人直觉觉得是 99%，真正答案不到 1%。因为没病人远多于病人，假阳性数量会很多。先验（疾病罕见）起了主导作用。
+    </div>
+
+    <!-- 4. 垃圾邮件例子 -->
+    <h2>4. 垃圾邮件例子</h2>
+    <div class="formula">
+      P(spam) = 0.3<br>
+      P("lottery"|spam) = 0.05<br>
+      P("lottery"|not spam) = 0.001<br><br>
+      P(spam|"lottery") ≈ 95.5%
+    </div>
+    <p>一个词就把概率从 30% 推到 95.5%。真正的垃圾邮件过滤器会对成百上千个词同时做这件事。</p>
+
+    <!-- 5. Naive Bayes -->
+    <h2>5. Naive Bayes（朴素贝叶斯）</h2>
+    <div class="one-liner">
+      用贝叶斯定理做分类，并假设所有特征在给定类别下相互独立。
+    </div>
+
+    <div class="formula">
+      P(class | features) ∝ P(class) × P(f1|class) × P(f2|class) × … × P(fn|class)
+    </div>
+
+    <p>「朴素」就朴素在这个独立假设。现实中词和词并不独立，但这个假设让计算变得极快，而且在文本分类上效果意外地好。</p>
+
+    <div class="card">
+      <strong>实际实现要点：</strong>
+      <ul>
+        <li>用词频统计估计 P(word|class) → 这是 MLE</li>
+        <li>Laplace 平滑：避免某个词概率为 0 导致整条乘积归零</li>
+        <li>用对数概率相加，防止下溢</li>
+      </ul>
+    </div>
+
+    <!-- 6. MLE vs MAP -->
+    <h2>6. MLE vs MAP</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th>MLE（最大似然）</th>
+        <th>MAP（最大后验）</th>
+      </tr>
+      <tr>
+        <td>目标</td>
+        <td>最大化 P(数据|参数)</td>
+        <td>最大化 P(参数|数据)</td>
+      </tr>
+      <tr>
+        <td>是否用先验</td>
+        <td>不用</td>
+        <td>用（似然 × 先验）</td>
+      </tr>
+      <tr>
+        <td>数据很少时</td>
+        <td>容易极端</td>
+        <td>更稳健</td>
+      </tr>
+      <tr>
+        <td>ML 对应</td>
+        <td>无正则训练</td>
+        <td>L2 / L1 正则</td>
+      </tr>
+    </table>
+
+    <div class="note-green">
+      高斯先验 → L2 正则<br>
+      拉普拉斯先验 → L1 正则<br>
+      你每次加正则项，其实都在做贝叶斯声明：「我事先认为参数大概长这样」。
+    </div>
+
+    <!-- 7. 频率派 vs 贝叶斯派 -->
+    <h2>7. Bayesian vs Frequentist（实际区别）</h2>
+    <table>
+      <tr>
+        <th>方面</th>
+        <th>频率派 Frequentist</th>
+        <th>贝叶斯派 Bayesian</th>
+      </tr>
+      <tr>
+        <td>概率含义</td>
+        <td>长期频率</td>
+        <td>信念程度</td>
+      </tr>
+      <tr>
+        <td>参数看法</td>
+        <td>固定但未知的常数</td>
+        <td>随机变量（有分布）</td>
+      </tr>
+      <tr>
+        <td>输出</td>
+        <td>点估计</td>
+        <td>完整分布</td>
+      </tr>
+      <tr>
+        <td>不确定性</td>
+        <td>置信区间（关于程序）</td>
+        <td>可信区间（关于参数）</td>
+      </tr>
+      <tr>
+        <td>小数据</td>
+        <td>容易过拟合</td>
+        <td>先验起正则作用</td>
+      </tr>
+      <tr>
+        <td>计算</td>
+        <td>通常更快</td>
+        <td>常需采样（MCMC）</td>
+      </tr>
+    </table>
+
+    <div class="one-liner">
+      大多数生产环境的深度学习是频率派（SGD + 点估计）。<br>
+      贝叶斯方法在需要「知道自己不知道」或数据很少时更有价值。
+    </div>
+
+    <!-- 8. 为什么贝叶斯思维对 ML 重要 -->
+    <h2>8. 为什么贝叶斯思维对 ML 重要</h2>
+
+    <div class="card">
+      <p><span class="tag">Priors are regularization</span></p>
+      <p>高斯先验 = L2，拉普拉斯先验 = L1。加正则就是在做贝叶斯声明。</p>
+    </div>
+
+    <div class="card">
+      <p><span class="tag">Posteriors are uncertainty</span></p>
+      <p>普通模型只给一个概率数字，贝叶斯给分布：「我认为 P(spam) 在 0.8~0.95 之间」。</p>
+    </div>
+
+    <div class="card">
+      <p><span class="tag">Bayes updates are online learning</span></p>
+      <p>今天的后验变成明天的先验。新数据来了就增量更新，不用从头训练。</p>
+    </div>
+
+    <div class="card">
+      <p><span class="tag">Model comparison is Bayesian</span></p>
+      <p>边际似然、Bayes Factor、BIC 用贝叶斯方式权衡拟合与复杂度，避免过拟合。</p>
+    </div>
+
+    <!-- 9. 更新流程可视化 -->
+    <h2>9. 贝叶斯更新流程</h2>
+    <div class="viz-box">
+      <div class="viz-title">先验 → 证据 → 后验</div>
+      <div class="flow">
+        <div class="flow-box">先验 Prior<br>P(A)</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-box orange">证据 / 似然<br>P(B|A)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box green">后验 Posterior<br>P(A|B)</div>
+      </div>
+      <p style="margin-top:0.8rem;color:var(--muted);font-size:0.9rem;">后验可以继续作为下一轮的先验，实现持续学习</p>
+    </div>
+
+    <!-- 10. 速查 -->
+    <h2>10. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">贝叶斯定理</span> P(A|B) = P(B|A)·P(A) / P(B)，用证据更新信念</li>
+        <li><span class="tag">Naive Bayes</span> 假设特征独立的贝叶斯分类器，简单高效</li>
+        <li><span class="tag">MLE</span> 只让数据最可能出现的参数（无正则）</li>
+        <li><span class="tag">MAP</span> 数据 + 先验，对应 L1/L2 正则</li>
+        <li><span class="tag">频率派</span> 参数固定未知，输出点估计</li>
+        <li><span class="tag">贝叶斯派</span> 参数有分布，输出不确定性</li>
+        <li><span class="tag">正则化</span> 本质上是把先验写进损失函数</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>贝叶斯定理教我们如何正确地用新证据更新旧看法。它给了正则化、不确定性、在线学习、模型比较一个统一的视角。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 07-bayes-theorem<br>
+      结合学习问答整理 · 高可视化复习文档
+    </footer>
+  </div>
+</body>
+</html>
