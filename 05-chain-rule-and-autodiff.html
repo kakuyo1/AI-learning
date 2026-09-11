@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>05 Chain Rule & Autodiff · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+      --light-purple: #f3e8fd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: var(--light-blue);
+      color: #174ea6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    .flow-box {
+      background: var(--light-blue);
+      border: 1px solid #a8c7fa;
+      border-radius: 8px;
+      padding: 0.45rem 0.8rem;
+      font-weight: 500;
+    }
+    .flow-box.green { background: var(--light-green); border-color: #81c995; }
+    .flow-box.orange { background: var(--light-orange); border-color: #fdd663; }
+    .flow-box.red { background: var(--light-red); border-color: #f28b82; }
+    .flow-arrow { color: var(--blue); font-size: 1.15rem; font-weight: 700; }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    details {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: 0.8rem 0;
+      padding: 0.8rem 1.1rem;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--blue);
+      outline: none;
+    }
+    details[open] summary { margin-bottom: 0.7rem; }
+    .step-num {
+      display: inline-flex;
+      width: 26px; height: 26px;
+      background: var(--blue);
+      color: white;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-right: 0.5rem;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.7rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>05 Chain Rule & Automatic Differentiation</h1>
+    <p class="subtitle">高可视化复习 · 链式法则 · 计算图 · 前向/反向模式 · 对偶数 · PyTorch Autograd</p>
+
+    <!-- 1. 链式法则 -->
+    <h2>1. 链式法则（The Chain Rule）</h2>
+
+    <div class="one-liner">
+      <strong>复合函数的导数 = 各层局部导数相乘。</strong>
+    </div>
+
+    <div class="formula">
+      y = f( g(x) )<br>
+      dy/dx = f'(g(x)) · g'(x)
+    </div>
+
+    <p>神经网络是函数套函数，反向传播就是反复使用链式法则。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">一层套一层时，导数如何传递</div>
+      <div class="flow">
+        <div class="flow-box">x</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">g(x)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">f(g)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">y</div>
+      </div>
+      <p style="margin-top:0.6rem;color:var(--muted);font-size:0.9rem;">反向时：从 y 把梯度一路乘回来</p>
+      <div class="flow">
+        <div class="flow-box red">dy/dx</div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-box orange">× g'(x)</div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-box orange">× f'(g)</div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-box green">dy/dy=1</div>
+      </div>
+    </div>
+
+    <!-- 2. 计算图 -->
+    <h2>2. 计算图（Computational Graph）</h2>
+
+    <p>每个操作变成一个节点。数据向前流，梯度向后流。</p>
+
+    <h3>Forward pass（前向：算值）</h3>
+    <div class="viz-box">
+      <div class="viz-title">x1=2, x2=3 → 相乘 → 加 b=1 → ReLU → y</div>
+      <svg viewBox="0 0 520 160" width="520" height="160">
+        <rect x="10" y="30" width="70" height="36" rx="6" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="45" y="53" text-anchor="middle" fill="#174ea6" font-size="13">x1=2</text>
+        <rect x="10" y="90" width="70" height="36" rx="6" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="45" y="113" text-anchor="middle" fill="#174ea6" font-size="13">x2=3</text>
+
+        <text x="95" y="75" fill="#5f6368" font-size="16">→</text>
+        <rect x="115" y="60" width="70" height="36" rx="6" fill="#fef7e0" stroke="#e37400"/>
+        <text x="150" y="83" text-anchor="middle" fill="#e37400" font-size="13">× → a=6</text>
+
+        <text x="200" y="75" fill="#5f6368" font-size="16">→</text>
+        <rect x="220" y="40" width="50" height="28" rx="6" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="245" y="59" text-anchor="middle" fill="#174ea6" font-size="12">b=1</text>
+
+        <rect x="220" y="80" width="80" height="36" rx="6" fill="#fef7e0" stroke="#e37400"/>
+        <text x="260" y="103" text-anchor="middle" fill="#e37400" font-size="13">+ → c=7</text>
+
+        <text x="315" y="100" fill="#5f6368" font-size="16">→</text>
+        <rect x="335" y="80" width="80" height="36" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="375" y="103" text-anchor="middle" fill="#137333" font-size="13">ReLU → y=7</text>
+      </svg>
+    </div>
+
+    <h3>Backward pass（反向：算梯度）</h3>
+    <div class="viz-box">
+      <div class="viz-title">从 dy/dy=1 开始，一路把梯度传回去</div>
+      <svg viewBox="0 0 520 150" width="520" height="150">
+        <rect x="400" y="55" width="90" height="36" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="445" y="78" text-anchor="middle" fill="#137333" font-size="12">dy/dy=1</text>
+
+        <text x="370" y="75" fill="#5f6368" font-size="16">←</text>
+        <rect x="280" y="55" width="80" height="36" rx="6" fill="#fef7e0" stroke="#e37400"/>
+        <text x="320" y="78" text-anchor="middle" fill="#e37400" font-size="12">dy/dc=1</text>
+
+        <text x="250" y="50" fill="#5f6368" font-size="14">←</text>
+        <text x="250" y="100" fill="#5f6368" font-size="14">←</text>
+
+        <rect x="150" y="25" width="80" height="32" rx="6" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="190" y="46" text-anchor="middle" fill="#174ea6" font-size="12">dy/da=1</text>
+        <rect x="150" y="90" width="80" height="32" rx="6" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="190" y="111" text-anchor="middle" fill="#174ea6" font-size="12">dy/db=1</text>
+
+        <text x="120" y="40" fill="#5f6368" font-size="14">←</text>
+        <text x="120" y="105" fill="#5f6368" font-size="14">←</text>
+
+        <rect x="20" y="15" width="85" height="32" rx="6" fill="#fce8e6" stroke="#d93025"/>
+        <text x="62" y="36" text-anchor="middle" fill="#d93025" font-size="12">dy/dx1=3</text>
+        <rect x="20" y="100" width="85" height="32" rx="6" fill="#fce8e6" stroke="#d93025"/>
+        <text x="62" y="121" text-anchor="middle" fill="#d93025" font-size="12">dy/dx2=2</text>
+      </svg>
+      <p style="margin-top:0.5rem;color:var(--muted);font-size:0.88rem;">每一步：当前梯度 = 后面传来的梯度 × 本层局部导数</p>
+    </div>
+
+    <div class="one-liner">
+      <strong>Forward</strong> = 从输入算到损失（算值）&nbsp;&nbsp;|&nbsp;&nbsp;
+      <strong>Backward</strong> = 从损失倒着走，算每个参数的梯度（算责任）
+    </div>
+
+    <!-- 3. 前向模式 vs 反向模式 -->
+    <h2>3. Forward Mode vs Reverse Mode</h2>
+
+    <table>
+      <tr>
+        <th>模式</th>
+        <th>种子</th>
+        <th>方向</th>
+        <th>最适合的场景</th>
+      </tr>
+      <tr>
+        <td><strong>Forward Mode</strong><br>前向模式</td>
+        <td>dx/dx = 1</td>
+        <td>输入 → 输出</td>
+        <td>输入少、输出多</td>
+      </tr>
+      <tr>
+        <td><strong>Reverse Mode</strong><br>反向模式</td>
+        <td>dy/dy = 1</td>
+        <td>输出 → 输入</td>
+        <td>输入多、输出少（神经网络）</td>
+      </tr>
+    </table>
+
+    <div class="note-green">
+      神经网络：权重几百万（输入多），损失只有 1 个（输出少）→ 必须用<strong>反向模式</strong>，一次算出所有梯度。
+    </div>
+
+    <!-- 4. 对偶数 -->
+    <h2>4. Dual Numbers（对偶数）——前向模式的优雅实现</h2>
+
+    <div class="one-liner">
+      对偶数 = 把「值」和「导数」绑在一起的数字：a + b·ε（规定 ε² = 0）
+    </div>
+
+    <div class="formula">
+      (a, a') + (b, b') = (a+b, a'+b')<br>
+      (a, a') × (b, b') = (a×b, a'×b + a×b')<br>
+      sin(a, a')         = (sin(a), cos(a)×a')
+    </div>
+
+    <p>你按普通算术计算，导数会自动跟着走完整个前向过程。</p>
+
+    <details>
+      <summary>点击查看完整小例子：y = sin(x²)，x=2</summary>
+      <div class="formula">
+        1. x = (2, 1)　　　　　　　// 值=2，导数=1<br>
+        2. a = x² = (2,1)×(2,1) = (4, 4)<br>
+        3. y = sin(a) = (sin4, cos4×4) ≈ (−0.757, −2.615)<br><br>
+        一次计算同时得到函数值和导数。
+      </div>
+    </details>
+
+    <!-- 5. PyTorch Autograd -->
+    <h2>5. How PyTorch Autograd Works Under the Hood</h2>
+
+    <div class="viz-box">
+      <div class="viz-title">你写的代码 vs PyTorch 内部自动做的事</div>
+      <svg viewBox="0 0 520 200" width="520" height="200">
+        <!-- left -->
+        <rect x="10" y="20" width="200" height="160" rx="10" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="110" y="45" text-anchor="middle" fill="#174ea6" font-size="14" font-weight="600">你写的代码</text>
+        <text x="20" y="75" fill="#202124" font-size="12">x = tensor(2.0,</text>
+        <text x="30" y="93" fill="#202124" font-size="12">requires_grad=True)</text>
+        <text x="20" y="120" fill="#202124" font-size="12">y = x**2 + 3*x + 1</text>
+        <text x="20" y="150" fill="#202124" font-size="12">y.backward()</text>
+        <text x="20" y="170" fill="#5f6368" font-size="11">print(x.grad)  → 7.0</text>
+
+        <!-- arrow -->
+        <text x="250" y="105" fill="#5f6368" font-size="20">→</text>
+
+        <!-- right -->
+        <rect x="290" y="20" width="210" height="160" rx="10" fill="#e6f4ea" stroke="#188038"/>
+        <text x="395" y="45" text-anchor="middle" fill="#137333" font-size="14" font-weight="600">PyTorch 自动做</text>
+        <text x="300" y="75" fill="#202124" font-size="12">1. 创建计算图</text>
+        <text x="300" y="95" fill="#202124" font-size="12">2. 每个操作记录反向函数</text>
+        <text x="300" y="120" fill="#202124" font-size="12">3. 从 y 倒着走图</text>
+        <text x="300" y="140" fill="#202124" font-size="12">4. 链式法则传梯度</text>
+        <text x="300" y="165" fill="#202124" font-size="12">5. 结果写入 x.grad</text>
+      </svg>
+    </div>
+
+    <h3>内部计算图长这样</h3>
+    <div class="viz-box">
+      <div class="viz-title">y = x² + 3x + 1 对应的计算图</div>
+      <svg viewBox="0 0 420 180" width="420" height="180">
+        <circle cx="60" cy="90" r="22" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>
+        <text x="60" y="95" text-anchor="middle" fill="#174ea6" font-size="14" font-weight="600">x</text>
+
+        <path d="M82,80 Q140,40 200,55" fill="none" stroke="#1a73e8" stroke-width="2"/>
+        <path d="M82,100 Q140,140 200,125" fill="none" stroke="#1a73e8" stroke-width="2"/>
+
+        <rect x="175" y="35" width="60" height="30" rx="6" fill="#fef7e0" stroke="#e37400"/>
+        <text x="205" y="55" text-anchor="middle" fill="#e37400" font-size="13">x²</text>
+
+        <rect x="175" y="115" width="60" height="30" rx="6" fill="#fef7e0" stroke="#e37400"/>
+        <text x="205" y="135" text-anchor="middle" fill="#e37400" font-size="13">3x</text>
+
+        <path d="M235,50 Q280,70 300,85" fill="none" stroke="#5f6368" stroke-width="1.5"/>
+        <path d="M235,130 Q280,110 300,95" fill="none" stroke="#5f6368" stroke-width="1.5"/>
+
+        <rect x="290" y="70" width="50" height="30" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="315" y="90" text-anchor="middle" fill="#137333" font-size="13">+</text>
+
+        <path d="M340,85 L370,85" stroke="#5f6368" stroke-width="1.5"/>
+        <rect x="370" y="70" width="40" height="30" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="390" y="90" text-anchor="middle" fill="#137333" font-size="13">y</text>
+      </svg>
+    </div>
+
+    <details>
+      <summary>点击查看 backward() 时梯度如何一步步传回</summary>
+      <ol style="margin-top:0.6rem;">
+        <li>给 y 的梯度设为 1.0</li>
+        <li>经过「+1」→ 梯度 1 传给 (x² + 3x)</li>
+        <li>经过「+」→ 梯度 1 分别传给 x² 和 3x</li>
+        <li>x² 节点：局部导数 2x=4 → 传给 x 的梯度 += 4</li>
+        <li>3x 节点：局部导数 3 → 传给 x 的梯度 += 3</li>
+        <li>最终 x.grad = 4 + 3 = <strong>7</strong></li>
+      </ol>
+    </details>
+
+    <div class="note">
+      <strong>关键细节：</strong>
+      <ul>
+        <li>动态图（Define-by-Run）：每次前向都重新建图，支持 if/for</li>
+        <li>梯度默认累加（+=），所以要先 zero_grad()</li>
+        <li>只有 requires_grad=True 的叶子节点会保留梯度</li>
+      </ul>
+    </div>
+
+    <!-- 6. 迷你 Autograd 引擎核心思想 -->
+    <h2>6. 迷你 Autograd 引擎的核心思想</h2>
+
+    <p>课程要求你手写一个 Value 类，它需要三样东西：</p>
+
+    <div class="flow" style="justify-content:flex-start;">
+      <div class="flow-box"><span class="step-num">1</span>包装数值</div>
+      <div class="flow-box"><span class="step-num">2</span>记录计算图</div>
+      <div class="flow-box"><span class="step-num">3</span>反向传播</div>
+    </div>
+
+    <table>
+      <tr>
+        <th>组件</th>
+        <th>作用</th>
+      </tr>
+      <tr>
+        <td>Value 对象</td>
+        <td>存 data（值）和 grad（梯度）</td>
+      </tr>
+      <tr>
+        <td>_prev</td>
+        <td>记录自己由哪些节点算出来</td>
+      </tr>
+      <tr>
+        <td>_backward 函数</td>
+        <td>知道如何把上游梯度分给自己的输入</td>
+      </tr>
+      <tr>
+        <td>backward()</td>
+        <td>拓扑排序后倒序执行每个节点的 _backward</td>
+      </tr>
+    </table>
+
+    <div class="formula">
+      # 加法的反向示例<br>
+      def _backward():<br>
+      &nbsp;&nbsp;self.grad  += out.grad&nbsp;&nbsp;&nbsp;&nbsp;# 加法对输入的局部导数是 1<br>
+      &nbsp;&nbsp;other.grad += out.grad
+    </div>
+
+    <div class="note-green">
+      这就是 PyTorch autograd 的微型版本。理解它，就理解了所有现代深度学习框架最核心的部分。
+    </div>
+
+    <!-- 7. 速查总结 -->
+    <h2>7. 一句话速查</h2>
+
+    <div class="card">
+      <ul>
+        <li><span class="tag">链式法则</span> 复合函数导数 = 各层局部导数相乘</li>
+        <li><span class="tag">计算图</span> 操作变节点，前向算值，反向算梯度</li>
+        <li><span class="tag">Forward Mode</span> 从输入往输出推导数（适合输入少）</li>
+        <li><span class="tag">Reverse Mode</span> 从输出往输入拉梯度（神经网络标配）</li>
+        <li><span class="tag">对偶数</span> 值+导数绑在一起，前向模式的优雅实现</li>
+        <li><span class="tag">PyTorch Autograd</span> 前向建图 + 记录反向函数，.backward() 自动传梯度</li>
+        <li><span class="tag">Value 类</span> 手写 autograd 的核心：存值、记图、定义局部反向</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>反向传播 = 在计算图上系统地应用链式法则。框架帮你自动完成，但原理就是「从损失倒着乘回来」。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 05-chain-rule-and-autodiff<br>
+      高可视化复习文档 · 含可展开交互区块
+    </footer>
+  </div>
+</body>
+</html>
