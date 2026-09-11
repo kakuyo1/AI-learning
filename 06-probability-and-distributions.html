@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>06 Probability and Distributions · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+      --light-purple: #f3e8fd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.9rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    .flow-box {
+      background: var(--light-blue);
+      border: 1px solid #a8c7fa;
+      border-radius: 8px;
+      padding: 0.45rem 0.8rem;
+      font-weight: 500;
+    }
+    .flow-box.green { background: var(--light-green); border-color: #81c995; }
+    .flow-box.orange { background: var(--light-orange); border-color: #fdd663; }
+    .flow-box.red { background: var(--light-red); border-color: #f28b82; }
+    .flow-arrow { color: var(--blue); font-size: 1.15rem; font-weight: 700; }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.7rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>06 Probability and Distributions</h1>
+    <p class="subtitle">高可视化复习 · 概率基础 · Softmax · 交叉熵 · 采样 · 语言模型综合例子</p>
+
+    <!-- 1. 核心定位 -->
+    <h2>1. 为什么学概率？</h2>
+    <div class="one-liner">
+      <strong>概率是 AI 用来表达「不确定性」的语言。</strong><br>
+      模型的每次预测都是一个概率分布，损失函数衡量两个分布有多不像，训练就是让预测分布靠近真实分布。
+    </div>
+
+    <!-- 2. 基础概念 -->
+    <h2>2. 事件、样本空间与概率</h2>
+    <ul>
+      <li><strong>样本空间 S</strong>：所有可能结果的集合（抛硬币 {正, 反}）</li>
+      <li><strong>事件</strong>：样本空间的子集（「掷出偶数」）</li>
+      <li><strong>概率</strong>：给事件一个 0~1 的数字</li>
+    </ul>
+    <div class="card">
+      <strong>三条公理：</strong>
+      <ol>
+        <li>概率永远 ≥ 0</li>
+        <li>整个样本空间概率 = 1</li>
+        <li>互斥事件概率可相加</li>
+      </ol>
+    </div>
+
+    <h3>条件概率与独立性</h3>
+    <div class="formula">
+      P(A|B) = P(A 且 B) / P(B)
+    </div>
+    <p>独立：知道一件事对另一件事没有影响 → P(A 且 B) = P(A) × P(B)</p>
+
+    <!-- 3. PMF vs PDF -->
+    <h2>3. PMF vs PDF</h2>
+    <table>
+      <tr>
+        <th>类型</th>
+        <th>名称</th>
+        <th>特点</th>
+        <th>ML 例子</th>
+      </tr>
+      <tr>
+        <td>离散</td>
+        <td>PMF（概率质量函数）</td>
+        <td>每个值都有直接概率，和为 1</td>
+        <td>分类输出、Softmax</td>
+      </tr>
+      <tr>
+        <td>连续</td>
+        <td>PDF（概率密度函数）</td>
+        <td>单点概率为 0，积分才有概率；密度可 >1</td>
+        <td>VAE 潜在空间、权重初始化</td>
+      </tr>
+    </table>
+
+    <!-- 4. 常见分布 -->
+    <h2>4. 常见分布速查</h2>
+    <table>
+      <tr>
+        <th>分布</th>
+        <th>一句话</th>
+        <th>ML 中的用途</th>
+      </tr>
+      <tr>
+        <td>Bernoulli</td>
+        <td>一次试验两个结果</td>
+        <td>二分类、Dropout</td>
+      </tr>
+      <tr>
+        <td>Categorical</td>
+        <td>一次试验 k 个结果</td>
+        <td>多分类 Softmax 输出</td>
+      </tr>
+      <tr>
+        <td>Uniform</td>
+        <td>所有结果一样可能</td>
+        <td>随机初始化</td>
+      </tr>
+      <tr>
+        <td>Normal (Gaussian)</td>
+        <td>钟形曲线，由 μ、σ 决定</td>
+        <td>权重初始化、噪声建模</td>
+      </tr>
+      <tr>
+        <td>Poisson</td>
+        <td>固定时间内稀有事件次数</td>
+        <td>计数类问题</td>
+      </tr>
+    </table>
+
+    <div class="note">
+      <strong>中心极限定理：</strong>很多独立随机变量加在一起，最终都会变成正态分布。这就是为什么高斯到处都是。
+    </div>
+
+    <!-- 5. 期望与方差 -->
+    <h2>5. 期望与方差</h2>
+    <ul>
+      <li><strong>期望 E[X]</strong>：加权平均（结果 × 概率再求和）</li>
+      <li><strong>方差</strong>：偏离均值的平均平方程度</li>
+    </ul>
+    <p>损失函数本质上是「在数据分布上的期望损失」。</p>
+
+    <!-- 6. 对数概率 -->
+    <h2>6. 对数概率（Log Probabilities）</h2>
+    <div class="one-liner">
+      直接乘很多小概率会下溢变成 0。<br>
+      取对数后乘法变加法，数值稳定。
+    </div>
+    <div class="formula">
+      log(a × b × c) = log a + log b + log c
+    </div>
+    <ul>
+      <li>对数概率永远 ≤ 0</li>
+      <li>越负表示越不可能</li>
+      <li><strong>交叉熵损失 = 正确类别的负对数概率</strong></li>
+    </ul>
+
+    <!-- 7. Softmax 详细 -->
+    <h2>7. Softmax 详细讲解</h2>
+
+    <div class="one-liner">
+      Softmax = 把一组任意实数（logits）变成合法概率分布的标准方法。
+    </div>
+
+    <div class="formula">
+      softmax(z_i) = exp(z_i) / Σ exp(z_j)
+    </div>
+
+    <h3>为什么叫 Softmax？</h3>
+    <p>它是「软」的最大值：</p>
+    <ul>
+      <li><strong>Hardmax / Argmax</strong>：最大的变成 1，其余全 0（不可导）</li>
+      <li><strong>Softmax</strong>：最大的占优势，但其余也留一点概率（光滑可导）</li>
+    </ul>
+
+    <div class="viz-box">
+      <div class="viz-title">Hardmax vs Softmax 对比</div>
+      <svg viewBox="0 0 480 120" width="480" height="120">
+        <text x="100" y="25" text-anchor="middle" fill="#5f6368" font-size="13">Hardmax</text>
+        <rect x="30" y="40" width="40" height="50" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="50" y="70" text-anchor="middle" fill="#174ea6" font-size="12">0</text>
+        <rect x="80" y="40" width="40" height="50" fill="#188038"/>
+        <text x="100" y="70" text-anchor="middle" fill="white" font-size="12">1</text>
+        <rect x="130" y="40" width="40" height="50" fill="#e8f0fe" stroke="#1a73e8"/>
+        <text x="150" y="70" text-anchor="middle" fill="#174ea6" font-size="12">0</text>
+
+        <text x="340" y="25" text-anchor="middle" fill="#5f6368" font-size="13">Softmax</text>
+        <rect x="270" y="70" width="40" height="20" fill="#a8c7fa"/>
+        <text x="290" y="65" text-anchor="middle" fill="#174ea6" font-size="11">0.05</text>
+        <rect x="320" y="40" width="40" height="50" fill="#188038"/>
+        <text x="340" y="70" text-anchor="middle" fill="white" font-size="12">0.88</text>
+        <rect x="370" y="75" width="40" height="15" fill="#a8c7fa"/>
+        <text x="390" y="70" text-anchor="middle" fill="#174ea6" font-size="11">0.07</text>
+      </svg>
+    </div>
+
+    <h3>数值稳定技巧</h3>
+    <div class="formula">
+      先减最大值再 exp：z_shifted = z - max(z)<br>
+      结果完全一样，但不会溢出
+    </div>
+
+    <h3>Log-Softmax</h3>
+    <p>直接计算 log(softmax(z))，数值更稳定。交叉熵损失内部就用它。</p>
+
+    <!-- 8. 交叉熵 -->
+    <h2>8. 交叉熵损失 = 正确类别的负对数概率</h2>
+
+    <div class="card">
+      <p>假设模型输出：P(猫)=0.1, P(狗)=0.7, P(鸟)=0.2<br>
+      真实答案是「狗」。</p>
+      <p>我们只关心正确类别的概率 0.7：</p>
+      <div class="formula">
+        交叉熵损失 = -log(0.7) ≈ 0.357
+      </div>
+      <ul>
+        <li>概率 = 1.0 → 损失 = 0（完美）</li>
+        <li>概率 = 0.7 → 损失 ≈ 0.357</li>
+        <li>概率接近 0 → 损失趋向 +∞（严厉惩罚）</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      训练目标：拼命把这个数字压小，让模型给正确答案的概率尽量接近 1。
+    </div>
+
+    <!-- 9. 采样 -->
+    <h2>9. 采样（Sampling）</h2>
+
+    <div class="one-liner">
+      采样 = 按照概率分布的「剧本」，随机演出一个具体结果。
+    </div>
+
+    <table>
+      <tr>
+        <th>场景</th>
+        <th>在采样什么</th>
+      </tr>
+      <tr>
+        <td>Dropout</td>
+        <td>哪些神经元被关掉（伯努利）</td>
+      </tr>
+      <tr>
+        <td>数据增强</td>
+        <td>随机裁剪、翻转参数</td>
+      </tr>
+      <tr>
+        <td>语言模型生成</td>
+        <td>下一个词（从预测分布采样）</td>
+      </tr>
+      <tr>
+        <td>扩散模型</td>
+        <td>噪声，再逐步去噪</td>
+      </tr>
+      <tr>
+        <td>VAE</td>
+        <td>潜在空间的向量</td>
+      </tr>
+    </table>
+
+    <h3>温度 Temperature</h3>
+    <div class="formula">
+      softmax(z_i / T)
+    </div>
+    <ul>
+      <li>T → 0：几乎总是选最大的（确定但死板）</li>
+      <li>T = 1：正常</li>
+      <li>T → ∞：接近均匀（多样但容易胡说）</li>
+    </ul>
+
+    <!-- 10. 综合例子：语言模型 -->
+    <h2>10. 综合例子：语言模型如何用到这些概念</h2>
+
+    <p>假设一个极简语言模型，词表只有 4 个词：{我, 爱, 你, 啊}</p>
+
+    <div class="viz-box">
+      <div class="viz-title">完整流程可视化</div>
+      <div class="flow">
+        <div class="flow-box">上文「我」</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">模型</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box orange">logits</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box green">Softmax</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box">概率分布</div>
+      </div>
+    </div>
+
+    <h3>第 1 步：模型输出 logits</h3>
+    <div class="formula">
+      词：     我      爱      你      啊<br>
+      logits：[1.0,   3.0,   0.5,   0.1]
+    </div>
+
+    <h3>第 2 步：Softmax 变成概率（Categorical 分布）</h3>
+    <div class="formula">
+      先减最大值 3.0 → [-2.0, 0.0, -2.5, -2.9]<br>
+      exp 后归一化 ≈ [0.09, 0.72, 0.06, 0.04]
+    </div>
+    <p>这就是一个合法的概率分布（PMF），所有概率 ≥0 且和为 1。</p>
+
+    <h3>第 3 步：训练时算交叉熵损失</h3>
+    <p>假设真实下一个词是「爱」（索引 1）：</p>
+    <div class="formula">
+      损失 = -log(0.72) ≈ 0.328
+    </div>
+    <p>如果模型给「爱」的概率更高，损失会更小；如果几乎没给，损失会非常大。</p>
+
+    <h3>第 4 步：生成时采样</h3>
+    <p>训练好后，要生成下一个词：</p>
+    <ul>
+      <li><strong>Argmax</strong>：永远选「爱」（最稳，但没有多样性）</li>
+      <li><strong>采样</strong>：按 [0.09, 0.72, 0.06, 0.04] 的概率随机抽一个词</li>
+      <li>加温度 T=0.7：分布更尖锐，更倾向选高概率词</li>
+      <li>加温度 T=1.5：分布更平坦，更容易选出「我」「你」「啊」</li>
+    </ul>
+
+    <div class="card">
+      <strong>整条链路用到的概率知识：</strong>
+      <ol>
+        <li>模型输出的是 Categorical 分布的参数（logits）</li>
+        <li>Softmax 把它变成合法的 PMF</li>
+        <li>交叉熵 = 正确词的负对数概率（衡量预测分布和真实分布的差距）</li>
+        <li>生成时从预测的分布中采样，得到具体的下一个词</li>
+        <li>温度控制采样的「随机程度」</li>
+      </ol>
+    </div>
+
+    <div class="note-green">
+      这就是概率在语言模型里的完整闭环：用分布表达不确定性 → 用交叉熵训练 → 用采样生成。
+    </div>
+
+    <!-- 11. 速查 -->
+    <h2>11. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">概率</span> AI 表达不确定性的语言</li>
+        <li><span class="tag">PMF / PDF</span> 离散概率 vs 连续密度</li>
+        <li><span class="tag">Softmax</span> 把 logits 变成概率分布（软的最大值）</li>
+        <li><span class="tag">交叉熵</span> -log(正确类别概率)，训练的核心损失</li>
+        <li><span class="tag">对数概率</span> 解决下溢，乘法变加法</li>
+        <li><span class="tag">采样</span> 按分布随机生成具体结果</li>
+        <li><span class="tag">温度</span> 控制采样的确定性 vs 多样性</li>
+      </ul>
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 06-probability-and-distributions<br>
+      结合学习问答整理 · 含语言模型综合例子
+    </footer>
+  </div>
+</body>
+</html>
