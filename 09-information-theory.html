@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>09 Information Theory · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>09 Information Theory</h1>
+    <p class="subtitle">高可视化复习 · 信息量 · 熵 · 交叉熵 · KL 散度 · 互信息 · 困惑度</p>
+
+    <!-- 0. 和概率统计的关系（重点） -->
+    <h2>0. 先搞清楚：信息论和概率统计是什么关系？</h2>
+
+    <div class="one-liner">
+      <strong>信息论不是全新的数学，而是把概率统计换了一身「不确定性 / 意外程度」的衣服。</strong>
+    </div>
+
+    <p>你在 06 课学的概率，关注的是「事情发生的可能性是多少」。  
+    信息论在同一套概率之上，多问了一句：</p>
+
+    <p style="text-align:center;font-size:1.05rem;margin:1rem 0;">
+      <strong>「这件事发生时，有多让人意外？消除了多少不确定？」</strong>
+    </p>
+
+    <table>
+      <tr>
+        <th>概率语言</th>
+        <th>信息论语言</th>
+      </tr>
+      <tr>
+        <td>概率 p(x)</td>
+        <td>信息量 −log p(x)（有多意外）</td>
+      </tr>
+      <tr>
+        <td>一个分布</td>
+        <td>熵（平均有多不确定）</td>
+      </tr>
+      <tr>
+        <td>用模型分布近似真实分布</td>
+        <td>交叉熵 / KL 散度</td>
+      </tr>
+      <tr>
+        <td>两个变量的依赖程度</td>
+        <td>互信息、条件熵、联合熵</td>
+      </tr>
+    </table>
+
+    <div class="note-green">
+      06 课你已经会用交叉熵当损失函数。<br>
+      09 课是从信息论角度回答：为什么是它？它和熵、KL、困惑度是同一家族的概念。
+    </div>
+
+    <!-- 1. 信息量 -->
+    <h2>1. 信息量（Surprise）</h2>
+    <p>越不可能发生的事，发生时越让人惊讶，信息量越大。</p>
+    <div class="formula">
+      I(x) = −log p(x)
+    </div>
+    <ul>
+      <li>概率接近 1 → 信息量接近 0（不意外）</li>
+      <li>概率接近 0 → 信息量很大（很意外）</li>
+      <li>log2 → 单位是 bit；自然对数 → 单位是 nat（深度学习常用）</li>
+    </ul>
+
+    <!-- 2. 熵 -->
+    <h2>2. Entropy（熵）——平均有多让人意外</h2>
+    <div class="one-liner">
+      熵 = 一个分布里所有可能结果的「意外程度」的加权平均。
+    </div>
+    <div class="formula">
+      H(P) = − Σ p(x) · log p(x)
+    </div>
+    <table>
+      <tr>
+        <th>分布特点</th>
+        <th>熵</th>
+        <th>含义</th>
+      </tr>
+      <tr>
+        <td>结果很平均、很不确定</td>
+        <td>高</td>
+        <td>很难猜中</td>
+      </tr>
+      <tr>
+        <td>结果很集中、很确定</td>
+        <td>低</td>
+        <td>基本已经知道会发生什么</td>
+      </tr>
+      <tr>
+        <td>只有一个结果概率为 1</td>
+        <td>0</td>
+        <td>完全没有不确定性</td>
+      </tr>
+    </table>
+    <p>例子：公平硬币熵 = 1 bit；99% 正面的硬币熵 ≈ 0.08 bit。</p>
+
+    <!-- 3. 交叉熵 -->
+    <h2>3. Cross-Entropy（交叉熵）——用你的预测理解真实情况时有多意外</h2>
+    <div class="one-liner">
+      交叉熵衡量：真实事件按 P 发生，你却用 Q 的概率去衡量它们时，平均有多惊讶。
+    </div>
+    <div class="formula">
+      H(P, Q) = − Σ p(x) · log q(x)
+    </div>
+    <p>在分类里，P 是 one-hot，公式简化为你已经熟悉的形式：</p>
+    <div class="formula">
+      H(P, Q) = −log(q(正确类别))
+    </div>
+    <p>这就是分类任务天天用的交叉熵损失。</p>
+
+    <div class="card">
+      <strong>和熵的关系：</strong>
+      <div class="formula">
+        交叉熵 H(P,Q) = 熵 H(P) + KL散度 D_KL(P || Q)
+      </div>
+      训练时 H(P) 固定，所以最小化交叉熵 ≡ 最小化 KL 散度 ≡ 让模型分布靠近真实分布。
+    </div>
+
+    <!-- 4. KL 散度 -->
+    <h2>4. KL Divergence（KL 散度）</h2>
+    <div class="one-liner">
+      KL 散度 = 用预测分布 Q 近似真实分布 P 时，多出的「额外惊讶」。
+    </div>
+    <div class="formula">
+      D_KL(P || Q) = Σ p(x) · log(p(x)/q(x)) = H(P,Q) − H(P)
+    </div>
+    <ul>
+      <li>Q 和 P 完全一样 → KL = 0</li>
+      <li>差得越多 → KL 越大</li>
+      <li><strong>不对称</strong>：D_KL(P||Q) ≠ D_KL(Q||P)，所以不是真正的距离</li>
+    </ul>
+    <p>出现在：VAE、知识蒸馏、RLHF 等需要「让一个分布靠近另一个分布」的地方。</p>
+
+    <!-- 5. 互信息、条件熵、联合熵 -->
+    <h2>5. Mutual Information / Conditional Entropy / Joint Entropy</h2>
+
+    <p>这三个概念本质上是概率里「依赖关系」的信息论说法。</p>
+
+    <table>
+      <tr>
+        <th>概念</th>
+        <th>一句话</th>
+        <th>公式直觉</th>
+      </tr>
+      <tr>
+        <td><strong>联合熵 H(X,Y)</strong></td>
+        <td>两个变量合在一起总共有多不确定</td>
+        <td>H(X,Y) ≤ H(X)+H(Y)</td>
+      </tr>
+      <tr>
+        <td><strong>条件熵 H(Y|X)</strong></td>
+        <td>知道 X 之后，Y 还剩多少不确定</td>
+        <td>0 ≤ H(Y|X) ≤ H(Y)</td>
+      </tr>
+      <tr>
+        <td><strong>互信息 I(X;Y)</strong></td>
+        <td>知道其中一个，能减少另一个多少不确定</td>
+        <td>I(X;Y) = H(Y) − H(Y|X)</td>
+      </tr>
+    </table>
+
+    <div class="formula">
+      I(X;Y) = H(X) − H(X|Y) = H(Y) − H(Y|X) = H(X) + H(Y) − H(X,Y)
+    </div>
+
+    <ul>
+      <li>X、Y 独立 → 互信息 = 0</li>
+      <li>X 完全决定 Y → 条件熵 = 0，互信息 = H(Y)</li>
+      <li>互信息是对称的（和 KL 不同）</li>
+    </ul>
+
+    <div class="note">
+      在特征选择里：互信息高的特征对预测目标更有用（能抓住任意依赖关系，不只是线性相关）。
+    </div>
+
+    <!-- 6. Label Smoothing -->
+    <h2>6. Label Smoothing（标签平滑）</h2>
+    <p>普通交叉熵用硬标签 [0,0,1,0]，模型会过度自信。标签平滑把硬标签稍微打散：</p>
+    <div class="formula">
+      soft = (1−ε)×hard + ε/类别数
+    </div>
+    <p>例如 ε=0.1、4 类、真实是第 3 类：</p>
+    <div class="formula">
+      硬标签 [0, 0, 1, 0] → 软标签 [0.025, 0.025, 0.925, 0.025]
+    </div>
+    <p>效果：防止 logits 极端、起到正则化、改善概率校准。</p>
+
+    <!-- 7. 为什么交叉熵是默认分类损失 -->
+    <h2>7. 为什么交叉熵是分类的默认损失？</h2>
+    <table>
+      <tr>
+        <th>视角</th>
+        <th>理由</th>
+      </tr>
+      <tr>
+        <td>信息论</td>
+        <td>衡量用模型分布编码真实分布时浪费了多少信息，最小化它让两者对齐</td>
+      </tr>
+      <tr>
+        <td>最大似然</td>
+        <td>交叉熵 = 负对数似然，最小化它 = 最大化数据在模型下的概率</td>
+      </tr>
+      <tr>
+        <td>优化</td>
+        <td>配合 Softmax 后梯度是「预测 − 真实」，形式干净、稳定、好算</td>
+      </tr>
+    </table>
+    <p>三个方向都指向同一个自然选择，所以它成为事实标准。</p>
+
+    <!-- 8. 困惑度 -->
+    <h2>8. Perplexity（困惑度）</h2>
+    <div class="one-liner">
+      困惑度 = 交叉熵的指数，表示模型平均在多少个选项里均匀犹豫。
+    </div>
+    <div class="formula">
+      Perplexity = e^(交叉熵)　或　2^(交叉熵)
+    </div>
+    <ul>
+      <li>困惑度 = 1 → 完全确定</li>
+      <li>困惑度 = 50 → 相当于在 50 个词里随机猜</li>
+      <li>语言模型里越低越好</li>
+    </ul>
+
+    <!-- 9. 速查 -->
+    <h2>9. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">信息论与概率</span> 同一套数学，换了「意外/不确定性」的视角</li>
+        <li><span class="tag">信息量</span> −log p，有多让人意外</li>
+        <li><span class="tag">熵</span> 一个分布平均有多不确定</li>
+        <li><span class="tag">交叉熵</span> 用预测理解真实时平均有多意外（分类损失）</li>
+        <li><span class="tag">KL 散度</span> 两个分布差了多少额外意外</li>
+        <li><span class="tag">互信息</span> 知道一个能减少另一个多少不确定</li>
+        <li><span class="tag">条件熵</span> 知道 X 后 Y 还剩多少不确定</li>
+        <li><span class="tag">联合熵</span> 两个变量合在一起总共有多不确定</li>
+        <li><span class="tag">Label Smoothing</span> 软化硬标签，防止过度自信</li>
+        <li><span class="tag">困惑度</span> 交叉熵的指数，等效犹豫的选项数</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>信息论用「有多意外」重新描述了概率里的不确定性。交叉熵损失、KL 散度、困惑度都是这套语言在机器学习中的直接应用。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 09-information-theory<br>
+      开头重点说明与概率统计的关联 · 结合学习问答整理
+    </footer>
+  </div>
+</body>
+</html>
