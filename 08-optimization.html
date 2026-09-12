@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>08 Optimization · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    img.landscape {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>08 Optimization</h1>
+    <p class="subtitle">高可视化复习 · 梯度下降 · Batch/SGD/Mini-batch · Momentum · Adam · 学习率调度 · 凸与非凸 · Loss Landscape</p>
+
+    <h2>1. 优化是什么？</h2>
+    <div class="one-liner">
+      <strong>训练神经网络 = 在损失山谷里找最低点。</strong>
+    </div>
+    <p>你已经有了损失函数（告诉你模型有多错）和梯度（告诉你往哪个方向会更错）。现在缺的是一套「怎么走」的策略。优化器就是这套策略。</p>
+    <div class="formula">
+      minimize L(w)　　（L = 损失，w = 模型的所有权重）
+    </div>
+    <p>所有优化器都在回答同一个问题：<strong>如何更快、更稳地走到谷底？</strong></p>
+
+    <h2>2. 梯度下降（Vanilla Gradient Descent）</h2>
+    <p>最朴素的走法：看当前坡度，反着走，走的步幅由学习率决定。</p>
+    <div class="formula">
+      w = w − lr × 梯度
+    </div>
+    <p>就这一行。但「学习率」是整个训练里最重要的超参数：</p>
+    <ul>
+      <li>太大：一步跨过谷底，来回碰撞，甚至损失爆炸</li>
+      <li>太小：像蜗牛爬，需要多到不必要的步数</li>
+      <li>合适：稳定地往下走</li>
+    </ul>
+    <p>没有万能公式，只能靠实验。常见起点：Adam 用 0.001，SGD+Momentum 用 0.01。</p>
+
+    <h2>3. Batch / SGD / Mini-batch（详细）</h2>
+    <p><strong>通俗引入：</strong>更新参数前，你要先算梯度。问题是：这个梯度用多少数据来算？用全部、用一个、还是用一小撮？三种选择带来完全不同的行为。</p>
+
+    <h3>Batch Gradient Descent（全量）</h3>
+    <p>每次把<strong>整个训练集</strong>的梯度都算完，再走一步。</p>
+    <ul>
+      <li>优点：梯度方向非常准，损失曲线平滑</li>
+      <li>缺点：数据稍大就极慢，内存占用高</li>
+      <li>类比：下山前先把整座山的地图看完，再小心走一步</li>
+    </ul>
+
+    <h3>Stochastic Gradient Descent（SGD，随机）</h3>
+    <p>每次<strong>只随机抽 1 个样本</strong>，立刻用它的梯度更新。</p>
+    <ul>
+      <li>优点：极快</li>
+      <li>缺点：噪声很大，路径歪歪扭扭</li>
+      <li>类比：闭眼摸一块石头就决定方向，走得快但晃</li>
+    </ul>
+
+    <h3>Mini-batch Gradient Descent（小批量）</h3>
+    <p>每次随机抽一小撮（常见 32、64、128、256），用这撮的平均梯度更新。</p>
+    <ul>
+      <li>速度和稳定性的折中</li>
+      <li>能很好利用 GPU 并行</li>
+      <li><strong>实际中几乎所有人都在用这个</strong></li>
+    </ul>
+
+    <table>
+      <tr>
+        <th>方法</th>
+        <th>每次样本数</th>
+        <th>梯度质量</th>
+        <th>速度</th>
+        <th>噪声</th>
+        <th>实际使用</th>
+      </tr>
+      <tr>
+        <td>Batch GD</td>
+        <td>全部</td>
+        <td>最准</td>
+        <td>最慢</td>
+        <td>几乎没有</td>
+        <td>很少</td>
+      </tr>
+      <tr>
+        <td>SGD</td>
+        <td>1</td>
+        <td>很噪</td>
+        <td>最快</td>
+        <td>最大</td>
+        <td>研究场景</td>
+      </tr>
+      <tr>
+        <td><strong>Mini-batch</strong></td>
+        <td>32~256</td>
+        <td>较好</td>
+        <td>快</td>
+        <td>中等</td>
+        <td><strong>主流默认</strong></td>
+      </tr>
+    </table>
+
+    <div class="note-green">
+      噪声不是坏事。在非凸损失表面上，适度噪声反而有助于逃离浅的局部最小值和鞍点。这就是为什么我们不追求「最准确的梯度」。
+    </div>
+
+    <h2>4. Momentum（动量）详细讲解</h2>
+    <p><strong>通俗引入：</strong>普通梯度下降每一步都只看「当前坡度」，在狭窄山谷里会左右来回晃，像锯齿一样前进，效率很低。</p>
+    <p>Momentum 给优化过程加了一个「速度」概念，像物理里的动量：</p>
+    <ul>
+      <li>连续往同一方向走 → 加速</li>
+      <li>方向突然反了 → 用历史速度抵消一部分震荡</li>
+    </ul>
+    <div class="formula">
+      v = β · v + 梯度<br>
+      w = w − lr · v
+    </div>
+    <p>β 通常取 0.9。越大，历史影响越强，路径越平滑，但对方向改变的反应越慢。</p>
+    <p><strong>形象比喻：</strong>没有 Momentum = 每一步重新看脚下，左摇右晃。有 Momentum = 变成滚下山的球，有惯性，小颠簸改变不了大方向，整体更快到谷底。</p>
+
+    <h2>5. Adam：自适应学习率（详细）</h2>
+    <p><strong>通俗引入：</strong>普通方法和 Momentum 都用<strong>同一个学习率</strong>对待所有参数。但有的参数梯度经常很大（该走小步），有的参数梯度长期很小（该走大步）。Adam 就是给每个参数自动分配自己的有效学习率。</p>
+    <p>它同时追踪两样东西：</p>
+    <table>
+      <tr>
+        <th>名称</th>
+        <th>在算什么</th>
+        <th>作用</th>
+      </tr>
+      <tr>
+        <td>一阶动量 m</td>
+        <td>梯度的指数移动平均</td>
+        <td>记录方向（类似 Momentum）</td>
+      </tr>
+      <tr>
+        <td>二阶动量 v</td>
+        <td>梯度平方的指数移动平均</td>
+        <td>记录这个参数梯度的「大小」</td>
+      </tr>
+    </table>
+    <div class="formula">
+      m = β1·m + (1-β1)·梯度<br>
+      v = β2·v + (1-β2)·梯度²<br>
+      m̂ = m / (1-β1ᵗ)　　v̂ = v / (1-β2ᵗ)　　# 偏差修正<br>
+      w = w − lr · m̂ / (√v̂ + ε)
+    </div>
+    <p><strong>关键机制：</strong>除以 √v。梯度大的参数分母大 → 实际步长变小；梯度小的参数分母小 → 实际步长变大。</p>
+    <p>默认超参数：lr=0.001, β1=0.9, β2=0.999, ε=1e-8。对大多数问题开箱即用。训练 Transformer 等大模型时，更推荐 <strong>AdamW</strong>（把权重衰减和梯度更新解耦）。</p>
+
+    <h2>6. Learning Rate Schedules（详细）</h2>
+    <p><strong>通俗引入：</strong>固定学习率是一种妥协。前期希望大步快走，后期希望小步细调。Schedule 让基础学习率随训练进程动态变化。</p>
+    <table>
+      <tr>
+        <th>方式</th>
+        <th>形态</th>
+        <th>典型场景</th>
+      </tr>
+      <tr>
+        <td>Step Decay</td>
+        <td>每隔固定 epoch 乘一个系数（阶梯下降）</td>
+        <td>传统 CNN</td>
+      </tr>
+      <tr>
+        <td>Exponential Decay</td>
+        <td>持续指数变小</td>
+        <td>需要平滑衰减时</td>
+      </tr>
+      <tr>
+        <td>Cosine Annealing</td>
+        <td>按余弦曲线从高到低</td>
+        <td>现代主流</td>
+      </tr>
+      <tr>
+        <td>Warmup + Decay</td>
+        <td>先从小学习率慢慢升起来，再衰减</td>
+        <td>大模型 / Transformer 标配</td>
+      </tr>
+    </table>
+    <p><strong>为什么需要 Warmup？</strong>训练刚开始参数很随机，梯度可能不稳定。一上来就用大学习率容易炸掉。先用小学习率热身，等模型稳定后再加速。</p>
+
+    <h3>Adam 和 Schedule 的关系</h3>
+    <div class="card">
+      <p>Adam 解决「谁该走大步、谁该走小步」（参数级别自适应）。<br>
+      Schedule 解决「现在整体该走快还是走慢」（时间级别全局调节）。</p>
+      <p>两者是<strong>配合关系</strong>，不是替代关系。Adam 公式里的 lr 就是被 Schedule 调整的那个基础学习率。</p>
+      <p>现代标准配置 ≈ Adam/AdamW + Warmup + Cosine Annealing。</p>
+    </div>
+
+    <h2>7. 凸函数、凹函数、非凸函数（详细）</h2>
+    <p><strong>通俗引入：</strong>优化难不难，很大程度上取决于损失表面的形状。有的像光滑的碗，有的像起伏的山地。</p>
+
+    <h3>几何直觉</h3>
+    <ul>
+      <li><strong>凸函数</strong>：碗口朝上。任意两点的连线都在函数图像上方。</li>
+      <li><strong>凹函数</strong>：碗口朝下。任意两点的连线都在函数图像下方。</li>
+      <li><strong>非凸函数</strong>：既不凸也不凹，有坑、有包、有马鞍。</li>
+    </ul>
+
+    <h3>数学定义</h3>
+    <div class="formula">
+      凸：f(λx + (1-λ)y) ≤ λf(x) + (1-λ)f(y)　　λ ∈ [0,1]<br>
+      凹：f(λx + (1-λ)y) ≥ λf(x) + (1-λ)f(y)
+    </div>
+    <p>f 是凹函数 ⟺ −f 是凸函数。</p>
+
+    <h3>二阶判别法（最实用）</h3>
+    <table>
+      <tr>
+        <th>条件</th>
+        <th>结论</th>
+      </tr>
+      <tr>
+        <td>f''(x) ≥ 0（或 Hessian 半正定）</td>
+        <td>凸函数</td>
+      </tr>
+      <tr>
+        <td>f''(x) ≤ 0（或 Hessian 半负定）</td>
+        <td>凹函数</td>
+      </tr>
+      <tr>
+        <td>二阶导有正有负</td>
+        <td>非凸</td>
+      </tr>
+    </table>
+
+    <h3>对优化的影响</h3>
+    <ul>
+      <li><strong>凸优化</strong>：局部最小 = 全局最小，梯度下降有理论保证能找到全局最优。</li>
+      <li><strong>非凸优化</strong>（神经网络全是这种）：存在大量局部最小值和鞍点。梯度下降只保证到平稳点，不保证全局最优。</li>
+    </ul>
+    <div class="note">
+      高维空间的研究表明：真正糟糕的局部最小值其实不多，很多局部最小值的损失已经够好。更麻烦的是<strong>鞍点</strong>（某些方向上坡、某些方向下坡，梯度接近 0）。Momentum 和 mini-batch 噪声能帮助逃离。
+    </div>
+    <p>例子：凸 → x²、eˣ、范数；凹 → −x²、log x、√x；非凸 → x⁴−x²、神经网络损失、x²−y²（鞍点）。</p>
+
+    <h2>8. Loss Landscape 可视化</h2>
+    <p>神经网络损失是百万维的，我们只能通过低维切面来观察它的大概形状。下面这张图清晰展示了局部最小值、鞍点和全局最小值的区别。</p>
+    <div class="viz-box">
+      <img src="loss-landscape-3d.png" alt="3D Loss Landscape 可视化" class="landscape">
+    </div>
+    <div class="note-green">
+      尖锐的最小值通常泛化较差；平坦的最小值通常泛化较好。SGD + Momentum 的噪声有时能帮助模型落到更平坦的区域，这也是为什么仔细调过的 SGD 有时最终测试效果会略好于 Adam。
+    </div>
+
+    <h2>9. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">优化</span> 找让损失最小的权重，训练就是优化</li>
+        <li><span class="tag">GD</span> w ← w − lr × 梯度</li>
+        <li><span class="tag">Mini-batch</span> 速度与稳定性的平衡，实际默认</li>
+        <li><span class="tag">Momentum</span> 加惯性，减少震荡，加速一致方向</li>
+        <li><span class="tag">Adam</span> 每个参数自适应学习率，目前最常用</li>
+        <li><span class="tag">Schedule</span> 全局学习率随时间变化（Warmup + Cosine 常见）</li>
+        <li><span class="tag">Adam + Schedule</span> 参数级自适应 + 时间级全局调节，配合使用</li>
+        <li><span class="tag">凸</span> 局部=全局，好优化</li>
+        <li><span class="tag">非凸</span> 有局部最小和鞍点，神经网络全是这种</li>
+      </ul>
+    </div>
+    <div class="one-liner">
+      <strong>最终记住：</strong>优化器决定「怎么走」，学习率调度决定「走多快随时间怎么变」，损失表面的形状（凸/非凸）决定「路有多难走」。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 08-optimization<br>
+      结合学习问答详细整理 · Loss Landscape 使用用户提供图片
+    </footer>
+  </div>
+</body>
+</html>
