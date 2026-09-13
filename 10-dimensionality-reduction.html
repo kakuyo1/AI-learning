@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>10 Dimensionality Reduction · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.4rem 0 0.55rem; color: #202124; }
+    p, li { margin-bottom: 0.5rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.15rem 1.35rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.15rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.8rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.8rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin: 1.1rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title { font-size: 0.88rem; color: var(--muted); margin-bottom: 0.7rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.95rem 1.15rem;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 0.94rem;
+      margin: 0.75rem 0;
+      overflow-x: auto;
+      line-height: 1.55;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      margin-right: 0.25rem;
+      font-weight: 500;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>10 Dimensionality Reduction</h1>
+    <p class="subtitle">高可视化复习 · PCA · 解释方差 · 肘部法则 · t-SNE · UMAP · Kernel PCA · 重构误差</p>
+
+    <!-- 1 -->
+    <h2>1. 这一课在讲什么？</h2>
+    <div class="one-liner">
+      <strong>高维数据其实有结构，只是你站的角度不对。</strong><br>
+      降维 = 找到真正重要的方向，把数据压到低维，同时尽量保住有用信息。
+    </div>
+    <p>784 维的手写数字，人眼只需要几个关键信息就能认出是「7」。降维就是自动找出这些关键方向，砍掉冗余和噪声。</p>
+
+    <!-- 2 -->
+    <h2>2. 为什么要降维？（维度灾难）</h2>
+    <ul>
+      <li><strong>距离失效</strong>：高维里任意两点距离都差不多，最近邻几乎没意义</li>
+      <li><strong>数据极度稀疏</strong>：空间大得填不满，模型难学</li>
+      <li><strong>计算与存储爆炸</strong>：特征一多，时间和内存都受不了</li>
+    </ul>
+    <p>把维度降下来，这些问题会缓解很多。</p>
+
+    <!-- 3 -->
+    <h2>3. PCA：找变化最大的方向</h2>
+    <div class="one-liner">
+      PCA 旋转坐标系，让第一轴对准数据波动最大的方向，第二轴次之……然后丢掉次要方向。
+    </div>
+    <p>算法步骤：</p>
+    <ol>
+      <li>中心化（每列减均值）</li>
+      <li>算协方差矩阵</li>
+      <li>特征分解 → 得到主成分方向（特征向量）和重要性（特征值）</li>
+      <li>按特征值从大到小排序</li>
+      <li>只保留前 k 个，做投影</li>
+    </ol>
+    <div class="formula">
+      X_reduced = (X − mean) @ W_k
+    </div>
+    <p>特征值越大 = 该方向上的方差越大 = 越重要。</p>
+
+    <!-- 4 -->
+    <h2>4. Explained Variance Ratio（解释方差比例）</h2>
+    <p>每个主成分抓住了总方差的百分之多少：</p>
+    <div class="formula">
+      解释方差比例 = 该主成分的特征值 / 所有特征值之和
+    </div>
+    <table>
+      <tr>
+        <th>主成分</th>
+        <th>解释比例</th>
+        <th>累计</th>
+      </tr>
+      <tr><td>PC1</td><td>47.3%</td><td>47.3%</td></tr>
+      <tr><td>PC2</td><td>25.1%</td><td>72.4%</td></tr>
+      <tr><td>PC3</td><td>11.2%</td><td>83.6%</td></tr>
+      <tr><td>PC4</td><td>8.9%</td><td>92.5%</td></tr>
+    </table>
+    <p>用来判断「丢掉后面的成分会损失多少信息」。</p>
+
+    <!-- 5 -->
+    <h2>5. Elbow Curve（肘部法则）选 k</h2>
+    <p>把累计解释方差画成曲线：先陡后平。明显变平的「肘部」附近，就是候选的主成分个数 k。</p>
+    <div class="viz-box">
+      <div class="viz-title">累计解释方差 vs k（肘部示意）</div>
+      <svg viewBox="0 0 480 220" width="480" height="220">
+        <line x1="50" y1="180" x2="450" y2="180" stroke="#ccc"/>
+        <line x1="50" y1="180" x2="50" y2="30" stroke="#ccc"/>
+        <text x="40" y="184" text-anchor="end" fill="#5f6368" font-size="10">0</text>
+        <text x="40" y="80" text-anchor="end" fill="#5f6368" font-size="10">95%</text>
+        <line x1="50" y1="80" x2="450" y2="80" stroke="#e37400" stroke-dasharray="5 3" opacity="0.7"/>
+        <path d="M50,120 L90,85 L130,65 L170,55 L210,50 L270,46 L350,43 L430,41"
+              fill="none" stroke="#1a73e8" stroke-width="2.5"/>
+        <circle cx="170" cy="55" r="5" fill="#e37400"/>
+        <text x="170" y="40" text-anchor="middle" fill="#e37400" font-size="12" font-weight="600">肘部</text>
+        <text x="250" y="205" text-anchor="middle" fill="#5f6368" font-size="11">主成分个数 k</text>
+      </svg>
+    </div>
+    <p>三种选 k 策略：肘部法则、累计阈值（90%/95%）、看下游任务表现。</p>
+
+    <!-- 6 -->
+    <h2>6. Reconstruction Error（重构误差）</h2>
+    <p>降维再还原，和原始数据差了多少：</p>
+    <div class="formula">
+      重构误差 = mean( (X − X̂)² )
+    </div>
+    <p>对 PCA：重构误差 = 被丢掉的特征值之和。  
+    用途：选 k、评估降维质量、异常检测（重构误差特别大的点可能是异常）。</p>
+
+    <!-- 7 -->
+    <h2>7. t-SNE：保住邻居关系</h2>
+    <div class="one-liner">
+      目标：高维里靠近的点，降到 2D 后也尽量靠近。几乎只为可视化而生。
+    </div>
+    <ul>
+      <li>在高维按距离定义邻居概率，在低维也构造类似分布</li>
+      <li>用 KL 散度对齐两个分布，不断调整 2D 点位置</li>
+      <li>低维用 t 分布解决「拥挤问题」，让簇分开</li>
+      <li>关键参数：Perplexity（考虑多少邻居，常用 5～50）</li>
+    </ul>
+    <div class="note">
+      簇间距离、相对位置<strong>没有可靠含义</strong>；有随机性；数据量大时很慢。不要直接当模型特征用。
+    </div>
+
+    <!-- 8 -->
+    <h2>8. UMAP：更快、全局更好</h2>
+    <div class="one-liner">
+      把数据看成流形上的邻居图，在低维重现这张图的连接关系。
+    </div>
+    <table>
+      <tr>
+        <th></th>
+        <th>t-SNE</th>
+        <th>UMAP</th>
+      </tr>
+      <tr>
+        <td>速度</td>
+        <td>慢</td>
+        <td>更快</td>
+      </tr>
+      <tr>
+        <td>全局结构</td>
+        <td>较弱</td>
+        <td>通常更好</td>
+      </tr>
+      <tr>
+        <td>关键参数</td>
+        <td>Perplexity</td>
+        <td>n_neighbors、min_dist</td>
+      </tr>
+      <tr>
+        <td>适用</td>
+        <td>小数据、强局部可视化</td>
+        <td>更大的数据、想兼顾全局</td>
+      </tr>
+    </table>
+    <p>实用建议：数据量大优先 UMAP；只求最好看的局部簇且数据小，t-SNE 仍很强。</p>
+
+    <!-- 9 -->
+    <h2>9. Kernel PCA：处理非线性结构</h2>
+    <p>普通 PCA 只能做线性旋转。数据若是弯曲流形（同心圆、月牙），会失败。</p>
+    <div class="one-liner">
+      Kernel PCA = 用核技巧在隐式高维特征空间里做 PCA，从而处理非线性。
+    </div>
+    <ul>
+      <li>常用 RBF（高斯）核</li>
+      <li>不显式计算高维坐标，只通过核函数算内积</li>
+      <li>代价：要存 n×n 核矩阵，大数据吃力；可解释性变差</li>
+    </ul>
+    <p>经典例子：两个同心圆，普通 PCA 分不开，RBF Kernel PCA 可以拉开。</p>
+
+    <!-- 10 -->
+    <h2>10. 方法怎么选？</h2>
+    <table>
+      <tr>
+        <th>目标</th>
+        <th>优先选</th>
+      </tr>
+      <tr>
+        <td>预处理 / 压缩 / 给模型用</td>
+        <td><strong>PCA</strong></td>
+      </tr>
+      <tr>
+        <td>快速看线性结构</td>
+        <td>PCA（2D/3D）</td>
+      </tr>
+      <tr>
+        <td>2D 可视化，数据量小，要强局部簇</td>
+        <td>t-SNE</td>
+      </tr>
+      <tr>
+        <td>2D 可视化，数据较大，想兼顾全局</td>
+        <td><strong>UMAP</strong></td>
+      </tr>
+      <tr>
+        <td>数据明显非线性，PCA 效果差</td>
+        <td>Kernel PCA</td>
+      </tr>
+    </table>
+
+    <!-- 11 -->
+    <h2>11. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">降维</span> 找真正重要的方向，砍掉冗余</li>
+        <li><span class="tag">PCA</span> 线性，找方差最大方向，适合预处理</li>
+        <li><span class="tag">解释方差比例</span> 每个主成分占总方差的比例</li>
+        <li><span class="tag">肘部法则</span> 曲线变平处选 k</li>
+        <li><span class="tag">重构误差</span> 降维再还原损失了多少（PCA 中 = 丢掉的特征值之和）</li>
+        <li><span class="tag">t-SNE</span> 保邻居，强可视化，慢，簇间距离不可信</li>
+        <li><span class="tag">UMAP</span> 更快，全局结构更好的可视化方法</li>
+        <li><span class="tag">Kernel PCA</span> 核技巧做非线性 PCA</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>PCA 负责压缩与预处理；t-SNE/UMAP 负责画图看结构；Kernel PCA 负责非线性情况。选方法前先问自己：是为了喂模型，还是为了可视化？
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 10-dimensionality-reduction<br>
+      综合学习问答整理
+    </footer>
+  </div>
+</body>
+</html>

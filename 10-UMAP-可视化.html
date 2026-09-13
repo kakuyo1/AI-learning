@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UMAP 可视化直觉</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 2rem 1rem 3rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.2rem;
+      color: var(--blue);
+      margin: 2.2rem 0 0.9rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    p, li { margin-bottom: 0.5rem; }
+    ul { padding-left: 1.3rem; margin-bottom: 0.8rem; }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.85rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.8rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.95rem;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.8rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.3rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title { font-size: 0.88rem; color: var(--muted); margin-bottom: 0.8rem; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;
+      margin-top: 0.7rem; font-size: 0.85rem; color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    table {
+      width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left;
+    }
+    th { background: var(--light-blue); color: #174ea6; }
+    footer {
+      margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 0.82rem; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>UMAP 可视化直觉</h1>
+    <p class="subtitle">更快、全局结构更好的邻居保持降维</p>
+
+    <div class="one-liner">
+      <strong>UMAP</strong> = 把高维数据看成流形上的一张图，然后在低维重现这张图的连接关系。<br>
+      比 t-SNE 更快，簇间相对位置通常更有参考价值。
+    </div>
+
+    <!-- 1. 高维建图 -->
+    <h2>1. 高维：先建一张「邻居图」</h2>
+    <p>UMAP 认为数据躺在低维弯曲流形上。对每个点找近邻，连成加权图：近的边粗（权重大），远的边细。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">高维流形上的局部邻居图（示意）</div>
+      <svg viewBox="0 0 460 200" width="460" height="200">
+        <!-- manifold curve suggestion -->
+        <path d="M40,150 Q120,40 220,100 Q320,160 420,60" fill="none" stroke="#e8f0fe" stroke-width="20" opacity="0.8"/>
+        <path d="M40,150 Q120,40 220,100 Q320,160 420,60" fill="none" stroke="#a8c7fa" stroke-width="2" stroke-dasharray="6 4"/>
+
+        <!-- points and edges -->
+        <line x1="70" y1="130" x2="110" y2="80" stroke="#1a73e8" stroke-width="3"/>
+        <line x1="110" y1="80" x2="150" y2="70" stroke="#1a73e8" stroke-width="2.5"/>
+        <line x1="150" y1="70" x2="190" y2="95" stroke="#1a73e8" stroke-width="2"/>
+        <line x1="190" y1="95" x2="240" y2="110" stroke="#188038" stroke-width="2.5"/>
+        <line x1="240" y1="110" x2="290" y2="130" stroke="#188038" stroke-width="2"/>
+        <line x1="290" y1="130" x2="340" y2="100" stroke="#e37400" stroke-width="2.5"/>
+        <line x1="340" y1="100" x2="390" y2="70" stroke="#e37400" stroke-width="2"/>
+
+        <circle cx="70" cy="130" r="6" fill="#1a73e8"/>
+        <circle cx="110" cy="80" r="6" fill="#1a73e8"/>
+        <circle cx="150" cy="70" r="6" fill="#1a73e8"/>
+        <circle cx="190" cy="95" r="6" fill="#188038"/>
+        <circle cx="240" cy="110" r="6" fill="#188038"/>
+        <circle cx="290" cy="130" r="6" fill="#188038"/>
+        <circle cx="340" cy="100" r="6" fill="#e37400"/>
+        <circle cx="390" cy="70" r="6" fill="#e37400"/>
+
+        <text x="230" y="190" text-anchor="middle" fill="#5f6368" font-size="12">近邻相连 → 形成描述数据拓扑的图</text>
+      </svg>
+    </div>
+
+    <!-- 2. 低维重现 -->
+    <h2>2. 低维：重现相似的连接关系</h2>
+    <p>在 2D 里也放点、连边，调整位置让两张图尽量一致。原来的局部连接被保住，同时全局排布通常比 t-SNE 更合理。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">低维结果：局部簇紧凑，簇间相对位置更有意义</div>
+      <svg viewBox="0 0 480 180" width="480" height="180">
+        <!-- cluster 1 -->
+        <circle cx="100" cy="70" r="6" fill="#1a73e8"/>
+        <circle cx="115" cy="60" r="6" fill="#1a73e8"/>
+        <circle cx="125" cy="80" r="6" fill="#1a73e8"/>
+        <circle cx="95" cy="85" r="6" fill="#1a73e8"/>
+        <line x1="100" y1="70" x2="115" y2="60" stroke="#1a73e8" stroke-width="1.5" opacity="0.5"/>
+        <line x1="115" y1="60" x2="125" y2="80" stroke="#1a73e8" stroke-width="1.5" opacity="0.5"/>
+        <text x="110" y="115" text-anchor="middle" fill="#174ea6" font-size="12">簇 A</text>
+
+        <!-- cluster 2 -->
+        <circle cx="250" cy="90" r="6" fill="#188038"/>
+        <circle cx="265" cy="80" r="6" fill="#188038"/>
+        <circle cx="275" cy="100" r="6" fill="#188038"/>
+        <circle cx="245" cy="105" r="6" fill="#188038"/>
+        <line x1="250" y1="90" x2="265" y2="80" stroke="#188038" stroke-width="1.5" opacity="0.5"/>
+        <line x1="265" y1="80" x2="275" y2="100" stroke="#188038" stroke-width="1.5" opacity="0.5"/>
+        <text x="260" y="135" text-anchor="middle" fill="#137333" font-size="12">簇 B</text>
+
+        <!-- cluster 3 -->
+        <circle cx="390" cy="55" r="6" fill="#e37400"/>
+        <circle cx="405" cy="45" r="6" fill="#e37400"/>
+        <circle cx="415" cy="65" r="6" fill="#e37400"/>
+        <circle cx="385" cy="70" r="6" fill="#e37400"/>
+        <line x1="390" y1="55" x2="405" y2="45" stroke="#e37400" stroke-width="1.5" opacity="0.5"/>
+        <line x1="405" y1="45" x2="415" y2="65" stroke="#e37400" stroke-width="1.5" opacity="0.5"/>
+        <text x="400" y="100" text-anchor="middle" fill="#e37400" font-size="12">簇 C</text>
+
+        <text x="240" y="165" text-anchor="middle" fill="#5f6368" font-size="12">
+          局部结构 + 相对更好的全局布局
+        </text>
+      </svg>
+    </div>
+
+    <!-- 3. 参数 -->
+    <h2>3. 两个关键参数</h2>
+    <table>
+      <tr>
+        <th>参数</th>
+        <th>作用</th>
+        <th>调大时</th>
+        <th>调小时</th>
+      </tr>
+      <tr>
+        <td><strong>n_neighbors</strong></td>
+        <td>每个点看多少邻居</td>
+        <td>更重视全局结构</td>
+        <td>更重视局部，簇更分离</td>
+      </tr>
+      <tr>
+        <td><strong>min_dist</strong></td>
+        <td>低维点允许靠多近</td>
+        <td>点更分散，结构更松</td>
+        <td>簇更紧密</td>
+      </tr>
+    </table>
+
+    <!-- 4. 对比表 -->
+    <h2>4. UMAP vs t-SNE vs PCA</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th>PCA</th>
+        <th>t-SNE</th>
+        <th>UMAP</th>
+      </tr>
+      <tr>
+        <td>类型</td>
+        <td>线性</td>
+        <td>非线性</td>
+        <td>非线性</td>
+      </tr>
+      <tr>
+        <td>速度</td>
+        <td>很快</td>
+        <td>慢</td>
+        <td>较快</td>
+      </tr>
+      <tr>
+        <td>保什么</td>
+        <td>全局方差</td>
+        <td>局部邻居</td>
+        <td>局部 + 更好的全局</td>
+      </tr>
+      <tr>
+        <td>簇间距离</td>
+        <td>有一定意义</td>
+        <td>基本不可信</td>
+        <td>相对更可信</td>
+      </tr>
+      <tr>
+        <td>主要用途</td>
+        <td>预处理 / 压缩</td>
+        <td>好看的 2D 图</td>
+        <td>可视化（大数据更合适）</td>
+      </tr>
+    </table>
+
+    <div class="note-green">
+      <strong>实用建议：</strong><br>
+      · 数据量大、想看结构 → 优先 UMAP<br>
+      · 只想要最强局部簇分离、数据量小 → t-SNE 仍很强<br>
+      · 给模型做特征降维 → 仍优先 PCA（或自编码器）
+    </div>
+
+    <div class="note">
+      UMAP 和 t-SNE 一样有随机性，多次运行结果不会完全相同；也不要把 2D 坐标直接当模型输入特征（除非经过验证）。
+    </div>
+
+    <h2>5. 一句话总结</h2>
+    <div class="one-liner">
+      UMAP 用「流形 + 邻居图」的方式做降维，速度更快，全局结构通常好于 t-SNE，是目前高维数据可视化的常用首选。
+    </div>
+
+    <footer>
+      UMAP 概念可视化 · 配合 10-dimensionality-reduction 学习
+    </footer>
+  </div>
+</body>
+</html>

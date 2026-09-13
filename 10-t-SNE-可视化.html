@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>t-SNE 可视化直觉</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 2rem 1rem 3rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.2rem;
+      color: var(--blue);
+      margin: 2.2rem 0 0.9rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    p, li { margin-bottom: 0.5rem; }
+    ul { padding-left: 1.3rem; margin-bottom: 0.8rem; }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.85rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.8rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.95rem;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.3rem;
+      margin: 1.2rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.7rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
+    th { background: var(--light-blue); color: #174ea6; }
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>t-SNE 可视化直觉</h1>
+    <p class="subtitle">用图理解：它如何保住「谁和谁是邻居」</p>
+
+    <div class="one-liner">
+      <strong>t-SNE 的目标：</strong>高维里靠得近的点，降到 2D 后也尽量还靠得近。它几乎只为可视化而生。
+    </div>
+
+    <!-- 1. 高维邻居 -->
+    <h2>1. 高维空间：先定义「谁是邻居」</h2>
+    <p>对每个点，根据距离算出一个概率：近的点概率高，远的点概率低。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">高维中的一个点（中心黑点）及其邻居概率示意</div>
+      <svg viewBox="0 0 420 220" width="420" height="220">
+        <!-- rings -->
+        <circle cx="210" cy="110" r="90" fill="none" stroke="#e8f0fe" stroke-width="18"/>
+        <circle cx="210" cy="110" r="55" fill="none" stroke="#a8c7fa" stroke-width="14"/>
+        <circle cx="210" cy="110" r="28" fill="none" stroke="#1a73e8" stroke-width="10" opacity="0.5"/>
+
+        <!-- center -->
+        <circle cx="210" cy="110" r="8" fill="#202124"/>
+        <text x="210" y="130" text-anchor="middle" fill="#5f6368" font-size="11">当前点</text>
+
+        <!-- near points -->
+        <circle cx="195" cy="95" r="6" fill="#188038"/>
+        <circle cx="225" cy="98" r="6" fill="#188038"/>
+        <circle cx="200" cy="122" r="6" fill="#188038"/>
+        <text x="255" y="85" fill="#188038" font-size="12">近 → 高概率</text>
+
+        <!-- mid points -->
+        <circle cx="160" cy="70" r="5" fill="#e37400"/>
+        <circle cx="270" cy="75" r="5" fill="#e37400"/>
+        <circle cx="150" cy="140" r="5" fill="#e37400"/>
+        <text x="290" y="120" fill="#e37400" font-size="12">中等距离</text>
+
+        <!-- far points -->
+        <circle cx="120" cy="50" r="4" fill="#d93025" opacity="0.7"/>
+        <circle cx="310" cy="160" r="4" fill="#d93025" opacity="0.7"/>
+        <circle cx="100" cy="160" r="4" fill="#d93025" opacity="0.7"/>
+        <text x="80" y="200" fill="#d93025" font-size="12">远 → 低概率</text>
+      </svg>
+      <div class="legend">
+        <span><i class="dot" style="background:#188038"></i>高邻居概率</span>
+        <span><i class="dot" style="background:#e37400"></i>中等</span>
+        <span><i class="dot" style="background:#d93025"></i>低概率</span>
+      </div>
+    </div>
+
+    <!-- 2. 降维目标 -->
+    <h2>2. 低维空间：让邻居关系尽量一致</h2>
+    <p>在 2D 平面上摆点，使得「邻居概率分布」尽量和高维时一样。用 KL 散度衡量两边分布的差异，不断调整点的位置来最小化它。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">理想结果：原来的三个簇在 2D 里仍然分开，簇内点仍然靠近</div>
+      <svg viewBox="0 0 480 200" width="480" height="200">
+        <!-- cluster A -->
+        <circle cx="90" cy="80" r="7" fill="#1a73e8"/>
+        <circle cx="105" cy="70" r="7" fill="#1a73e8"/>
+        <circle cx="115" cy="90" r="7" fill="#1a73e8"/>
+        <circle cx="95" cy="95" r="7" fill="#1a73e8"/>
+        <circle cx="80" cy="65" r="7" fill="#1a73e8"/>
+        <text x="95" y="130" text-anchor="middle" fill="#174ea6" font-size="12">簇 A</text>
+
+        <!-- cluster B -->
+        <circle cx="240" cy="70" r="7" fill="#188038"/>
+        <circle cx="255" cy="60" r="7" fill="#188038"/>
+        <circle cx="265" cy="80" r="7" fill="#188038"/>
+        <circle cx="245" cy="90" r="7" fill="#188038"/>
+        <circle cx="230" cy="55" r="7" fill="#188038"/>
+        <text x="245" y="120" text-anchor="middle" fill="#137333" font-size="12">簇 B</text>
+
+        <!-- cluster C -->
+        <circle cx="380" cy="110" r="7" fill="#e37400"/>
+        <circle cx="395" cy="100" r="7" fill="#e37400"/>
+        <circle cx="405" cy="120" r="7" fill="#e37400"/>
+        <circle cx="385" cy="130" r="7" fill="#e37400"/>
+        <circle cx="370" cy="95" r="7" fill="#e37400"/>
+        <text x="385" y="160" text-anchor="middle" fill="#e37400" font-size="12">簇 C</text>
+
+        <text x="240" y="190" text-anchor="middle" fill="#5f6368" font-size="12">
+          簇内紧凑、簇间分开 —— t-SNE 擅长的局部结构
+        </text>
+      </svg>
+    </div>
+
+    <!-- 3. 为什么用 t 分布 -->
+    <h2>3. 为什么低维用 t 分布？（解决拥挤问题）</h2>
+    <p>如果低维也用普通高斯，中等距离的点排斥力不够，所有点容易挤在中间。  
+    t 分布尾巴更重，中等距离仍有较强排斥，从而把不同簇推开。</p>
+
+    <div class="viz-box">
+      <div class="viz-title">高斯 vs t 分布：尾巴粗细不同</div>
+      <svg viewBox="0 0 480 160" width="480" height="160">
+        <!-- Gaussian -->
+        <text x="120" y="25" text-anchor="middle" fill="#174ea6" font-size="13" font-weight="600">高斯分布（尾巴细）</text>
+        <path d="M40,130 Q80,130 100,80 Q120,20 140,80 Q160,130 200,130"
+              fill="none" stroke="#1a73e8" stroke-width="2.5"/>
+        <text x="120" y="150" text-anchor="middle" fill="#5f6368" font-size="11">远点排斥弱 → 易拥挤</text>
+
+        <!-- t-dist -->
+        <text x="360" y="25" text-anchor="middle" fill="#e37400" font-size="13" font-weight="600">t 分布（尾巴粗）</text>
+        <path d="M280,130 Q300,120 320,90 Q340,50 360,90 Q380,120 400,128 Q420,130 440,130"
+              fill="none" stroke="#e37400" stroke-width="2.5"/>
+        <text x="360" y="150" text-anchor="middle" fill="#5f6368" font-size="11">中等距离仍有排斥 → 簇分开</text>
+      </svg>
+    </div>
+
+    <!-- 4. Perplexity -->
+    <h2>4. Perplexity 参数的影响</h2>
+    <p>它控制「每个点大概看多少个邻居」。</p>
+    <table>
+      <tr>
+        <th>Perplexity</th>
+        <th>效果</th>
+      </tr>
+      <tr>
+        <td>较小（5～15）</td>
+        <td>更关注局部，簇分得很开，但全局可能乱</td>
+      </tr>
+      <tr>
+        <td>中等（20～40）</td>
+        <td>常用范围，局部和全局较平衡</td>
+      </tr>
+      <tr>
+        <td>较大（40～50+）</td>
+        <td>考虑更广邻居，全局结构好一些，局部可能糊</td>
+      </tr>
+    </table>
+
+    <!-- 5. 和 PCA 对比 -->
+    <h2>5. 和 PCA 的直观对比</h2>
+    <div class="viz-box">
+      <div class="viz-title">同一份「弯曲」数据：PCA 压扁 vs t-SNE 展开</div>
+      <svg viewBox="0 0 500 180" width="500" height="180">
+        <!-- Left: original / PCA fails -->
+        <text x="120" y="22" text-anchor="middle" fill="#5f6368" font-size="12">原始高维（弯曲流形）</text>
+        <path d="M40,120 Q80,40 120,100 Q160,150 200,80" fill="none" stroke="#9334e6" stroke-width="3"/>
+        <circle cx="50" cy="110" r="4" fill="#1a73e8"/>
+        <circle cx="90" cy="55" r="4" fill="#1a73e8"/>
+        <circle cx="130" cy="105" r="4" fill="#188038"/>
+        <circle cx="170" cy="140" r="4" fill="#188038"/>
+        <circle cx="195" cy="85" r="4" fill="#e37400"/>
+
+        <!-- Arrow -->
+        <text x="250" y="95" fill="#5f6368" font-size="18">→</text>
+
+        <!-- Right: t-SNE style separation -->
+        <text x="380" y="22" text-anchor="middle" fill="#5f6368" font-size="12">t-SNE 2D（邻居被保住）</text>
+        <circle cx="340" cy="70" r="5" fill="#1a73e8"/>
+        <circle cx="355" cy="60" r="5" fill="#1a73e8"/>
+        <circle cx="350" cy="85" r="5" fill="#1a73e8"/>
+        <circle cx="400" cy="110" r="5" fill="#188038"/>
+        <circle cx="415" cy="100" r="5" fill="#188038"/>
+        <circle cx="420" cy="125" r="5" fill="#188038"/>
+        <circle cx="450" cy="55" r="5" fill="#e37400"/>
+        <circle cx="465" cy="70" r="5" fill="#e37400"/>
+        <text x="380" y="165" text-anchor="middle" fill="#5f6368" font-size="11">局部邻居关系被保留，簇被分开</text>
+      </svg>
+    </div>
+
+    <div class="note">
+      <strong>重要提醒：</strong>
+      <ul>
+        <li>t-SNE 图上，簇与簇之间的距离、相对位置<strong>没有可靠含义</strong>，只看「谁和谁聚在一起」。</li>
+        <li>每次运行结果可能不同（随机性）。</li>
+        <li>主要用于可视化，不要直接把 2D 坐标当模型特征用。</li>
+        <li>数据量大时很慢，可改用 UMAP。</li>
+      </ul>
+    </div>
+
+    <h2>6. 一句话总结</h2>
+    <div class="one-liner">
+      t-SNE 通过让高维与低维的「邻居概率分布」尽量一致，把数据画到 2D，并尽量保住局部远近关系。<br>
+      看簇很好用，但别过度解读簇间距离。
+    </div>
+
+    <footer>
+      t-SNE 概念可视化 · 配合 10-dimensionality-reduction 学习
+    </footer>
+  </div>
+</body>
+</html>
