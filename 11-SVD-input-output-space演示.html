@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVD 动画演示 · 几何 + 真实矩阵运算</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+      min-height: 100vh;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.55rem; margin-bottom: 0.25rem; color: #fff; }
+    .subtitle { color: var(--muted); margin-bottom: 1.3rem; font-size: 0.92rem; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+    button {
+      background: #2a2e3a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .stage-label {
+      font-size: 0.95rem;
+      color: var(--orange);
+      margin-bottom: 0.55rem;
+      min-height: 1.4em;
+      font-weight: 500;
+    }
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    @media (max-width: 800px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+    .canvas-wrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.9rem;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      background: #12141c;
+      border-radius: 10px;
+    }
+    .math-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      font-size: 0.88rem;
+      overflow-y: auto;
+      max-height: 420px;
+    }
+    .math-panel h3 {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .matrix-block {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.7rem 0.8rem;
+      margin-bottom: 0.7rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      color: #c4c7ce;
+    }
+    .matrix-block .title {
+      color: var(--blue);
+      margin-bottom: 0.3rem;
+      font-size: 0.8rem;
+    }
+    .matrix-block .hl { color: var(--orange); }
+    .matrix-block .hl2 { color: var(--green); }
+    .matrix-block .hl3 { color: var(--purple); }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 0.6rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.7rem;
+      margin: 1rem 0;
+    }
+    .info-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+    }
+    .info-card h3 { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .info-card p { font-size: 0.9rem; }
+    .formula {
+      background: #1e222d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.7rem 1rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.92rem;
+      color: var(--blue);
+      margin: 0.8rem 0;
+      text-align: center;
+    }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+    }
+    .explain strong { color: #fff; }
+    footer {
+      margin-top: 1.8rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SVD 动画演示 · 几何 + 真实矩阵运算</h1>
+    <p class="subtitle">用一个具体 2×2 矩阵，边看动画边看每一步的矩阵在算什么</p>
+
+    <div class="controls">
+      <button class="primary" id="btnPlay">▶ 播放完整动画</button>
+      <button id="btnStep0">0. 初始</button>
+      <button id="btnStep1">1. Vᵀ 旋转</button>
+      <button id="btnStep2">2. Σ 拉伸</button>
+      <button id="btnStep3">3. U 旋转</button>
+      <button id="btnReset">重置</button>
+    </div>
+
+    <div class="stage-label" id="stageLabel">准备就绪 · 点击播放或分步查看</div>
+
+    <div class="main-grid">
+      <div class="canvas-wrap">
+        <canvas id="cv" width="560" height="360"></canvas>
+        <div class="legend">
+          <span><i class="dot" style="background:#8ab4f8"></i> 形状</span>
+          <span><i class="dot" style="background:#fdd663"></i> 右奇异向量 V</span>
+          <span><i class="dot" style="background:#81c995"></i> 拉伸轴</span>
+          <span><i class="dot" style="background:#c58af9"></i> 左奇异向量 U</span>
+        </div>
+      </div>
+
+      <div class="math-panel" id="mathPanel">
+        <h3>当前矩阵运算</h3>
+        <div class="matrix-block" id="mathContent">
+          <div class="title">示例矩阵 A</div>
+          A = |  3.0   1.0 |<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;|  1.0   2.0 |<br><br>
+          点击播放，查看每一步运算
+        </div>
+      </div>
+    </div>
+
+    <div class="formula">A = U Σ Vᵀ &nbsp;&nbsp;→&nbsp;&nbsp; 先 Vᵀ 对齐，再 Σ 拉伸，最后 U 放到输出方向</div>
+
+    <div class="info">
+      <div class="info-card">
+        <h3>当前阶段</h3>
+        <p id="infoStage">初始输入空间</p>
+      </div>
+      <div class="info-card">
+        <h3>Vᵀ</h3>
+        <p id="infoV">—</p>
+      </div>
+      <div class="info-card">
+        <h3>Σ</h3>
+        <p id="infoS">—</p>
+      </div>
+      <div class="info-card">
+        <h3>U</h3>
+        <p id="infoU">—</p>
+      </div>
+    </div>
+
+    <div class="explain">
+      <strong>本演示使用的真实矩阵：</strong><br>
+      A = [[3, 1], [1, 2]]（对称正定，SVD 与特征值分解一致，方便验证）<br><br>
+      计算得到近似值：<br>
+      • 奇异值 σ₁ ≈ 3.62，σ₂ ≈ 1.38<br>
+      • 右奇异向量（也是特征向量）决定输入对齐方向<br>
+      • 左奇异向量决定最终输出朝向<br>
+      动画中的旋转角和拉伸比例与这些真实数值对应。
+    </div>
+
+    <footer>SVD 几何动画 + 矩阵运算对照 · 11-singular-value-decomposition</footer>
+  </div>
+
+  <script>
+    const SIGMA1 = 3.618;
+    const SIGMA2 = 1.382;
+    const V_ANGLE = 0.553;
+    const U_ANGLE = 0.553;
+    const visSigma1 = 2.15;
+    const visSigma2 = 0.82;
+    const v1Angle = V_ANGLE;
+    const uRot = U_ANGLE;
+
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const CX = W / 2;
+    const CY = H / 2 + 8;
+    const baseRadius = 58;
+
+    let animProgress = 0;
+    let raf = null;
+
+    function clear() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#1e222d';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 35) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 35) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(30, CY); ctx.lineTo(W - 30, CY);
+      ctx.moveTo(CX, 25); ctx.lineTo(CX, H - 25);
+      ctx.stroke();
+    }
+
+    function drawArrow(x1, y1, x2, y2, color, lw) {
+      lw = lw || 2.3;
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 1) return;
+      const ux = dx / len, uy = dy / len;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      const ah = 9;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - ah * ux + ah * 0.4 * uy, y2 - ah * uy - ah * 0.4 * ux);
+      ctx.lineTo(x2 - ah * ux - ah * 0.4 * uy, y2 - ah * uy + ah * 0.4 * ux);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawShape(progress) {
+      const p = Math.max(0, Math.min(3, progress));
+      let rot1 = 0, sx = 1, sy = 1, rot2 = 0;
+
+      if (p <= 1) {
+        rot1 = -v1Angle * p;
+      } else if (p <= 2) {
+        rot1 = -v1Angle;
+        const t = p - 1;
+        sx = 1 + (visSigma1 - 1) * t;
+        sy = 1 + (visSigma2 - 1) * t;
+      } else {
+        rot1 = -v1Angle;
+        sx = visSigma1;
+        sy = visSigma2;
+        rot2 = uRot * (p - 2);
+      }
+
+      ctx.beginPath();
+      const N = 100;
+      for (let i = 0; i <= N; i++) {
+        const theta = (i / N) * Math.PI * 2;
+        let x = Math.cos(theta) * baseRadius;
+        let y = Math.sin(theta) * baseRadius;
+        let x1 = x * Math.cos(rot1) - y * Math.sin(rot1);
+        let y1 = x * Math.sin(rot1) + y * Math.cos(rot1);
+        x1 *= sx; y1 *= sy;
+        let x2 = x1 * Math.cos(rot2) - y1 * Math.sin(rot2);
+        let y2 = x1 * Math.sin(rot2) + y1 * Math.cos(rot2);
+        if (i === 0) ctx.moveTo(CX + x2, CY + y2);
+        else ctx.lineTo(CX + x2, CY + y2);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(138, 180, 248, 0.07)';
+      ctx.fill();
+
+      if (p < 1.05) {
+        const fade = Math.max(0, 1 - p);
+        const v1x = Math.cos(v1Angle) * baseRadius * 1.2;
+        const v1y = Math.sin(v1Angle) * baseRadius * 1.2;
+        const v2x = Math.cos(v1Angle + Math.PI/2) * baseRadius * 1.2;
+        const v2y = Math.sin(v1Angle + Math.PI/2) * baseRadius * 1.2;
+        ctx.globalAlpha = 0.25 + 0.75 * fade;
+        drawArrow(CX, CY, CX + v1x, CY + v1y, '#fdd663', 2);
+        drawArrow(CX, CY, CX + v2x, CY + v2y, '#fdd663', 2);
+        ctx.globalAlpha = 1;
+      }
+
+      if (p >= 0.9) {
+        const t = Math.min(1, Math.max(0, p - 0.9));
+        let ax = baseRadius * sx, ay = 0;
+        let bx = ax * Math.cos(rot2) - ay * Math.sin(rot2);
+        let by = ax * Math.sin(rot2) + ay * Math.cos(rot2);
+        ctx.globalAlpha = t;
+        drawArrow(CX, CY, CX + bx, CY + by, '#81c995', 2.4);
+        ax = 0; ay = baseRadius * sy;
+        bx = ax * Math.cos(rot2) - ay * Math.sin(rot2);
+        by = ax * Math.sin(rot2) + ay * Math.cos(rot2);
+        drawArrow(CX, CY, CX + bx, CY + by, '#81c995', 2.4);
+        ctx.globalAlpha = 1;
+      }
+
+      if (p >= 2) {
+        const t = Math.min(1, p - 2);
+        const u1x = Math.cos(uRot) * baseRadius * visSigma1 * 1.15;
+        const u1y = Math.sin(uRot) * baseRadius * visSigma1 * 1.15;
+        const u2x = Math.cos(uRot + Math.PI/2) * baseRadius * visSigma2 * 1.15;
+        const u2y = Math.sin(uRot + Math.PI/2) * baseRadius * visSigma2 * 1.15;
+        ctx.globalAlpha = t;
+        drawArrow(CX, CY, CX + u1x, CY + u1y, '#c58af9', 2.4);
+        drawArrow(CX, CY, CX + u2x, CY + u2y, '#c58af9', 2.4);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function drawLabels(p) {
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      if (p < 0.5) {
+        ctx.fillStyle = '#9aa0a6';
+        ctx.fillText('输入空间 · 单位圆', CX, 22);
+        ctx.fillStyle = '#fdd663';
+        ctx.fillText('黄线 = 右奇异向量 v1, v2', CX, H - 14);
+      } else if (p < 1.5) {
+        ctx.fillStyle = '#fdd663';
+        ctx.fillText('VT：旋转，让 v1 对齐到 x 轴', CX, 22);
+      } else if (p < 2.5) {
+        ctx.fillStyle = '#81c995';
+        ctx.fillText('Σ：x 乘 σ1≈3.62，y 乘 σ2≈1.38', CX, 22);
+      } else {
+        ctx.fillStyle = '#c58af9';
+        ctx.fillText('U：旋转到最终输出方向', CX, 22);
+        ctx.fillText('紫线 = 左奇异向量 u1, u2', CX, H - 14);
+      }
+    }
+
+    function updateMath(p) {
+      const el = document.getElementById('mathContent');
+      if (p < 0.05) {
+        el.innerHTML = '<div class="title">示例矩阵 A（真实数字）</div>A = | <span class="hl">3.0</span>  <span class="hl">1.0</span> |<br>&nbsp;&nbsp;&nbsp;&nbsp;| <span class="hl">1.0</span>  <span class="hl">2.0</span> |<br><br>目标：把 A 分解为 U Σ Vᵀ<br>先看输入空间的单位圆';
+      } else if (p < 1) {
+        el.innerHTML = '<div class="title">步骤 1 · Vᵀ（输入空间旋转）</div>右奇异向量（也是 A 的特征向量）：<br>v₁ ≈ (0.85, 0.53)&nbsp;&nbsp;角度 ≈ 31.7°<br>v₂ ≈ (-0.53, 0.85)<br><br><span class="hl">Vᵀ 的作用：</span><br>把坐标系转到 v₁、v₂ 方向<br>让「最该被拉的方向」对齐坐标轴';
+      } else if (p < 2) {
+        el.innerHTML = '<div class="title">步骤 2 · Σ（拉伸）</div>奇异值 = A 的特征值（本例对称）：<br>σ₁ ≈ <span class="hl2">3.618</span><br>σ₂ ≈ <span class="hl2">1.382</span><br><br>Σ = | 3.618   0   |<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|  0    1.382 |<br><br><span class="hl2">对齐后只需沿轴缩放</span>，不再有交叉项';
+      } else {
+        el.innerHTML = '<div class="title">步骤 3 · U（输出空间旋转）</div>因为 A 对称，U ≈ V<br>左奇异向量 ≈ 右奇异向量<br><br>u₁ ≈ (0.85, 0.53)<br>u₂ ≈ (-0.53, 0.85)<br><br><span class="hl3">U 把拉伸后的结果</span><br>转到最终输出方向<br><br>验证：A v₁ = σ₁ u₁';
+      }
+    }
+
+    function updateInfo(p) {
+      const label = document.getElementById('stageLabel');
+      const infoStage = document.getElementById('infoStage');
+      const infoV = document.getElementById('infoV');
+      const infoS = document.getElementById('infoS');
+      const infoU = document.getElementById('infoU');
+
+      if (p < 0.05) {
+        label.textContent = '阶段 0 · 初始：输入空间单位圆 + 右奇异向量';
+        infoStage.textContent = '输入空间';
+        infoV.textContent = '显示 v1, v2 方向';
+        infoS.textContent = '—';
+        infoU.textContent = '—';
+      } else if (p < 1) {
+        label.textContent = '阶段 1 · Vᵀ 旋转中：把右奇异向量对齐到坐标轴';
+        infoStage.textContent = 'Vᵀ 旋转';
+        infoV.textContent = '对齐 v1 → x 轴';
+        infoS.textContent = '等待中';
+        infoU.textContent = '等待中';
+      } else if (p < 2) {
+        label.textContent = '阶段 2 · Σ 拉伸中：沿轴乘上奇异值';
+        infoStage.textContent = 'Σ 拉伸';
+        infoV.textContent = '已对齐';
+        infoS.textContent = 'σ1≈3.62, σ2≈1.38';
+        infoU.textContent = '等待中';
+      } else {
+        label.textContent = '阶段 3 · U 旋转中：转到输出空间最终方向';
+        infoStage.textContent = 'U → 输出空间';
+        infoV.textContent = '完成';
+        infoS.textContent = '完成';
+        infoU.textContent = '对齐到 u1, u2';
+      }
+      updateMath(p);
+    }
+
+    function render() {
+      clear();
+      drawShape(animProgress);
+      drawLabels(animProgress);
+      updateInfo(animProgress);
+    }
+
+    function animateTo(target) {
+      if (raf) cancelAnimationFrame(raf);
+      const start = animProgress;
+      const dist = target - start;
+      const duration = Math.abs(dist) * 950;
+      const t0 = performance.now();
+      function frame(now) {
+        const elapsed = now - t0;
+        let t = Math.min(1, elapsed / Math.max(duration, 200));
+        t = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+        animProgress = start + dist * t;
+        render();
+        if (t < 1) raf = requestAnimationFrame(frame);
+        else { animProgress = target; render(); }
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    function playFull() {
+      if (raf) cancelAnimationFrame(raf);
+      animProgress = 0;
+      render();
+      const steps = [1, 2, 3];
+      let i = 0;
+      function next() {
+        if (i >= steps.length) return;
+        const target = steps[i++];
+        const start = animProgress;
+        const dist = target - start;
+        const duration = 1200;
+        const t0 = performance.now();
+        function frame(now) {
+          const elapsed = now - t0;
+          let t = Math.min(1, elapsed / duration);
+          t = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+          animProgress = start + dist * t;
+          render();
+          if (t < 1) raf = requestAnimationFrame(frame);
+          else { animProgress = target; render(); setTimeout(next, 500); }
+        }
+        raf = requestAnimationFrame(frame);
+      }
+      setTimeout(next, 350);
+    }
+
+    document.getElementById('btnPlay').onclick = playFull;
+    document.getElementById('btnStep0').onclick = function() { animateTo(0); };
+    document.getElementById('btnStep1').onclick = function() { animateTo(1); };
+    document.getElementById('btnStep2').onclick = function() { animateTo(2); };
+    document.getElementById('btnStep3').onclick = function() { animateTo(3); };
+    document.getElementById('btnReset').onclick = function() {
+      if (raf) cancelAnimationFrame(raf);
+      animProgress = 0;
+      render();
+    };
+
+    render();
+  </script>
+</body>
+</html>
