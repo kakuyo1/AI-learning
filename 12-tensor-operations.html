@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>12 Tensor Operations · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+      --light-purple: #f3e8fd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .viz-box {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin: 1.1rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .viz-title { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.7rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      justify-content: center;
+      margin: 0.7rem 0;
+      font-size: 0.9rem;
+    }
+    .flow-box {
+      background: var(--light-blue);
+      border: 1px solid #a8c7fa;
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      font-weight: 500;
+    }
+    .flow-box.orange { background: var(--light-orange); border-color: #fdd663; }
+    .flow-box.green { background: var(--light-green); border-color: #81c995; }
+    .flow-arrow { color: var(--blue); font-size: 1.1rem; font-weight: 700; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>12 Tensor Operations</h1>
+    <p class="subtitle">高可视化复习 · 张量是什么 · 内存布局 · 广播 · Einsum · 收缩</p>
+
+    <!-- 1. 张量是什么 -->
+    <h2>1. 张量是什么？</h2>
+    <div class="one-liner">
+      <strong>张量 = 可以有任意多个维度的数字盒子。</strong><br>
+      标量、向量、矩阵都是它的特例。
+    </div>
+
+    <table>
+      <tr>
+        <th>熟悉的名字</th>
+        <th>张量说法</th>
+        <th>Rank</th>
+        <th>Shape 例子</th>
+      </tr>
+      <tr>
+        <td>一个数</td>
+        <td>标量 scalar</td>
+        <td>0</td>
+        <td>()</td>
+      </tr>
+      <tr>
+        <td>一排数</td>
+        <td>向量 vector</td>
+        <td>1</td>
+        <td>(3,)</td>
+      </tr>
+      <tr>
+        <td>一张表</td>
+        <td>矩阵 matrix</td>
+        <td>2</td>
+        <td>(2, 3)</td>
+      </tr>
+      <tr>
+        <td>一叠表 / 一批图</td>
+        <td>高维张量</td>
+        <td>3 / 4</td>
+        <td>(2,2,2) / (32,3,224,224)</td>
+      </tr>
+    </table>
+
+    <p>深度学习常见形状：</p>
+    <ul>
+      <li>图像 <code>(B, C, H, W)</code></li>
+      <li>文本 <code>(B, T, D)</code></li>
+      <li>多头注意力 <code>(B, H, T, D)</code></li>
+    </ul>
+
+    <!-- 2. 内存布局 -->
+    <h2>2. How memory layout works（内存布局）</h2>
+    <div class="one-liner">
+      内存是一维的。Stride 告诉程序：沿着某个轴走一步，要在内存里跳过多少个元素。
+    </div>
+
+    <h3>Row-major vs Column-major</h3>
+    <table>
+      <tr>
+        <th>布局</th>
+        <th>也叫</th>
+        <th>2×3 矩阵内存顺序</th>
+        <th>strides</th>
+      </tr>
+      <tr>
+        <td>Row-major</td>
+        <td>C order（PyTorch/NumPy 默认）</td>
+        <td>a b c d e f</td>
+        <td>(3, 1) 行连续</td>
+      </tr>
+      <tr>
+        <td>Column-major</td>
+        <td>F order（Fortran/MATLAB）</td>
+        <td>a d b e c f</td>
+        <td>(1, 2) 列连续</td>
+      </tr>
+    </table>
+
+    <h3>转置为什么很快？会 cache miss 吗？</h3>
+    <p>转置通常<strong>不移动数据</strong>，只交换 strides → 张量变成 <strong>non-contiguous</strong>。</p>
+    <div class="note-red">
+      <strong>会有 cache miss。</strong>按新的「行」顺序访问时，内存地址跳跃，CPU cache 命中率下降，大矩阵上更明显。
+    </div>
+    <p><strong>主流解决办法：</strong></p>
+    <ul>
+      <li><code>.contiguous()</code> / <code>.copy()</code>：真正重排内存</li>
+      <li><code>.reshape()</code> 代替 <code>.view()</code>：非连续时更安全</li>
+      <li>算子内部按 stride 优化（cuBLAS 等）</li>
+      <li>少转置；或使用 channels_last 等更匹配的内存格式</li>
+    </ul>
+
+    <!-- 3. 广播 -->
+    <h2>3. Broadcasting rules（广播规则）</h2>
+    <div class="one-liner">
+      让不同形状的张量直接运算：从右边对齐，大小为 1 的维可自动扩展，几乎不复制数据。
+    </div>
+
+    <p><strong>两条核心规则：</strong></p>
+    <ol>
+      <li>从右边开始对齐</li>
+      <li>两维兼容 ⇔ 相等，或其中一个是 1；维度少的左边补 1</li>
+    </ol>
+
+    <div class="viz-box">
+      <div class="viz-title">例子：(4, 3) + (3,)</div>
+      <div class="flow">
+        <div class="flow-box">(4, 3)</div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-box orange">(3,) → 补1 → (1, 3)</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box green">结果 (4, 3)</div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>易错点：</strong>结果不是 (5, 6)。广播不是把维度数字相加，而是「1 被扩展成对方的大小」，结果每维取兼容后的值。
+    </div>
+    <p>真正的逐元素加减乘除，发生在<strong>形状对齐之后</strong>。</p>
+
+    <div class="formula">
+      冲突例子：(5, 4) 与 (3, 1) → 第一维 5≠3 且都不是 1 → 报错
+    </div>
+
+    <!-- 4. Einsum -->
+    <h2>4. Einsum：万能张量运算</h2>
+    <div class="one-liner">
+      用字母给每个轴起名，写出「保留谁、求和谁」，一条表达式覆盖点积、矩阵乘、注意力等。
+    </div>
+
+    <div class="formula">
+      einsum("输入标记 -> 输出标记", 张量…)
+    </div>
+
+    <p><strong>三条规则：</strong></p>
+    <ol>
+      <li>每个轴一个字母</li>
+      <li>只在输入出现、输出没有的字母 → <strong>被求和（收缩）掉</strong></li>
+      <li>出现在输出的字母 → 保留</li>
+    </ol>
+
+    <table>
+      <tr>
+        <th>操作</th>
+        <th>Einsum</th>
+        <th>含义</th>
+      </tr>
+      <tr>
+        <td>点积</td>
+        <td>i,i-></td>
+        <td>对 i 求和 → 标量</td>
+      </tr>
+      <tr>
+        <td>矩阵乘</td>
+        <td>ik,kj->ij</td>
+        <td>对 k 求和，保留 i,j</td>
+      </tr>
+      <tr>
+        <td>外积</td>
+        <td>i,j->ij</td>
+        <td>不求和，得到矩阵</td>
+      </tr>
+      <tr>
+        <td>转置</td>
+        <td>ij->ji</td>
+        <td>只换轴顺序</td>
+      </tr>
+      <tr>
+        <td>求迹</td>
+        <td>ii-></td>
+        <td>对角线求和</td>
+      </tr>
+      <tr>
+        <td>批量 matmul</td>
+        <td>bij,bjk->bik</td>
+        <td>保留 b，对 j 求和</td>
+      </tr>
+      <tr>
+        <td>注意力 QKᵀ</td>
+        <td>bhtd,bhsd->bhts</td>
+        <td>对 d 求点积</td>
+      </tr>
+      <tr>
+        <td>注意力输出</td>
+        <td>bhts,bhsd->bhtd</td>
+        <td>对 s 加权求和</td>
+      </tr>
+    </table>
+
+    <!-- 5. 收缩 -->
+    <h2>5. 「被求和（收缩）掉」是什么意思？</h2>
+    <div class="one-liner">
+      某个维度上：先对应相乘，再全部加起来，然后这个维度从结果里消失。
+    </div>
+
+    <p>点积例子：</p>
+    <div class="formula">
+      a=[1,2,3], b=[4,5,6]<br>
+      1×4 + 2×5 + 3×6 = 32<br>
+      原来的长度维 i 被「乘完再加」消掉了 → 变成标量
+    </div>
+
+    <p>矩阵乘同理：对共享维 k 做 Σ，k 在结果中不再出现。</p>
+
+    <table>
+      <tr>
+        <th>表达式</th>
+        <th>对字母的处理</th>
+        <th>结果</th>
+      </tr>
+      <tr>
+        <td>i,i-></td>
+        <td>对 i 收缩</td>
+        <td>标量（点积）</td>
+      </tr>
+      <tr>
+        <td>i,j->ij</td>
+        <td>不收缩</td>
+        <td>矩阵（外积）</td>
+      </tr>
+      <tr>
+        <td>ik,kj->ij</td>
+        <td>对 k 收缩</td>
+        <td>矩阵（矩阵乘）</td>
+      </tr>
+    </table>
+
+    <!-- 6. 其他操作速览 -->
+    <h2>6. 其他常用操作速览</h2>
+    <table>
+      <tr>
+        <th>操作</th>
+        <th>作用</th>
+      </tr>
+      <tr>
+        <td>reshape</td>
+        <td>改形状，元素顺序不变（总数要一致）</td>
+      </tr>
+      <tr>
+        <td>squeeze / unsqueeze</td>
+        <td>去掉 / 加上大小为 1 的维（常为广播做准备）</td>
+      </tr>
+      <tr>
+        <td>transpose / permute</td>
+        <td>交换轴顺序；常只改 stride，可能非连续</td>
+      </tr>
+      <tr>
+        <td>sum / mean（reduction）</td>
+        <td>沿某轴聚合，该轴消失</td>
+      </tr>
+    </table>
+
+    <!-- 7. 速查 -->
+    <h2>7. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">张量</span> 任意维的数字盒子；标量/向量/矩阵是特例</li>
+        <li><span class="tag">Stride</span> 沿某轴走一步要跳过的元素数</li>
+        <li><span class="tag">Row-major</span> 行连续（深度学习默认）；转置后可能非连续</li>
+        <li><span class="tag">Cache miss</span> 非连续访问易发生；用 contiguous() 重排</li>
+        <li><span class="tag">广播</span> 右对齐，1 可扩展；不是维度数字相加</li>
+        <li><span class="tag">Einsum</span> 字母标记轴；输出没有的字母被求和掉</li>
+        <li><span class="tag">收缩</span> 乘完再加，维度消失</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>张量是多维数字的统一容器；stride 决定内存怎么走；广播对齐形状；einsum 用字母表达「保留与收缩」。把这四件事串起来，shape 错误和注意力里的张量操作都会清晰很多。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 12-tensor-operations<br>
+      结合学习问答整理 · 含内存布局 / 广播 / Einsum / 收缩详解
+    </footer>
+  </div>
+</body>
+</html>

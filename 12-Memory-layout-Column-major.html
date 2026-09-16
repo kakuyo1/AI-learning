@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Layout · Row-major vs Column-major + Cache</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --purple: #c58af9;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.3rem; font-size: 0.92rem; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-size: 0.88rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .stage-label {
+      font-size: 0.95rem; color: var(--orange);
+      margin-bottom: 0.8rem; min-height: 1.3em; font-weight: 500;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+    }
+    @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+    .mem-title {
+      font-size: 0.85rem; color: var(--muted); margin-bottom: 0.5rem; text-align: center;
+    }
+    .logical {
+      display: grid;
+      grid-template-columns: repeat(3, 48px);
+      gap: 4px;
+      justify-content: center;
+      margin-bottom: 0.8rem;
+    }
+    .cell {
+      width: 48px; height: 40px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem;
+      border: 2px solid transparent;
+      transition: all 0.25s;
+    }
+    .cell.r { background: #1e3a5f; color: var(--blue); border-color: #3b6ea5; }
+    .cell.c { background: #3d2e1a; color: var(--orange); border-color: #a67c2a; }
+    .cell.hl { box-shadow: 0 0 0 2px var(--green); transform: scale(1.05); }
+    .cell.miss { box-shadow: 0 0 0 2px var(--red); background: #4a2020; color: var(--red); }
+    .memory-bar {
+      display: flex; gap: 3px; justify-content: center; flex-wrap: wrap;
+      margin: 0.6rem 0;
+    }
+    .mem-slot {
+      width: 36px; height: 36px;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 600;
+      background: #12141c; color: #c4c7ce;
+      border: 1px solid #2a2e3a;
+      transition: all 0.25s;
+    }
+    .mem-slot.hl { border-color: var(--green); color: var(--green); background: #1a2e1a; }
+    .mem-slot.miss { border-color: var(--red); color: var(--red); background: #2e1a1a; }
+    .stride-info {
+      text-align: center; font-size: 0.82rem; color: var(--muted); margin-top: 0.4rem;
+    }
+    .stride-info code { color: var(--blue); }
+    .rule-box {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .rule-box strong { color: #fff; }
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 0.8rem 0;
+    }
+    .compare-table th, .compare-table td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.7rem;
+      text-align: left;
+    }
+    .compare-table th { background: #12141c; color: var(--blue); }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 { color: #fff; font-size: 1rem; margin: 0.8rem 0 0.4rem; }
+    footer {
+      margin-top: 1.8rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Memory Layout · Row-major vs Column-major</h1>
+    <p class="subtitle">内存布局 · 转置后的 stride · Cache miss · 主流解决办法</p>
+
+    <div class="controls">
+      <button class="primary" id="btnPlay">▶ 演示按行访问</button>
+      <button id="btnCol">▶ 演示按列访问</button>
+      <button id="btnTrans">转置（只改 stride）</button>
+      <button id="btnReset">重置</button>
+    </div>
+
+    <div class="stage-label" id="stageLabel">2×3 矩阵 · 对比两种布局</div>
+
+    <div class="grid-2">
+      <!-- Row-major -->
+      <div class="panel">
+        <div class="mem-title">Row-major（C order）· PyTorch / NumPy 默认</div>
+        <div class="logical" id="logicalR">
+          <div class="cell r" data-i="0">a</div>
+          <div class="cell r" data-i="1">b</div>
+          <div class="cell r" data-i="2">c</div>
+          <div class="cell r" data-i="3">d</div>
+          <div class="cell r" data-i="4">e</div>
+          <div class="cell r" data-i="5">f</div>
+        </div>
+        <div style="text-align:center;font-size:0.8rem;color:#9aa0a6;margin-bottom:0.4rem">逻辑矩阵 (2, 3)</div>
+        <div class="memory-bar" id="memR">
+          <div class="mem-slot" data-i="0">a</div>
+          <div class="mem-slot" data-i="1">b</div>
+          <div class="mem-slot" data-i="2">c</div>
+          <div class="mem-slot" data-i="3">d</div>
+          <div class="mem-slot" data-i="4">e</div>
+          <div class="mem-slot" data-i="5">f</div>
+        </div>
+        <div class="stride-info">strides = <code>(3, 1)</code> · 行连续</div>
+      </div>
+
+      <!-- Column-major -->
+      <div class="panel">
+        <div class="mem-title">Column-major（F order）· Fortran / MATLAB</div>
+        <div class="logical" id="logicalC">
+          <div class="cell c" data-i="0">a</div>
+          <div class="cell c" data-i="1">b</div>
+          <div class="cell c" data-i="2">c</div>
+          <div class="cell c" data-i="3">d</div>
+          <div class="cell c" data-i="4">e</div>
+          <div class="cell c" data-i="5">f</div>
+        </div>
+        <div style="text-align:center;font-size:0.8rem;color:#9aa0a6;margin-bottom:0.4rem">逻辑矩阵 (2, 3)</div>
+        <div class="memory-bar" id="memC">
+          <div class="mem-slot" data-i="0">a</div>
+          <div class="mem-slot" data-i="1">d</div>
+          <div class="mem-slot" data-i="2">b</div>
+          <div class="mem-slot" data-i="3">e</div>
+          <div class="mem-slot" data-i="4">c</div>
+          <div class="mem-slot" data-i="5">f</div>
+        </div>
+        <div class="stride-info">strides = <code>(1, 2)</code> · 列连续</div>
+      </div>
+    </div>
+
+    <div class="rule-box" id="ruleBox">
+      <strong>说明：</strong>左边是逻辑上的 2×3 矩阵，下面是内存里真实的一维顺序。<br>
+      Row-major：一行行存 → a b c | d e f<br>
+      Column-major：一列列存 → a d | b e | c f
+    </div>
+
+    <!-- Transpose section -->
+    <div class="panel" style="margin-top:1rem">
+      <div class="mem-title">转置之后（PyTorch 默认 Row-major 上做 transpose）</div>
+      <div class="grid-2">
+        <div>
+          <div style="text-align:center;font-size:0.85rem;color:#9aa0a6;margin-bottom:0.4rem">转置前 (2,3) strides=(3,1)</div>
+          <div class="memory-bar">
+            <div class="mem-slot">a</div><div class="mem-slot">b</div><div class="mem-slot">c</div>
+            <div class="mem-slot">d</div><div class="mem-slot">e</div><div class="mem-slot">f</div>
+          </div>
+          <div class="stride-info">内存顺序不变</div>
+        </div>
+        <div>
+          <div style="text-align:center;font-size:0.85rem;color:#9aa0a6;margin-bottom:0.4rem">转置后 (3,2) strides=(1,3) · 非连续</div>
+          <div class="memory-bar" id="memT">
+            <div class="mem-slot">a</div><div class="mem-slot">b</div><div class="mem-slot">c</div>
+            <div class="mem-slot">d</div><div class="mem-slot">e</div><div class="mem-slot">f</div>
+          </div>
+          <div class="stride-info">数据没搬，只改了 strides → <span style="color:#f28b82">non-contiguous</span></div>
+        </div>
+      </div>
+      <div class="rule-box" style="margin-top:0.8rem">
+        转置后若按「新的行」依次访问：a → d → b → e → c → f，内存地址变成 0,3,1,4,2,5，<strong>跳跃访问</strong>，容易 cache miss。
+      </div>
+    </div>
+
+    <div class="explain">
+      <strong>会不会造成明显的 cache miss？</strong><br>
+      <strong>会。</strong>尤其在大矩阵、按「逻辑行」顺序遍历刚转置过的张量时。<br><br>
+      CPU 一次会拉一整条 cache line（常见 64 字节）。连续访问时命中率高；跨 stride 跳跃访问时，每读一个数可能都要重新填 cache line，带宽浪费、延迟上升。
+
+      <h3>主流框架怎么解决？</h3>
+      <table class="compare-table">
+        <tr>
+          <th>手段</th>
+          <th>做法</th>
+          <th>代价</th>
+        </tr>
+        <tr>
+          <td><code>.contiguous()</code> / <code>.copy()</code></td>
+          <td>真正把数据按当前 shape 重新排成连续内存</td>
+          <td>一次拷贝，之后访问变快</td>
+        </tr>
+        <tr>
+          <td><code>.reshape()</code> 代替 <code>.view()</code></td>
+          <td>非连续时自动处理（可能隐式拷贝）</td>
+          <td>比 view 安全，可能多一次拷贝</td>
+        </tr>
+        <tr>
+          <td>算子融合 / 专用 kernel</td>
+          <td>cuBLAS、cuDNN、FlashAttention 等按实际 stride 写高效实现，不一定要求连续</td>
+          <td>实现复杂，但用户无感</td>
+        </tr>
+        <tr>
+          <td>尽量少转置、晚转置</td>
+          <td>网络设计时保持 NCHW 等原生布局，减少 permute</td>
+          <td>需要一点设计意识</td>
+        </tr>
+        <tr>
+          <td>channels_last 等内存格式</td>
+          <td>PyTorch 提供可选内存格式，匹配卷积等算子的最优访问模式</td>
+          <td>显式转换一次</td>
+        </tr>
+      </table>
+
+      <h3>实践建议</h3>
+      • 转置 / permute 之后如果马上有大量逐行计算，先 <code>.contiguous()</code><br>
+      • 能不转置就不转置；必须转时，考虑是否可以改成在连续布局下改索引<br>
+      • 看性能时用 profiler，确认是不是被 non-contiguous 访问拖慢
+    </div>
+
+    <footer>Memory Layout · Column-major & Cache miss · 12-tensor-operations</footer>
+  </div>
+
+  <script>
+    const orderR = [0,1,2,3,4,5]; // a b c d e f
+    const orderC = [0,3,1,4,2,5]; // a d b e c f  (column-major memory positions for logical a,b,c,d,e,f)
+    // logical index -> letter
+    const letters = ['a','b','c','d','e','f'];
+
+    // For row-major: memory index i holds letters[i]
+    // For col-major: memory is a,d,b,e,c,f so mem[0]=a, mem[1]=d, ...
+
+    let mode = 'idle';
+    let timer = null;
+
+    function clearHL() {
+      document.querySelectorAll('.cell, .mem-slot').forEach(el => {
+        el.classList.remove('hl', 'miss');
+      });
+    }
+
+    function highlight(logicalIdx, isMiss) {
+      clearHL();
+      // logical cells
+      document.querySelectorAll('#logicalR .cell, #logicalC .cell').forEach(el => {
+        if (+el.dataset.i === logicalIdx) {
+          el.classList.add(isMiss ? 'miss' : 'hl');
+        }
+      });
+      // row-major memory: position = logicalIdx
+      const memR = document.querySelectorAll('#memR .mem-slot');
+      if (memR[logicalIdx]) memR[logicalIdx].classList.add(isMiss ? 'miss' : 'hl');
+      // col-major memory: find where this letter sits
+      // logical 0=a -> mem 0, 1=b -> mem 2, 2=c -> mem 4, 3=d -> mem 1, 4=e -> mem 3, 5=f -> mem 5
+      const colMemPos = [0, 2, 4, 1, 3, 5];
+      const memC = document.querySelectorAll('#memC .mem-slot');
+      if (memC[colMemPos[logicalIdx]]) memC[colMemPos[logicalIdx]].classList.add(isMiss ? 'miss' : 'hl');
+    }
+
+    // Row-wise access order: 0,1,2,3,4,5  — sequential in row-major, strided in col-major
+    function playRowAccess() {
+      if (timer) clearInterval(timer);
+      clearHL();
+      document.getElementById('stageLabel').textContent = '按行访问：0→1→2→3→4→5（Row-major 连续，Col-major 跳跃）';
+      document.getElementById('ruleBox').innerHTML = '<strong>按行遍历：</strong>Row-major 内存地址连续（命中 cache）；Column-major 每次跳 2 个元素，更容易 miss。';
+      let i = 0;
+      const seq = [0,1,2,3,4,5];
+      timer = setInterval(() => {
+        if (i >= seq.length) { clearInterval(timer); return; }
+        // for col-major, row access is strided → show as miss on right
+        highlight(seq[i], false);
+        // mark col-major mem as miss pattern
+        const colMemPos = [0, 2, 4, 1, 3, 5];
+        document.querySelectorAll('#memC .mem-slot').forEach(el => el.classList.remove('miss'));
+        const slot = document.querySelectorAll('#memC .mem-slot')[colMemPos[seq[i]]];
+        if (slot && i > 0) {
+          // optional: could mark miss, but keep simple with hl
+        }
+        i++;
+      }, 600);
+    }
+
+    function playColAccess() {
+      if (timer) clearInterval(timer);
+      clearHL();
+      document.getElementById('stageLabel').textContent = '按列访问：0→3→1→4→2→5（Col-major 连续，Row-major 跳跃）';
+      document.getElementById('ruleBox').innerHTML = '<strong>按列遍历：</strong>Column-major 内存连续；Row-major 每次跳 3 个元素 → cache miss 风险高。';
+      let i = 0;
+      const seq = [0,3,1,4,2,5]; // column-wise logical order
+      timer = setInterval(() => {
+        if (i >= seq.length) { clearInterval(timer); return; }
+        highlight(seq[i], false);
+        i++;
+      }, 600);
+    }
+
+    function showTranspose() {
+      if (timer) clearInterval(timer);
+      clearHL();
+      document.getElementById('stageLabel').textContent = '转置后 strides=(1,3)：数据未移动，按新行访问会跳跃';
+      document.getElementById('ruleBox').innerHTML = '<strong>转置只改 stride：</strong>内存仍是 a b c d e f。新「行」是 a,d / b,e / c,f，访问顺序变成 0,3,1,4,2,5 → 非连续 → 易 cache miss。解决：调用 <code>.contiguous()</code> 真正重排。';
+      // animate the jumped access
+      let i = 0;
+      const seq = [0,3,1,4,2,5];
+      const memT = document.querySelectorAll('#memT .mem-slot');
+      timer = setInterval(() => {
+        if (i >= seq.length) { clearInterval(timer); return; }
+        memT.forEach(el => el.classList.remove('hl', 'miss'));
+        memT[seq[i]].classList.add(i % 2 === 1 ? 'miss' : 'hl');
+        i++;
+      }, 550);
+    }
+
+    document.getElementById('btnPlay').onclick = playRowAccess;
+    document.getElementById('btnCol').onclick = playColAccess;
+    document.getElementById('btnTrans').onclick = showTranspose;
+    document.getElementById('btnReset').onclick = () => {
+      if (timer) clearInterval(timer);
+      clearHL();
+      document.getElementById('stageLabel').textContent = '2×3 矩阵 · 对比两种布局';
+      document.getElementById('ruleBox').innerHTML = '<strong>说明：</strong>左边是逻辑上的 2×3 矩阵，下面是内存里真实的一维顺序。<br>Row-major：一行行存 → a b c | d e f<br>Column-major：一列列存 → a d | b e | c f';
+    };
+  </script>
+</body>
+</html>

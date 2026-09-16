@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Einsum 交互演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --purple: #c58af9;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .examples {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 1.2rem;
+    }
+    .ex-btn {
+      background: #2a2e3a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.6rem;
+      font-size: 0.82rem;
+      color: var(--text);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .ex-btn:hover { background: #353a48; }
+    .ex-btn.active {
+      background: #1a73e8;
+      border-color: #1a73e8;
+      color: #fff;
+    }
+    .ex-btn .sub { display: block; font-size: 0.72rem; color: #9aa0a6; margin-top: 0.15rem; }
+    .ex-btn.active .sub { color: rgba(255,255,255,0.75); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .expr {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.15rem;
+      color: var(--blue);
+      text-align: center;
+      margin-bottom: 1rem;
+      letter-spacing: 0.02em;
+    }
+    .expr .sum { color: var(--orange); }
+    .expr .keep { color: var(--green); }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      align-items: flex-start;
+      margin: 1rem 0;
+    }
+    .tensor-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      min-width: 120px;
+      text-align: center;
+    }
+    .tensor-card .name {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+    .axes {
+      display: flex;
+      gap: 0.3rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .axis {
+      min-width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border: 2px solid transparent;
+    }
+    .axis.keep {
+      background: #1a3d2a;
+      color: var(--green);
+      border-color: #3d8b5a;
+    }
+    .axis.sum {
+      background: #3d2e1a;
+      color: var(--orange);
+      border-color: #a67c2a;
+      animation: pulse 1.2s ease infinite;
+    }
+    .axis.neutral {
+      background: #1e3a5f;
+      color: var(--blue);
+      border-color: #3b6ea5;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+    .arrow {
+      align-self: center;
+      font-size: 1.5rem;
+      color: var(--muted);
+    }
+    .legend {
+      display: flex;
+      gap: 1.2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 0.8rem 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      display: inline-block;
+    }
+    .desc {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 0.8rem;
+      line-height: 1.7;
+    }
+    .desc strong { color: #fff; }
+    .desc code {
+      background: #1e222d;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      color: var(--blue);
+      font-size: 0.85rem;
+    }
+    .steps {
+      margin-top: 0.8rem;
+      font-size: 0.88rem;
+      color: #c4c7ce;
+    }
+    .steps li { margin-bottom: 0.35rem; }
+    footer {
+      margin-top: 1.8rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Einsum 交互演示</h1>
+    <p class="subtitle">用字母标记维度 · 保留的留下 · 没出现在输出的被求和</p>
+
+    <div class="examples" id="examples">
+      <div class="ex-btn active" data-id="dot">点积<div class="sub">i,i→</div></div>
+      <div class="ex-btn" data-id="matmul">矩阵乘<div class="sub">ik,kj→ij</div></div>
+      <div class="ex-btn" data-id="outer">外积<div class="sub">i,j→ij</div></div>
+      <div class="ex-btn" data-id="transpose">转置<div class="sub">ij→ji</div></div>
+      <div class="ex-btn" data-id="trace">求迹<div class="sub">ii→</div></div>
+      <div class="ex-btn" data-id="batch">批量 matmul<div class="sub">bij,bjk→bik</div></div>
+      <div class="ex-btn" data-id="attn">注意力分数<div class="sub">bhtd,bhsd→bhts</div></div>
+      <div class="ex-btn" data-id="attn_out">注意力输出<div class="sub">bhts,bhsd→bhtd</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="expr" id="expr">einsum("i,i → ", a, b)</div>
+
+      <div class="flow" id="flow">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="legend">
+        <span><i class="dot" style="background:#81c995"></i> 保留到输出</span>
+        <span><i class="dot" style="background:#fdd663"></i> 被求和（收缩）</span>
+        <span><i class="dot" style="background:#8ab4f8"></i> 输入轴</span>
+      </div>
+
+      <div class="desc" id="desc">
+        选择上方模式查看
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="font-size:0.9rem;color:#9aa0a6;margin-bottom:0.5rem">规则速记</div>
+      <div class="steps">
+        <ol style="padding-left:1.2rem">
+          <li>给每个轴起一个字母名字</li>
+          <li>写在 <code>-></code> 左边的是输入，右边的是输出</li>
+          <li><strong>只出现在左边、不在右边</strong>的字母 → 被求和掉</li>
+          <li>出现在右边的字母 → 作为结果的维度保留</li>
+          <li>同一个字母在多个输入里出现 → 这些轴会对齐并参与运算</li>
+        </ol>
+      </div>
+    </div>
+
+    <footer>Einsum 可视化演示 · 12-tensor-operations</footer>
+  </div>
+
+  <script>
+    const patterns = {
+      dot: {
+        expr: 'einsum("<span class="sum">i</span>,<span class="sum">i</span> → ", a, b)',
+        inputs: [
+          { name: 'a (3,)', axes: [{l:'i', t:'sum'}] },
+          { name: 'b (3,)', axes: [{l:'i', t:'sum'}] }
+        ],
+        output: { name: '标量', axes: [] },
+        desc: '<strong>点积：</strong>两个向量对应元素相乘再求和。<br>字母 <code>i</code> 出现在两个输入里，但输出为空 → 对 <code>i</code> 维求和。<br>结果：a₀b₀ + a₁b₁ + a₂b₂。'
+      },
+      matmul: {
+        expr: 'einsum("<span class="keep">i</span><span class="sum">k</span>,<span class="sum">k</span><span class="keep">j</span> → <span class="keep">ij</span>", A, B)',
+        inputs: [
+          { name: 'A (M,K)', axes: [{l:'i', t:'keep'}, {l:'k', t:'sum'}] },
+          { name: 'B (K,N)', axes: [{l:'k', t:'sum'}, {l:'j', t:'keep'}] }
+        ],
+        output: { name: 'C (M,N)', axes: [{l:'i', t:'keep'}, {l:'j', t:'keep'}] },
+        desc: '<strong>矩阵乘：</strong>对共享维 <code>k</code> 求和，保留 <code>i</code> 和 <code>j</code>。<br>这就是 C[i,j] = Σ_k A[i,k] * B[k,j]。'
+      },
+      outer: {
+        expr: 'einsum("<span class="keep">i</span>,<span class="keep">j</span> → <span class="keep">ij</span>", a, b)',
+        inputs: [
+          { name: 'a (M,)', axes: [{l:'i', t:'keep'}] },
+          { name: 'b (N,)', axes: [{l:'j', t:'keep'}] }
+        ],
+        output: { name: '外积 (M,N)', axes: [{l:'i', t:'keep'}, {l:'j', t:'keep'}] },
+        desc: '<strong>外积：</strong>没有要求求和的字母，两个轴都保留。<br>结果[i,j] = a[i] * b[j]，形状 (M, N)。'
+      },
+      transpose: {
+        expr: 'einsum("<span class="keep">i</span><span class="keep">j</span> → <span class="keep">ji</span>", A)',
+        inputs: [
+          { name: 'A (M,N)', axes: [{l:'i', t:'keep'}, {l:'j', t:'keep'}] }
+        ],
+        output: { name: 'Aᵀ (N,M)', axes: [{l:'j', t:'keep'}, {l:'i', t:'keep'}] },
+        desc: '<strong>转置：</strong>不求和，只是把输出字母顺序换成 <code>ji</code>。<br>轴还在，只是排列变了。'
+      },
+      trace: {
+        expr: 'einsum("<span class="sum">ii</span> → ", A)',
+        inputs: [
+          { name: 'A (N,N)', axes: [{l:'i', t:'sum'}, {l:'i', t:'sum'}] }
+        ],
+        output: { name: '标量 (迹)', axes: [] },
+        desc: '<strong>求迹：</strong>两个轴用同一个字母 <code>i</code>，输出为空。<br>只把对角线上的元素加起来：A[0,0]+A[1,1]+…'
+      },
+      batch: {
+        expr: 'einsum("<span class="keep">b</span><span class="keep">i</span><span class="sum">j</span>,<span class="keep">b</span><span class="sum">j</span><span class="keep">k</span> → <span class="keep">bik</span>", A, B)',
+        inputs: [
+          { name: 'A (B,M,K)', axes: [{l:'b', t:'keep'}, {l:'i', t:'keep'}, {l:'j', t:'sum'}] },
+          { name: 'B (B,K,N)', axes: [{l:'b', t:'keep'}, {l:'j', t:'sum'}, {l:'k', t:'keep'}] }
+        ],
+        output: { name: 'C (B,M,N)', axes: [{l:'b', t:'keep'}, {l:'i', t:'keep'}, {l:'k', t:'keep'}] },
+        desc: '<strong>批量矩阵乘：</strong>每个 batch 独立做 matmul。<br><code>b</code> 保留（不求和），对 <code>j</code> 求和，得到 (B, M, N)。'
+      },
+      attn: {
+        expr: 'einsum("<span class="keep">bh</span><span class="keep">t</span><span class="sum">d</span>,<span class="keep">bh</span><span class="keep">s</span><span class="sum">d</span> → <span class="keep">bhts</span>", Q, K)',
+        inputs: [
+          { name: 'Q (B,H,T,D)', axes: [{l:'b', t:'keep'}, {l:'h', t:'keep'}, {l:'t', t:'keep'}, {l:'d', t:'sum'}] },
+          { name: 'K (B,H,S,D)', axes: [{l:'b', t:'keep'}, {l:'h', t:'keep'}, {l:'s', t:'keep'}, {l:'d', t:'sum'}] }
+        ],
+        output: { name: 'scores (B,H,T,S)', axes: [{l:'b', t:'keep'}, {l:'h', t:'keep'}, {l:'t', t:'keep'}, {l:'s', t:'keep'}] },
+        desc: '<strong>注意力分数 QKᵀ：</strong>对最后一维 <code>d</code>（head_dim）求点积。<br>保留 batch、头、两个序列位置 → 形状 (B, H, T, S)。'
+      },
+      attn_out: {
+        expr: 'einsum("<span class="keep">bht</span><span class="sum">s</span>,<span class="keep">bh</span><span class="sum">s</span><span class="keep">d</span> → <span class="keep">bhtd</span>", W, V)',
+        inputs: [
+          { name: 'weights (B,H,T,S)', axes: [{l:'b', t:'keep'}, {l:'h', t:'keep'}, {l:'t', t:'keep'}, {l:'s', t:'sum'}] },
+          { name: 'V (B,H,S,D)', axes: [{l:'b', t:'keep'}, {l:'h', t:'keep'}, {l:'s', t:'sum'}, {l:'d', t:'keep'}] }
+        ],
+        output: { name: 'out (B,H,T,D)', axes: [{l:'b', t:'keep'}, {l:'h', t:'keep'}, {l:'t', t:'keep'}, {l:'d', t:'keep'}] },
+        desc: '<strong>注意力加权求和：</strong>用 weights 对 V 的序列维 <code>s</code> 加权求和。<br>得到每个 query 位置的输出向量 (B, H, T, D)。'
+      }
+    };
+
+    function axisHtml(a) {
+      return `<div class="axis ${a.t}">${a.l}</div>`;
+    }
+
+    function render(id) {
+      const p = patterns[id];
+      document.getElementById('expr').innerHTML = p.expr;
+
+      let html = '';
+      p.inputs.forEach((inp, idx) => {
+        if (idx > 0) html += '<div class="arrow">,</div>';
+        html += `<div class="tensor-card"><div class="name">${inp.name}</div><div class="axes">${inp.axes.map(axisHtml).join('')}</div></div>`;
+      });
+      html += '<div class="arrow">→</div>';
+      if (p.output.axes.length === 0) {
+        html += `<div class="tensor-card"><div class="name">${p.output.name}</div><div class="axes"><div class="axis sum" style="min-width:auto;padding:0 8px">Σ</div></div></div>`;
+      } else {
+        html += `<div class="tensor-card"><div class="name">${p.output.name}</div><div class="axes">${p.output.axes.map(axisHtml).join('')}</div></div>`;
+      }
+      document.getElementById('flow').innerHTML = html;
+      document.getElementById('desc').innerHTML = p.desc;
+    }
+
+    document.querySelectorAll('.ex-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render(btn.dataset.id);
+      };
+    });
+
+    render('dot');
+  </script>
+</body>
+</html>
