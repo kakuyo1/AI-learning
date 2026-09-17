@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>13 Numerical Stability · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-red {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>13 Numerical Stability</h1>
+    <p class="subtitle">高可视化复习 · 浮点数 · 溢出下溢 · 稳定 Softmax · 混合精度 · 梯度裁剪 · 归一化</p>
+
+    <div class="one-liner">
+      <strong>浮点数是漏水的抽象。</strong>训练中的 NaN、掉点、静默错误，很多最终都能追到数值问题。
+    </div>
+
+    <!-- 1. IEEE 754 -->
+    <h2>1. IEEE 754：电脑如何存小数</h2>
+    <div class="formula">
+      值 = (-1)^sign × 2^(exponent - bias) × 1.mantissa
+    </div>
+    <table>
+      <tr>
+        <th>部分</th>
+        <th>作用</th>
+        <th>决定什么</th>
+      </tr>
+      <tr>
+        <td><strong>Exponent 指数</strong></td>
+        <td>小数点能移多远</td>
+        <td><strong>范围</strong>（多大 / 多小）</td>
+      </tr>
+      <tr>
+        <td><strong>Mantissa 尾数</strong></td>
+        <td>有效数字有多少位</td>
+        <td><strong>精度</strong>（能区分多细）</td>
+      </tr>
+    </table>
+
+    <h3>为什么 23 位尾数 ≈ 7～8 位十进制精度？</h3>
+    <div class="formula">
+      十进制位数 ≈ 二进制位数 × log10(2) ≈ 位数 × 0.301<br>
+      float32 有效位约 24（含隐藏 1）：24 × 0.301 ≈ 7.2
+    </div>
+
+    <table>
+      <tr>
+        <th>格式</th>
+        <th>指数</th>
+        <th>尾数</th>
+        <th>范围</th>
+        <th>精度</th>
+        <th>训练</th>
+      </tr>
+      <tr>
+        <td>float32</td>
+        <td>8</td>
+        <td>23</td>
+        <td>大</td>
+        <td>~7–8 位</td>
+        <td>稳但慢</td>
+      </tr>
+      <tr>
+        <td>float16</td>
+        <td>5</td>
+        <td>10</td>
+        <td>小（~65504）</td>
+        <td>~3–4 位</td>
+        <td>易溢出，需 loss scaling</td>
+      </tr>
+      <tr>
+        <td>bfloat16</td>
+        <td>8</td>
+        <td>7</td>
+        <td>大（同 float32）</td>
+        <td>~2–3 位</td>
+        <td>范围够，更省心</td>
+      </tr>
+    </table>
+    <div class="note">
+      训练时范围往往比多几位精度更重要 → 更爱 bfloat16。
+    </div>
+
+    <!-- 2. 三大翻车 -->
+    <h2>2. 溢出、下溢、灾难性消去</h2>
+    <table>
+      <tr>
+        <th>问题</th>
+        <th>含义</th>
+        <th>典型场景</th>
+      </tr>
+      <tr>
+        <td>Overflow</td>
+        <td>太大 → inf</td>
+        <td>exp(100)、logits 过大</td>
+      </tr>
+      <tr>
+        <td>Underflow</td>
+        <td>太接近 0 → 0.0</td>
+        <td>小概率连乘、小梯度</td>
+      </tr>
+      <tr>
+        <td>灾难性消去</td>
+        <td>两相近大数相减，有效位抵消</td>
+        <td>方差 E[x²]-(E[x])²、过小 h 的差分</td>
+      </tr>
+    </table>
+
+    <h3>避免灾难性消去</h3>
+    <ul>
+      <li><strong>方差</strong>：先中心化再算 E[(x-μ)²]，或用 <strong>Welford</strong> 在线更新（始终基于相对均值的偏差）</li>
+      <li><strong>Log 概率</strong>：全程在 log 空间（乘法→加法，加法用 log-sum-exp），不要先算出极小概率再 log</li>
+      <li><strong>总原则</strong>：改公式，消灭「大数减大数」和「中间结果极端大/小」</li>
+    </ul>
+
+    <!-- 3. Softmax / Log-Sum-Exp -->
+    <h2>3. 稳定 Softmax 与 Log-Sum-Exp</h2>
+    <div class="one-liner">
+      先减 max，再 exp：最大项变 exp(0)=1，既不溢出，分母也不会下溢成 0。
+    </div>
+    <div class="formula">
+      softmax(x_i) = exp(x_i - m) / Σ exp(x_j - m)，其中 m = max(x)<br>
+      log(sum(exp(x))) = m + log(sum(exp(x - m)))
+    </div>
+    <p>交叉熵、序列 log 似然、混合高斯等处都会用到同一思想。</p>
+
+    <!-- 4. 数值梯度检查 -->
+    <h2>4. Numerical Gradient Checking</h2>
+    <div class="one-liner">
+      用中心差分估算梯度，和反向传播的解析梯度对比，检查实现是否写错。
+    </div>
+    <div class="formula">
+      ∂f/∂x ≈ [f(x+h) - f(x-h)] / (2h)
+    </div>
+    <ul>
+      <li>h 一般取 1e-5～1e-7（太小会消去，太大约不准则）</li>
+      <li>相对误差 &lt; 1e-7：很好；&gt; 1e-3：可能有 bug</li>
+      <li>只在实现新层/新损失时用；可用 float64 更稳</li>
+    </ul>
+
+    <!-- 5. 混合精度 -->
+    <h2>5. Mixed Precision Training</h2>
+    <div class="one-liner">
+      前反向用低精度加速，主权重和关键计算保留 float32；float16 时配合 loss scaling 防梯度下溢。
+    </div>
+    <p><strong>典型流程：</strong></p>
+    <ol>
+      <li>维护 float32 主权重</li>
+      <li>前向用 float16/bfloat16</li>
+      <li>loss 在 float32 算</li>
+      <li>反向低精度 → 梯度 scale 后转回 float32</li>
+      <li>用 float32 更新主权重</li>
+    </ol>
+    <p><strong>Loss scaling：</strong> loss 先乘大系数 S → 梯度放大避免下溢 → 更新前再除以 S。</p>
+    <p><strong>bfloat16 vs float16：</strong> 前者指数 8 位、范围大，训练往往更省心。</p>
+
+    <!-- 6. 梯度裁剪 -->
+    <h2>6. Gradient Clipping</h2>
+    <div class="one-liner">
+      限制梯度大小，防止一步更新过大导致爆炸 / NaN。
+    </div>
+    <table>
+      <tr>
+        <th>方式</th>
+        <th>做法</th>
+        <th>特点</th>
+      </tr>
+      <tr>
+        <td>按值 clip</td>
+        <td>每个元素 clamp 到 [-m, m]</td>
+        <td>简单，可能改变方向</td>
+      </tr>
+      <tr>
+        <td>按范数 clip（常用）</td>
+        <td>‖g‖&gt;max_norm 时整体缩放</td>
+        <td>保持方向不变</td>
+      </tr>
+    </table>
+    <div class="formula">
+      if ||grad|| > max_norm: grad *= max_norm / ||grad||
+    </div>
+    <p>常见 max_norm：1.0（Transformer）、0.5（RL）等。</p>
+
+    <!-- 7. 归一化层 -->
+    <h2>7. Normalization Layers as Numerical Stabilizers</h2>
+    <div class="one-liner">
+      BatchNorm / LayerNorm / RMSNorm 不只是加速收敛，更是把每层激活拉回安全数量级的数值稳定器。
+    </div>
+    <div class="formula">
+      LayerNorm(x) = (x - mean) / (std + ε) × γ + β
+    </div>
+    <ul>
+      <li>减均值、除标准差 → 尺度回到约 1</li>
+      <li>ε 防止除零</li>
+      <li>γ、β 可学习，需要时仍可放大/平移</li>
+    </ul>
+    <p>没有归一化时，激活可能随深度指数增长直到 overflow；有了之后，前向数值和反向梯度都更可控。</p>
+
+    <!-- 8. 速查 -->
+    <h2>8. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">Exponent</span> 管范围；Mantissa 管精度</li>
+        <li><span class="tag">24×0.301≈7.2</span> → float32 约 7～8 位十进制精度</li>
+        <li><span class="tag">减 max</span> Softmax / log-sum-exp 防溢出</li>
+        <li><span class="tag">中心化 / Welford</span> 稳定算方差</li>
+        <li><span class="tag">全程 log 空间</span> 避免概率下溢</li>
+        <li><span class="tag">数值梯度检查</span> 中心差分验解析梯度</li>
+        <li><span class="tag">混合精度</span> 低精度算 + float32 主权重 + loss scaling</li>
+        <li><span class="tag">梯度裁剪</span> 按范数缩放，保方向</li>
+        <li><span class="tag">Normalization</span> 每层拉回安全尺度</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>在有限精度下，通过改公式、减 max、缩放、裁剪和归一化，让训练既快又不会静默死在 NaN 里。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 13-numerical-stability<br>
+      结合学习问答整理 · IEEE754 / 消去 / 混合精度 / 裁剪 / 归一化
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IEEE 754 浮点数 · Exponent & Mantissa 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --purple: #c58af9;
+      --red: #f28b82;
+      --sign: #f28b82;
+      --exp: #fdd663;
+      --mant: #8ab4f8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.3rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .bits-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      justify-content: center;
+      margin: 1rem 0;
+    }
+    .bit {
+      width: 28px; height: 36px;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.85rem; font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .bit.sign { background: #3d1a1a; color: var(--sign); border-color: #6b3030; }
+    .bit.exp { background: #3d2e1a; color: var(--exp); border-color: #6b5020; }
+    .bit.mant { background: #1a2a3d; color: var(--mant); border-color: #2a4a6b; }
+    .bit-labels {
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 0.3rem;
+      font-size: 0.75rem;
+    }
+    .bit-labels span { text-align: center; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 1.2rem;
+      justify-content: center; margin: 0.8rem 0;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .formula-big {
+      text-align: center;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.05rem;
+      color: var(--blue);
+      margin: 1rem 0;
+      padding: 0.8rem;
+      background: #12141c;
+      border-radius: 10px;
+    }
+    .formula-big .s { color: var(--sign); }
+    .formula-big .e { color: var(--exp); }
+    .formula-big .m { color: var(--mant); }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1rem; align-items: center;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.active, button.primary {
+      background: #1a73e8; border-color: #1a73e8; color: #fff;
+    }
+    input[type="number"] {
+      background: #12141c; border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      padding: 0.45rem 0.7rem; font-size: 0.9rem; width: 140px;
+    }
+    .decode {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+    .decode-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      font-size: 0.88rem;
+    }
+    .decode-card h3 {
+      font-size: 0.8rem; color: var(--muted);
+      margin-bottom: 0.35rem; font-weight: 500;
+    }
+    .decode-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1rem; color: #fff;
+    }
+    .decode-card.sign-c h3 { color: var(--sign); }
+    .decode-card.exp-c h3 { color: var(--exp); }
+    .decode-card.mant-c h3 { color: var(--mant); }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 { color: #fff; font-size: 1rem; margin: 0.9rem 0 0.4rem; }
+    .compare {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.85rem; margin: 0.8rem 0;
+    }
+    .compare th, .compare td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.6rem; text-align: left;
+    }
+    .compare th { background: #12141c; color: var(--blue); }
+    footer {
+      margin-top: 1.8rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>IEEE 754 · 电脑如何存储小数</h1>
+    <p class="subtitle">重点：Exponent（指数）决定范围，Mantissa（尾数）决定精度</p>
+
+    <div class="controls">
+      <button class="primary active" data-fmt="f32">float32</button>
+      <button data-fmt="f16">float16</button>
+      <button data-fmt="bf16">bfloat16</button>
+      <label style="color:#9aa0a6;font-size:0.85rem;margin-left:0.5rem">试一个数：</label>
+      <input type="number" id="numInput" value="6.5" step="any">
+      <button id="btnDecode">解析</button>
+    </div>
+
+    <div class="panel">
+      <div style="text-align:center;font-size:0.85rem;color:#9aa0a6;margin-bottom:0.3rem" id="fmtLabel">
+        float32：1 符号 + 8 指数 + 23 尾数 = 32 位
+      </div>
+      <div class="bit-labels" id="bitLabels"></div>
+      <div class="bits-row" id="bitsRow"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:#f28b82"></i> Sign 符号</span>
+        <span><i class="dot" style="background:#fdd663"></i> Exponent 指数（范围）</span>
+        <span><i class="dot" style="background:#8ab4f8"></i> Mantissa 尾数（精度）</span>
+      </div>
+
+      <div class="formula-big" id="formula">
+        值 = <span class="s">(-1)<sup>sign</sup></span> × <span class="e">2<sup>(exp - bias)</sup></span> × <span class="m">1.mantissa</span>
+      </div>
+
+      <div class="decode" id="decode">
+        <div class="decode-card sign-c">
+          <h3>Sign 符号位</h3>
+          <div class="val" id="dSign">—</div>
+        </div>
+        <div class="decode-card exp-c">
+          <h3>Exponent 指数</h3>
+          <div class="val" id="dExp">—</div>
+        </div>
+        <div class="decode-card mant-c">
+          <h3>Mantissa 尾数</h3>
+          <div class="val" id="dMant">—</div>
+        </div>
+        <div class="decode-card">
+          <h3>最终十进制值</h3>
+          <div class="val" id="dValue">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="explain">
+      <strong>两部分各自干什么？</strong>
+
+      <h3>1. Exponent（指数）——管「能表示多大 / 多小」</h3>
+      指数决定小数点可以移动的范围，也就是<strong>数量级</strong>。<br>
+      • 指数位多 → 能表示极大和极小的数（范围大）<br>
+      • float32 / bfloat16 都有 <strong>8 位指数</strong>，范围约 ±3.4×10³⁸<br>
+      • float16 只有 <strong>5 位指数</strong>，最大大约只有 65504，训练时容易溢出<br><br>
+      真正用的时候会减一个 bias（偏移）：<br>
+      float32 的 bias = 127，所以存储的指数 127 表示 2⁰，128 表示 2¹，126 表示 2⁻¹。
+
+      <h3>2. Mantissa（尾数 / 有效数字）——管「能区分多细」</h3>
+      尾数决定小数点后面有多少位有效数字，也就是<strong>精度</strong>。<br>
+      • 尾数位多 → 能区分 1.0000001 和 1.0000002<br>
+      • float32：23 位尾数 ≈ 7～8 位十进制精度<br>
+      • float16：10 位尾数 ≈ 3～4 位精度<br>
+      • bfloat16：只有 7 位尾数 ≈ 2～3 位精度（精度换范围）<br><br>
+      实际表示时有一个隐藏的前导 1：写成 <code>1.mantissa × 2^指数</code>，所以 23 位尾数实际提供 24 位有效二进制位。
+
+      <h3>3. 为什么训练更爱 bfloat16？</h3>
+      <table class="compare">
+        <tr>
+          <th>格式</th>
+          <th>指数</th>
+          <th>尾数</th>
+          <th>范围</th>
+          <th>精度</th>
+          <th>训练</th>
+        </tr>
+        <tr>
+          <td>float16</td>
+          <td>5 位</td>
+          <td>10 位</td>
+          <td>小（~65504）</td>
+          <td>较高</td>
+          <td>易溢出，常需 loss scaling</td>
+        </tr>
+        <tr>
+          <td>bfloat16</td>
+          <td>8 位</td>
+          <td>7 位</td>
+          <td>大（同 float32）</td>
+          <td>较低</td>
+          <td>范围够，更省心</td>
+        </tr>
+        <tr>
+          <td>float32</td>
+          <td>8 位</td>
+          <td>23 位</td>
+          <td>大</td>
+          <td>高</td>
+          <td>稳但更慢、更占显存</td>
+        </tr>
+      </table>
+      训练时激活、梯度经常出现很大的数，<strong>范围比精度更重要</strong>，所以 bfloat16 往往优于 float16。
+
+      <h3>4. 一句话记住</h3>
+      <strong>Exponent = 能写多大的数（小数点能移多远）</strong><br>
+      <strong>Mantissa = 能写多准的数（有效数字有多少位）</strong>
+    </div>
+
+    <footer>IEEE 754 · Exponent & Mantissa · 13-numerical-stability</footer>
+  </div>
+
+  <script>
+    const formats = {
+      f32: { name: 'float32', sign: 1, exp: 8, mant: 23, bias: 127, total: 32 },
+      f16: { name: 'float16', sign: 1, exp: 5, mant: 10, bias: 15, total: 16 },
+      bf16: { name: 'bfloat16', sign: 1, exp: 8, mant: 7, bias: 127, total: 16 }
+    };
+    let currentFmt = 'f32';
+
+    function floatToBits(val, fmt) {
+      // Use float32 representation via DataView, then truncate for f16/bf16 conceptually
+      const buf = new ArrayBuffer(4);
+      const view = new DataView(buf);
+      view.setFloat32(0, val);
+      let bits = view.getUint32(0); // float32 bits
+
+      if (fmt === 'f32') {
+        return bits >>> 0;
+      }
+      // For demo of f16/bf16 we re-encode approximately for visualization
+      // Real f16 conversion is complex; we show structure with float32-derived fields
+      const sign = (bits >>> 31) & 1;
+      const exp32 = (bits >>> 23) & 0xff;
+      const mant32 = bits & 0x7fffff;
+
+      if (fmt === 'bf16') {
+        // bfloat16: top 16 bits of float32
+        return (sign << 15) | ((exp32 & 0xff) << 7) | (mant32 >>> 16);
+      }
+      // float16 approximate for demo
+      let exp16, mant16;
+      if (exp32 === 0) { exp16 = 0; mant16 = 0; }
+      else if (exp32 === 255) { exp16 = 31; mant16 = mant32 ? 0x3ff : 0; }
+      else {
+        let e = exp32 - 127 + 15;
+        if (e <= 0) { exp16 = 0; mant16 = 0; }
+        else if (e >= 31) { exp16 = 31; mant16 = 0; }
+        else {
+          exp16 = e;
+          mant16 = mant32 >>> 13;
+        }
+      }
+      return (sign << 15) | (exp16 << 10) | mant16;
+    }
+
+    function renderBits(bits, fmtKey) {
+      const f = formats[fmtKey];
+      const row = document.getElementById('bitsRow');
+      const labels = document.getElementById('bitLabels');
+      row.innerHTML = '';
+      labels.innerHTML = '';
+
+      const total = f.total;
+      // extract fields
+      let sign, exp, mant;
+      if (fmtKey === 'f32') {
+        sign = (bits >>> 31) & 1;
+        exp = (bits >>> 23) & 0xff;
+        mant = bits & 0x7fffff;
+      } else if (fmtKey === 'bf16') {
+        sign = (bits >>> 15) & 1;
+        exp = (bits >>> 7) & 0xff;
+        mant = bits & 0x7f;
+      } else {
+        sign = (bits >>> 15) & 1;
+        exp = (bits >>> 10) & 0x1f;
+        mant = bits & 0x3ff;
+      }
+
+      // build bit array from MSB
+      const bitArr = [];
+      bitArr.push({ v: sign, t: 'sign' });
+      for (let i = f.exp - 1; i >= 0; i--) bitArr.push({ v: (exp >> i) & 1, t: 'exp' });
+      for (let i = f.mant - 1; i >= 0; i--) bitArr.push({ v: (mant >> i) & 1, t: 'mant' });
+
+      bitArr.forEach(b => {
+        const d = document.createElement('div');
+        d.className = 'bit ' + b.t;
+        d.textContent = b.v;
+        row.appendChild(d);
+      });
+
+      labels.innerHTML = `
+        <span style="width:${28+3}px;color:#f28b82">S</span>
+        <span style="width:${(28+3)*f.exp}px;color:#fdd663">Exponent ${f.exp}位</span>
+        <span style="width:${(28+3)*f.mant}px;color:#8ab4f8">Mantissa ${f.mant}位</span>
+      `;
+
+      document.getElementById('fmtLabel').textContent =
+        `${f.name}：1 符号 + ${f.exp} 指数 + ${f.mant} 尾数 = ${f.total} 位`;
+
+      // decode display
+      const signStr = sign === 0 ? '+1（正）' : '-1（负）';
+      let expStr, trueExp;
+      if (exp === 0) {
+        expStr = `全0（非规格化/零）`;
+        trueExp = 1 - f.bias;
+      } else if ((fmtKey === 'f32' || fmtKey === 'bf16') && exp === 255 || (fmtKey === 'f16' && exp === 31)) {
+        expStr = `全1（Inf/NaN）`;
+        trueExp = null;
+      } else {
+        trueExp = exp - f.bias;
+        expStr = `存储 ${exp} → 真实指数 ${trueExp}（bias=${f.bias}）`;
+      }
+
+      let mantVal = 1;
+      for (let i = 0; i < f.mant; i++) {
+        if ((mant >> (f.mant - 1 - i)) & 1) mantVal += Math.pow(2, -(i + 1));
+      }
+      const mantStr = exp === 0 ? '（非规格化，无隐藏1）' : `1.mantissa ≈ ${mantVal.toFixed(6)}`;
+
+      let finalVal = '—';
+      if (trueExp !== null && exp !== 0) {
+        const v = (sign ? -1 : 1) * Math.pow(2, trueExp) * mantVal;
+        finalVal = v.toPrecision(8);
+      } else if (exp === 0 && mant === 0) {
+        finalVal = sign ? '-0' : '0';
+      }
+
+      document.getElementById('dSign').textContent = signStr;
+      document.getElementById('dExp').textContent = expStr;
+      document.getElementById('dMant').textContent = mantStr;
+      document.getElementById('dValue').textContent = finalVal;
+
+      document.getElementById('formula').innerHTML =
+        `值 = <span class="s">(-1)<sup>${sign}</sup></span> × <span class="e">2<sup>(${exp} - ${f.bias})</sup></span> × <span class="m">1.mantissa</span>`;
+    }
+
+    function decode() {
+      const val = parseFloat(document.getElementById('numInput').value);
+      if (isNaN(val)) return;
+      const bits = floatToBits(val, currentFmt);
+      renderBits(bits, currentFmt);
+    }
+
+    document.querySelectorAll('[data-fmt]').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('[data-fmt]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFmt = btn.dataset.fmt;
+        decode();
+      };
+    });
+    document.getElementById('btnDecode').onclick = decode;
+    document.getElementById('numInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') decode();
+    });
+
+    decode();
+  </script>
+</body>
+</html>
