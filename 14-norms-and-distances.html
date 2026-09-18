@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>14 Norms and Distances · 复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; color: #202124; }
+    p, li { margin-bottom: 0.55rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.4rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.55rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-family: "SF Mono", Consolas, "Courier New", monospace;
+      font-size: 0.95rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.6;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      font-weight: 500;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>14 Norms and Distances</h1>
+    <p class="subtitle">高可视化复习 · 范数 · 距离 · 损失 · 正则 · 最近邻</p>
+
+    <div class="one-liner">
+      <strong>距离函数 = 你定义的「什么叫相似」。</strong>选错了，KNN、检索、聚类、损失优化的目标都会偏。
+    </div>
+
+    <!-- 范数基础 -->
+    <h2>1. 范数：向量有多「大」</h2>
+    <p>距离常写成差的范数：d(a,b) = ||a − b||。</p>
+    <table>
+      <tr>
+        <th>范数</th>
+        <th>公式直觉</th>
+        <th>单位球形状</th>
+        <th>一句话</th>
+      </tr>
+      <tr>
+        <td><strong>L1</strong></td>
+        <td>各维绝对差之和</td>
+        <td>菱形</td>
+        <td>曼哈顿：只能横竖走</td>
+      </tr>
+      <tr>
+        <td><strong>L2</strong></td>
+        <td>√平方和</td>
+        <td>圆形</td>
+        <td>直线距离</td>
+      </tr>
+      <tr>
+        <td><strong>L∞</strong></td>
+        <td>max|各维差|</td>
+        <td>正方形</td>
+        <td>只看差得最多的那一维</td>
+      </tr>
+    </table>
+    <div class="formula">
+      A=(1,1), B=(4,5)<br>
+      L1 = 3+4 = 7 &nbsp;|&nbsp; L2 = 5 &nbsp;|&nbsp; L∞ = max(3,4) = 4
+    </div>
+
+    <h3>L1 要点</h3>
+    <ul>
+      <li>对异常更稳健；适合稀疏高维</li>
+      <li>正则 → <strong>Lasso</strong>：菱形角在轴上 → 权重易变 0 → 特征选择</li>
+      <li>损失 → <strong>MAE</strong></li>
+    </ul>
+
+    <h3>L∞ 要点</h3>
+    <ul>
+      <li>最坏维说了算（国王走法、公差）</li>
+      <li>Lp 在 p→∞ 时的极限</li>
+    </ul>
+
+    <!-- Cosine -->
+    <h2>2. Cosine Similarity / Distance</h2>
+    <div class="formula">
+      cos_sim = (a·b) / (|a||b|) ∈ [-1, 1]<br>
+      cos_dist = 1 − cos_sim
+    </div>
+    <div class="one-liner">只比方向、不比长短。文本与 embedding 检索首选。</div>
+    <ul>
+      <li>同向 → 1；垂直 → 0；反向 → −1</li>
+      <li>向量已单位化时，点积 = cosine</li>
+      <li>长度有意义（热度等）时可用点积；只要主题方向时用 Cosine</li>
+    </ul>
+
+    <!-- Mahalanobis -->
+    <h2>3. Mahalanobis Distance</h2>
+    <div class="formula">
+      d_M(x,y) = √[ (x−y)ᵀ S⁻¹ (x−y) ]　（S = 协方差）
+    </div>
+    <p>先按数据的方差和相关性「摆正、缩放」，再量欧氏距离。等距线是椭圆而非圆。</p>
+    <ul>
+      <li>身高–体重相关时，能认出「又矮又重」更异常</li>
+      <li>适合异常检测、特征相关且尺度不同时</li>
+      <li>S=I 时退化为欧氏距离</li>
+    </ul>
+
+    <!-- Jaccard -->
+    <h2>4. Jaccard Similarity（集合）</h2>
+    <div class="formula">J = |A∩B| / |A∪B|</div>
+    <p>只看有没有，不看次数。标签、关键词集合、IoU 分割评估常用。</p>
+
+    <!-- Edit -->
+    <h2>5. Edit Distance（Levenshtein）</h2>
+    <p>字符串 A 变成 B，最少几次插入 / 删除 / 替换。</p>
+    <div class="formula">kitten → sitting = 3</div>
+    <p>拼写纠错、模糊匹配、去重；DP 表右下角即距离。</p>
+
+    <!-- KL -->
+    <h2>6. KL Divergence（不是距离）</h2>
+    <div class="formula">D_KL(P||Q) = Σ P log(P/Q)</div>
+    <ul>
+      <li>用 Q 近似 P 的信息损失；一般<strong>不对称</strong></li>
+      <li>Forward KL 偏 mean-seeking；Reverse KL 偏 mode-seeking</li>
+      <li>VAE、蒸馏、RLHF 里常见</li>
+    </ul>
+
+    <!-- Wasserstein -->
+    <h2>7. Wasserstein（推土机距离）</h2>
+    <div class="one-liner">把分布 P「搬成」Q 所需的最小功（土量×距离）。</div>
+    <ul>
+      <li>对称，是真度量</li>
+      <li>分布几乎不重叠时仍有有限值（KL 易爆）→ WGAN 等用它</li>
+      <li>1D：W₁ = ∫|CDF_P − CDF_Q| dx</li>
+    </ul>
+
+    <!-- Loss -->
+    <h2>8. 与损失函数的关系</h2>
+    <div class="one-liner">损失函数 ≈ 选一种距离/散度 + 决定怎么惩罚。</div>
+    <table>
+      <tr>
+        <th>损失</th>
+        <th>背后距离/散度</th>
+        <th>行为</th>
+      </tr>
+      <tr>
+        <td>MSE</td>
+        <td>L2 平方</td>
+        <td>严惩大误差</td>
+      </tr>
+      <tr>
+        <td>MAE</td>
+        <td>L1</td>
+        <td>线性惩罚，更稳健</td>
+      </tr>
+      <tr>
+        <td>Huber</td>
+        <td>小 L2、大 L1</td>
+        <td>稳健 + 近零光滑</td>
+      </tr>
+      <tr>
+        <td>Cross-entropy</td>
+        <td>KL</td>
+        <td>对齐概率分布</td>
+      </tr>
+      <tr>
+        <td>Hinge</td>
+        <td>间隔</td>
+        <td>只罚间隔不够</td>
+      </tr>
+      <tr>
+        <td>Triplet / Contrastive</td>
+        <td>多为 L2</td>
+        <td>拉近正样本、推远负样本</td>
+      </tr>
+    </table>
+
+    <h3>交叉熵完整例子</h3>
+    <p>三分类，真标签「猫」→ P=[1,0,0]；模型 Q=[0.7,0.2,0.1]</p>
+    <div class="formula">
+      H(P,Q) = −log(0.7) ≈ 0.357<br>
+      = 正确类的负对数概率<br>
+      最小化交叉熵 ⇔ 最小化 KL(P||Q)（one-hot 时 H(P)=0）
+    </div>
+    <p>正确类概率越接近 0，损失趋向 +∞ → 严厉惩罚「完全分错」。</p>
+
+    <!-- Regularization -->
+    <h2>9. 与正则化的关系</h2>
+    <div class="formula">
+      总目标 = 数据损失 + λ ×（权重范数）
+    </div>
+    <p><strong>为什么要惩罚权重大小？</strong></p>
+    <ul>
+      <li>只拟合训练数据 → 权重易过大、过尖 → 过拟合</li>
+      <li>正则偏好更小/更稀的权重 → 更平滑、通常更好泛化</li>
+      <li>λ 平衡「拟合」与「别太狂」</li>
+    </ul>
+    <table>
+      <tr>
+        <th>正则</th>
+        <th>形式</th>
+        <th>约束形状</th>
+        <th>效果</th>
+      </tr>
+      <tr>
+        <td>L1 Lasso</td>
+        <td>λ||w||₁</td>
+        <td>菱形</td>
+        <td>稀疏，权重可精确为 0</td>
+      </tr>
+      <tr>
+        <td>L2 Ridge</td>
+        <td>λ||w||₂²</td>
+        <td>圆形</td>
+        <td>整体缩小，很少为 0</td>
+      </tr>
+      <tr>
+        <td>Elastic Net</td>
+        <td>L1+L2</td>
+        <td>—</td>
+        <td>稀疏 + 稳定，相关特征成组</td>
+      </tr>
+    </table>
+    <div class="note">
+      菱形角在轴上 → 等高线易碰角 → L1 稀疏；圆形无角 → L2 不稀疏。
+    </div>
+
+    <!-- NN -->
+    <h2>10. Nearest Neighbor Search</h2>
+    <p>按选定距离找最近的点。精确搜索 O(n·d)，大数据用 <strong>ANN</strong>：</p>
+    <ul>
+      <li>KD-tree / Ball tree：空间划分</li>
+      <li>LSH：哈希分桶</li>
+      <li>HNSW：多层图（向量库常用）</li>
+      <li>IVF + 量化：先聚类再搜，可上十亿级</li>
+    </ul>
+    <p>两层选择：① 哪种距离定义「像」；② 精确还是近似算法。</p>
+
+    <!-- 速查 -->
+    <h2>11. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">L1</span> 网格距离 · MAE · Lasso 稀疏</li>
+        <li><span class="tag">L2</span> 直线距离 · MSE · Ridge 缩小</li>
+        <li><span class="tag">L∞</span> 只看最大维差</li>
+        <li><span class="tag">Cosine</span> 只比方向 · 文本/embedding</li>
+        <li><span class="tag">Mahalanobis</span> 协方差感知 · 异常检测</li>
+        <li><span class="tag">Jaccard</span> 集合重叠</li>
+        <li><span class="tag">Edit</span> 字符串改几次</li>
+        <li><span class="tag">KL</span> 分布差（非对称）</li>
+        <li><span class="tag">Wasserstein</span> 搬土最小功</li>
+        <li><span class="tag">损失</span> 距离 + 惩罚方式</li>
+        <li><span class="tag">正则</span> 惩罚权重大小防过拟合</li>
+        <li><span class="tag">ANN</span> 近似最近邻加速检索</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>范数量大小，距离量远近；损失与正则是同一种范数语言用在「误差」和「权重」上；检索则是在选定距离下找邻居。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 14-norms-and-distances<br>
+      结合学习问答整理 · 范数/距离/损失/正则/最近邻
+    </footer>
+  </div>
+</body>
+</html>

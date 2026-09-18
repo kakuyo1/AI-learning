@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wasserstein Distance · 推土机距离演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1rem; align-items: center;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+      background: #12141c;
+      border-radius: 10px;
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      justify-content: center; margin-top: 0.7rem;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.88rem;
+    }
+    .info-card h3 {
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 0.3rem; font-weight: 500;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      color: #fff; font-size: 1rem;
+    }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 { color: #fff; font-size: 1rem; margin: 0.8rem 0 0.35rem; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      margin: 0.5rem 0; font-size: 0.88rem; color: var(--muted);
+    }
+    input[type="range"] { flex: 1; max-width: 220px; }
+    footer {
+      margin-top: 1.8rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Wasserstein Distance · 推土机距离</h1>
+    <p class="subtitle">把分布 P（土堆）搬成分布 Q（坑）· 最小功 = 土量 × 距离</p>
+
+    <div class="controls">
+      <button class="primary" id="btnPlay">▶ 播放搬运动画</button>
+      <button id="btnReset">重置</button>
+    </div>
+
+    <div class="panel">
+      <div class="slider-row">
+        <span>Q 中心位置</span>
+        <input type="range" id="posQ" min="2" max="14" value="10" step="0.5">
+        <span id="posQLabel">10</span>
+      </div>
+      <div class="slider-row">
+        <span>Q 宽度</span>
+        <input type="range" id="widthQ" min="0.4" max="2.5" value="1" step="0.1">
+        <span id="widthQLabel">1.0</span>
+      </div>
+
+      <canvas id="cv" width="700" height="320"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:#8ab4f8"></i> 分布 P（土堆）</span>
+        <span><i class="dot" style="background:#fdd663"></i> 分布 Q（目标）</span>
+        <span><i class="dot" style="background:#c58af9"></i> 搬运路径（示意）</span>
+        <span><i class="dot" style="background:#81c995"></i> CDF 差的面积 ≈ W₁</span>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="info-card">
+        <h3>P 中心 / 宽度</h3>
+        <div class="val">0 / 1.0</div>
+      </div>
+      <div class="info-card">
+        <h3>Q 中心 / 宽度</h3>
+        <div class="val" id="qInfo">10 / 1.0</div>
+      </div>
+      <div class="info-card">
+        <h3>W₁（近似）</h3>
+        <div class="val" id="wVal">—</div>
+      </div>
+      <div class="info-card">
+        <h3>和 KL 对比</h3>
+        <div class="val" id="klNote" style="font-size:0.82rem;font-family:inherit">—</div>
+      </div>
+    </div>
+
+    <div class="explain">
+      <strong>怎么理解这张图？</strong>
+      <h3>上面：两个分布</h3>
+      蓝色是 P（土在哪里），黄色是 Q（要堆成什么样）。拖动滑块可移动、拉宽 Q。
+      <h3>箭头：搬运</h3>
+      示意「把质量从 P 运到 Q」。距离越远，Wasserstein 越大。
+      <h3>下面：CDF 与面积</h3>
+      一维时 W₁ = ∫|CDF_P − CDF_Q| dx，即两条累积分布曲线之间的面积。面积越大，距离越大。
+      <h3>和 KL 的差别</h3>
+      两个峰离得很远、几乎不重叠时，KL 往往直接爆成很大/无穷；Wasserstein 仍约等于「搬多远」，数值平滑、可比较。
+    </div>
+
+    <footer>Wasserstein / Earth Mover's Distance · 14-norms-and-distances</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // 1D distributions on x in [-4, 16]
+    const xMin = -4, xMax = 16;
+    function toX(t) { return ((t - xMin) / (xMax - xMin)) * (W - 40) + 20; }
+
+    let muP = 0, sigP = 1;
+    let muQ = 10, sigQ = 1;
+    let animT = 0;
+    let animating = false;
+    let raf = null;
+
+    function gauss(x, mu, sig) {
+      const z = (x - mu) / sig;
+      return Math.exp(-0.5 * z * z) / (sig * Math.sqrt(2 * Math.PI));
+    }
+    // Approximate CDF of normal via erf-like
+    function cdfApprox(x, mu, sig) {
+      const z = (x - mu) / (sig * Math.SQRT2);
+      // Abramowitz-Stegun style erf approx
+      const t = 1 / (1 + 0.3275911 * Math.abs(z));
+      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429;
+      const erf = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-z*z);
+      const sign = z < 0 ? -1 : 1;
+      return 0.5 * (1 + sign * erf);
+    }
+
+    function wasserstein1D() {
+      // Integrate |CDF_P - CDF_Q| over a grid
+      let area = 0;
+      const n = 300;
+      const dx = (xMax - xMin) / n;
+      for (let i = 0; i < n; i++) {
+        const x = xMin + (i + 0.5) * dx;
+        area += Math.abs(cdfApprox(x, muP, sigP) - cdfApprox(x, muQ, sigQ)) * dx;
+      }
+      return area;
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const topH = 160;
+      const botY0 = 190;
+
+      // --- top: PDFs ---
+      // sample
+      const n = 200;
+      const xs = [];
+      const pP = [], pQ = [];
+      let maxPdf = 0;
+      for (let i = 0; i <= n; i++) {
+        const x = xMin + (i / n) * (xMax - xMin);
+        xs.push(x);
+        const yp = gauss(x, muP, sigP);
+        const yq = gauss(x, muQ, sigQ);
+        pP.push(yp); pQ.push(yq);
+        maxPdf = Math.max(maxPdf, yp, yq);
+      }
+      const pdfScale = (topH - 30) / (maxPdf * 1.15);
+
+      function pathPdf(arr, color, fill) {
+        ctx.beginPath();
+        for (let i = 0; i <= n; i++) {
+          const sx = toX(xs[i]);
+          const sy = topH - 10 - arr[i] * pdfScale;
+          if (i === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+        if (fill) {
+          ctx.lineTo(toX(xs[n]), topH - 10);
+          ctx.lineTo(toX(xs[0]), topH - 10);
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+      }
+      pathPdf(pP, '#8ab4f8', 'rgba(138,180,248,0.15)');
+      pathPdf(pQ, '#fdd663', 'rgba(253,214,99,0.12)');
+
+      // baseline
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(20, topH - 10);
+      ctx.lineTo(W - 20, topH - 10);
+      ctx.stroke();
+
+      // transport arrows (schematic from muP to muQ)
+      const yArrow = 50;
+      const x0 = toX(muP), x1 = toX(muQ);
+      const mid = animating ? x0 + (x1 - x0) * animT : x1;
+      ctx.strokeStyle = 'rgba(197, 138, 249, 0.85)';
+      ctx.fillStyle = 'rgba(197, 138, 249, 0.85)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x0, yArrow);
+      ctx.lineTo(mid, yArrow);
+      ctx.stroke();
+      if (animT > 0.05 || !animating) {
+        const tip = animating ? mid : x1;
+        ctx.beginPath();
+        ctx.moveTo(tip, yArrow);
+        ctx.lineTo(tip - 10, yArrow - 5);
+        ctx.lineTo(tip - 10, yArrow + 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // moving "dirt" blob
+      if (animating) {
+        ctx.fillStyle = 'rgba(138, 180, 248, 0.9)';
+        ctx.beginPath();
+        ctx.arc(x0 + (x1 - x0) * animT, yArrow - 18, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('PDF', 24, 18);
+      ctx.fillStyle = '#8ab4f8';
+      ctx.fillText('P', toX(muP) - 5, topH - 18);
+      ctx.fillStyle = '#fdd663';
+      ctx.fillText('Q', toX(muQ) - 5, topH - 18);
+
+      // --- bottom: CDFs and area ---
+      ctx.fillStyle = '#9aa0a6';
+      ctx.fillText('CDF 与 |CDF_P − CDF_Q| 面积', 24, botY0 - 8);
+
+      const cdfScale = 90;
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const sx = toX(xs[i]);
+        const sy = botY0 + 100 - cdfApprox(xs[i], muP, sigP) * cdfScale;
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const sx = toX(xs[i]);
+        const sy = botY0 + 100 - cdfApprox(xs[i], muQ, sigQ) * cdfScale;
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.strokeStyle = '#fdd663';
+      ctx.stroke();
+
+      // fill area between CDFs
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const sx = toX(xs[i]);
+        const sy = botY0 + 100 - cdfApprox(xs[i], muP, sigP) * cdfScale;
+        if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      for (let i = n; i >= 0; i--) {
+        const sx = toX(xs[i]);
+        const sy = botY0 + 100 - cdfApprox(xs[i], muQ, sigQ) * cdfScale;
+        ctx.lineTo(sx, sy);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(129, 201, 149, 0.25)';
+      ctx.fill();
+
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(20, botY0 + 100);
+      ctx.lineTo(W - 20, botY0 + 100);
+      ctx.stroke();
+
+      // metrics
+      const w1 = wasserstein1D();
+      document.getElementById('wVal').textContent = w1.toFixed(3);
+      document.getElementById('qInfo').textContent = muQ.toFixed(1) + ' / ' + sigQ.toFixed(1);
+      const sep = Math.abs(muQ - muP);
+      if (sep > 4) {
+        document.getElementById('klNote').textContent = '峰几乎不重叠：KL 易爆，W 仍≈' + sep.toFixed(1);
+      } else {
+        document.getElementById('klNote').textContent = '有重叠：两种度量都可用';
+      }
+    }
+
+    function playAnim() {
+      if (raf) cancelAnimationFrame(raf);
+      animating = true;
+      animT = 0;
+      const t0 = performance.now();
+      function frame(now) {
+        animT = Math.min(1, (now - t0) / 1200);
+        // ease
+        const e = animT < 0.5 ? 2*animT*animT : 1 - Math.pow(-2*animT+2,2)/2;
+        animT = e;
+        draw();
+        if (e < 1) raf = requestAnimationFrame(frame);
+        else { animating = false; draw(); }
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    document.getElementById('posQ').oninput = (e) => {
+      muQ = parseFloat(e.target.value);
+      document.getElementById('posQLabel').textContent = muQ;
+      draw();
+    };
+    document.getElementById('widthQ').oninput = (e) => {
+      sigQ = parseFloat(e.target.value);
+      document.getElementById('widthQLabel').textContent = sigQ.toFixed(1);
+      draw();
+    };
+    document.getElementById('btnPlay').onclick = playAnim;
+    document.getElementById('btnReset').onclick = () => {
+      muQ = 10; sigQ = 1;
+      document.getElementById('posQ').value = 10;
+      document.getElementById('widthQ').value = 1;
+      document.getElementById('posQLabel').textContent = '10';
+      document.getElementById('widthQLabel').textContent = '1.0';
+      animating = false;
+      animT = 0;
+      draw();
+    };
+
+    draw();
+  </script>
+</body>
+</html>
