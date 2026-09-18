@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Distance · 拼写纠错演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .input-row {
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+      align-items: center; margin-bottom: 1rem;
+    }
+    input[type="text"] {
+      background: #12141c;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.55rem 0.9rem;
+      font-size: 1rem;
+      width: 200px;
+      font-family: "SF Mono", Consolas, monospace;
+    }
+    button {
+      background: #1a73e8; color: #fff;
+      border: none; border-radius: 8px;
+      padding: 0.55rem 1rem; font-size: 0.9rem; cursor: pointer;
+    }
+    button:hover { background: #1765cc; }
+    button.ghost {
+      background: #2a2e3a; border: 1px solid var(--border); color: var(--text);
+    }
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.8rem;
+    }
+    .chip {
+      background: #12141c;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.82rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .chip:hover { border-color: #1a73e8; color: var(--blue); }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.6rem;
+      margin: 0.8rem 0;
+    }
+    .res-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.7rem 0.85rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+    .res-card:hover, .res-card.active {
+      border-color: #1a73e8;
+    }
+    .res-card .word {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.05rem;
+      color: #fff;
+    }
+    .res-card .dist {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+    .res-card.best .dist { color: var(--green); }
+    .ops {
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .ops .step {
+      font-family: "SF Mono", Consolas, monospace;
+      background: #12141c;
+      border-radius: 6px;
+      padding: 0.35rem 0.6rem;
+      margin: 0.3rem 0;
+      display: inline-block;
+      margin-right: 0.4rem;
+    }
+    .ops .step .hl { color: var(--orange); }
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+    table.dp {
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      font-family: "SF Mono", Consolas, monospace;
+      margin: 0 auto;
+    }
+    table.dp th, table.dp td {
+      border: 1px solid #2a2e3a;
+      width: 32px; height: 28px;
+      text-align: center;
+      color: #c4c7ce;
+    }
+    table.dp th {
+      background: #12141c;
+      color: var(--blue);
+      font-weight: 600;
+    }
+    table.dp td.path {
+      background: rgba(129, 201, 149, 0.2);
+      color: var(--green);
+      font-weight: 700;
+    }
+    table.dp td.final {
+      background: rgba(26, 115, 232, 0.35);
+      color: #fff;
+      font-weight: 700;
+    }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    footer {
+      margin-top: 1.8rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Edit Distance · 拼写纠错演示</h1>
+    <p class="subtitle">输入错词 → 在小词表里找编辑距离最小的候选 · 可查看改写步骤与 DP 表</p>
+
+    <div class="panel">
+      <div class="input-row">
+        <input type="text" id="input" value="kitten" placeholder="输入单词…">
+        <button id="btnCheck">纠错</button>
+        <button class="ghost" id="btnClear">清空</button>
+      </div>
+      <div style="font-size:0.8rem;color:#9aa0a6;margin-bottom:0.4rem">快速试错：</div>
+      <div class="chips" id="chips">
+        <span class="chip" data-w="kitten">kitten</span>
+        <span class="chip" data-w="sitting">sitting（正确）</span>
+        <span class="chip" data-w="speling">speling</span>
+        <span class="chip" data-w="recieve">recieve</span>
+        <span class="chip" data-w="definately">definately</span>
+        <span class="chip" data-w="seperate">seperate</span>
+        <span class="chip" data-w="occured">occured</span>
+        <span class="chip" data-w="accomodate">accomodate</span>
+      </div>
+
+      <div style="font-size:0.85rem;color:#9aa0a6;margin:0.6rem 0 0.3rem">候选（按编辑距离排序，点击查看路径）：</div>
+      <div class="results" id="results"></div>
+
+      <div class="ops" id="ops"></div>
+      <div class="table-wrap" id="tableWrap"></div>
+    </div>
+
+    <div class="explain">
+      <strong>原理：</strong>编辑距离 = 把输入词变成词典词，最少需要多少次「插入 / 删除 / 替换」。<br>
+      拼写纠错 = 在词表里找距离最小的词（可设上限，如只接受距离 ≤ 2）。<br>
+      下方 DP 表：行是输入前缀，列是候选词前缀；右下角就是编辑距离；绿色格子示意一条最优路径。
+    </div>
+
+    <footer>Levenshtein Edit Distance · 拼写纠错 · 14-norms-and-distances</footer>
+  </div>
+
+  <script>
+    const DICT = [
+      'kitten', 'sitting', 'kitchen', 'butter', 'spelling', 'receive',
+      'definitely', 'separate', 'occurred', 'accommodate', 'the', 'be',
+      'to', 'of', 'and', 'in', 'that', 'have', 'for', 'not', 'with',
+      'you', 'this', 'but', 'his', 'from', 'they', 'say', 'she', 'will',
+      'one', 'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out',
+      'about', 'who', 'get', 'which', 'go', 'me', 'when', 'make', 'can',
+      'like', 'time', 'just', 'know', 'people', 'take', 'year', 'your',
+      'good', 'some', 'could', 'them', 'see', 'other', 'than', 'then',
+      'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also',
+      'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first',
+      'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these',
+      'give', 'day', 'most', 'us', 'hello', 'world', 'python', 'model',
+      'neural', 'network', 'learning', 'distance', 'edit', 'spell'
+    ];
+
+    function levenshtein(a, b) {
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
+          else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return { dist: dp[m][n], dp };
+    }
+
+    // Reconstruct one alignment / operations
+    function getOps(a, b, dp) {
+      const ops = [];
+      let i = a.length, j = b.length;
+      const path = [{ i, j }];
+      while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && a[i - 1] === b[j - 1] && dp[i][j] === dp[i - 1][j - 1]) {
+          ops.push({ type: 'keep', from: a[i - 1], to: b[j - 1] });
+          i--; j--;
+        } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+          ops.push({ type: 'sub', from: a[i - 1], to: b[j - 1] });
+          i--; j--;
+        } else if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+          ops.push({ type: 'ins', from: '', to: b[j - 1] });
+          j--;
+        } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+          ops.push({ type: 'del', from: a[i - 1], to: '' });
+          i--;
+        } else {
+          // fallback
+          if (i > 0 && j > 0) { i--; j--; }
+          else if (i > 0) i--;
+          else j--;
+        }
+        path.push({ i, j });
+      }
+      ops.reverse();
+      path.reverse();
+      return { ops, path };
+    }
+
+    function renderOps(a, b, ops) {
+      let html = '<div style="margin-bottom:0.4rem;color:#9aa0a6">改写步骤（从输入 → 候选）：</div>';
+      let cur = a;
+      html += '<div class="step">' + cur + '</div>';
+      ops.forEach(op => {
+        if (op.type === 'keep') return;
+        if (op.type === 'sub') {
+          html += ' → <div class="step">替换 <span class="hl">' + op.from + '</span>→<span class="hl">' + op.to + '</span></div>';
+        } else if (op.type === 'ins') {
+          html += ' → <div class="step">插入 <span class="hl">' + op.to + '</span></div>';
+        } else if (op.type === 'del') {
+          html += ' → <div class="step">删除 <span class="hl">' + op.from + '</span></div>';
+        }
+      });
+      html += ' → <div class="step" style="color:#81c995">' + b + '</div>';
+      // simpler sequential display
+      const changes = ops.filter(o => o.type !== 'keep');
+      if (changes.length === 0) {
+        return '<div style="color:#81c995">已是词典中的词，距离 0。</div>';
+      }
+      let s = '<div style="margin-bottom:0.5rem;color:#9aa0a6">一次最优操作序列：</div>';
+      changes.forEach((op, idx) => {
+        if (op.type === 'sub') s += '<div class="step">' + (idx + 1) + '. 替换 <span class="hl">' + op.from + '</span> → <span class="hl">' + op.to + '</span></div>';
+        if (op.type === 'ins') s += '<div class="step">' + (idx + 1) + '. 插入 <span class="hl">' + op.to + '</span></div>';
+        if (op.type === 'del') s += '<div class="step">' + (idx + 1) + '. 删除 <span class="hl">' + op.from + '</span></div>';
+      });
+      s += '<div style="margin-top:0.5rem">结果：<span style="color:#81c995;font-family:monospace">' + b + '</span></div>';
+      return s;
+    }
+
+    function renderDP(a, b, dp, path) {
+      const pathSet = new Set(path.map(p => p.i + ',' + p.j));
+      let h = '<table class="dp"><tr><th></th><th>ε</th>';
+      for (let j = 0; j < b.length; j++) h += '<th>' + b[j] + '</th>';
+      h += '</tr>';
+      for (let i = 0; i <= a.length; i++) {
+        h += '<tr><th>' + (i === 0 ? 'ε' : a[i - 1]) + '</th>';
+        for (let j = 0; j <= b.length; j++) {
+          let cls = '';
+          if (i === a.length && j === b.length) cls = 'final';
+          else if (pathSet.has(i + ',' + j)) cls = 'path';
+          h += '<td class="' + cls + '">' + dp[i][j] + '</td>';
+        }
+        h += '</tr>';
+      }
+      h += '</table>';
+      return h;
+    }
+
+    let lastCandidates = [];
+
+    function check() {
+      const raw = document.getElementById('input').value.trim().toLowerCase();
+      if (!raw) return;
+      const scored = DICT.map(w => {
+        const { dist, dp } = levenshtein(raw, w);
+        return { w, dist, dp };
+      });
+      scored.sort((a, b) => a.dist - b.dist || a.w.localeCompare(b.w));
+      lastCandidates = scored.slice(0, 8);
+
+      const box = document.getElementById('results');
+      box.innerHTML = lastCandidates.map((c, i) =>
+        '<div class="res-card' + (i === 0 ? ' best active' : '') + '" data-i="' + i + '">' +
+        '<div class="word">' + c.w + '</div>' +
+        '<div class="dist">距离 = ' + c.dist + (i === 0 ? ' · 最佳' : '') + '</div></div>'
+      ).join('');
+
+      box.querySelectorAll('.res-card').forEach(card => {
+        card.onclick = () => {
+          box.querySelectorAll('.res-card').forEach(x => x.classList.remove('active'));
+          card.classList.add('active');
+          showDetail(+card.dataset.i, raw);
+        };
+      });
+      showDetail(0, raw);
+    }
+
+    function showDetail(idx, raw) {
+      const c = lastCandidates[idx];
+      if (!c) return;
+      const { ops, path } = getOps(raw, c.w, c.dp);
+      document.getElementById('ops').innerHTML = renderOps(raw, c.w, ops);
+      document.getElementById('tableWrap').innerHTML =
+        '<div style="font-size:0.8rem;color:#9aa0a6;margin-bottom:0.4rem;text-align:center">DP 表（绿 = 一条最优路径，蓝 = 最终距离）</div>' +
+        renderDP(raw, c.w, c.dp, path);
+    }
+
+    document.getElementById('btnCheck').onclick = check;
+    document.getElementById('btnClear').onclick = () => {
+      document.getElementById('input').value = '';
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('ops').innerHTML = '';
+      document.getElementById('tableWrap').innerHTML = '';
+    };
+    document.getElementById('input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') check();
+    });
+    document.querySelectorAll('.chip').forEach(ch => {
+      ch.onclick = () => {
+        document.getElementById('input').value = ch.dataset.w;
+        check();
+      };
+    });
+
+    check();
+  </script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mahalanobis Distance 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1rem; align-items: center;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.active, button.primary {
+      background: #1a73e8; border-color: #1a73e8; color: #fff;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      background: #12141c;
+      border-radius: 10px;
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      justify-content: center; margin-top: 0.7rem;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.88rem;
+    }
+    .info-card h3 {
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 0.3rem; font-weight: 500;
+    }
+    .info-card .val { font-family: "SF Mono", Consolas, monospace; color: #fff; }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 { color: #fff; font-size: 1rem; margin: 0.8rem 0 0.35rem; }
+    footer {
+      margin-top: 1.8rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mahalanobis Distance 演示</h1>
+    <p class="subtitle">相关数据下：欧氏距离画圆，马氏距离画椭圆 · 点击画布放置测试点</p>
+
+    <div class="controls">
+      <button class="primary active" id="btnBoth">同时显示</button>
+      <button id="btnL2">只看欧氏 (L2)</button>
+      <button id="btnMah">只看马氏</button>
+      <button id="btnReset">重置测试点</button>
+    </div>
+
+    <div class="panel">
+      <canvas id="cv" width="640" height="400"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:#8ab4f8"></i> 数据点（相关分布）</span>
+        <span><i class="dot" style="background:#81c995"></i> 分布中心</span>
+        <span><i class="dot" style="background:#fdd663"></i> 欧氏等距线（圆）</span>
+        <span><i class="dot" style="background:#c58af9"></i> 马氏等距线（椭圆）</span>
+        <span><i class="dot" style="background:#f28b82"></i> 你点的测试点</span>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="info-card">
+        <h3>测试点坐标</h3>
+        <div class="val" id="coord">点击画布设置</div>
+      </div>
+      <div class="info-card">
+        <h3>欧氏距离 d₂</h3>
+        <div class="val" id="dL2">—</div>
+      </div>
+      <div class="info-card">
+        <h3>马氏距离 d_M</h3>
+        <div class="val" id="dMah">—</div>
+      </div>
+      <div class="info-card">
+        <h3>解读</h3>
+        <div class="val" id="verdict" style="font-size:0.85rem;font-family:inherit">—</div>
+      </div>
+    </div>
+
+    <div class="explain">
+      <strong>这个图在说明什么？</strong><br>
+      蓝点是一组<strong>相关</strong>的二维数据（像「身高–体重」：大致沿对角线分布）。<br><br>
+      <h3>欧氏距离（黄圆）</h3>
+      假设各方向同等重要、无相关。等距离线是圆。落在圆外就一律算「远」。
+      <h3>马氏距离（紫椭圆）</h3>
+      先按数据的协方差「摆正、缩放」：沿数据主方向可以偏得更远仍算正常；垂直于主方向稍微偏一点就很「异常」。<br>
+      等距离线变成贴合数据形状的椭圆。
+      <h3>你可以试</h3>
+      点击画布放一个红点，看两种距离的数值。<br>
+      沿对角线远处的点：欧氏可能很大，马氏仍可能较小（符合分布）。<br>
+      逆着相关方向的点：欧氏不一定最大，马氏往往会更大（更异常）。
+    </div>
+
+    <footer>Mahalanobis vs Euclidean · 14-norms-and-distances</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Synthetic correlated data: elongated along y = x direction
+    const mean = { x: 0, y: 0 };
+    // Covariance: high correlation
+    // S = [[1.0, 0.85], [0.85, 1.0]]
+    const S = [[1.0, 0.85], [0.85, 1.0]];
+    // Inverse of S for Mahalanobis
+    // det = 1 - 0.85^2 = 0.2775
+    const det = S[0][0]*S[1][1] - S[0][1]*S[1][0];
+    const Sinv = [
+      [S[1][1]/det, -S[0][1]/det],
+      [-S[1][0]/det, S[0][0]/det]
+    ];
+
+    // Generate cloud
+    const points = [];
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    // Sample from correlated Gaussian via Cholesky-ish
+    // L such that L L^T = S; for [[a,b],[b,c]]: L = [[sqrt(a),0],[b/sqrt(a), sqrt(c-b^2/a)]]
+    const a = S[0][0], b = S[0][1], c = S[1][1];
+    const L00 = Math.sqrt(a), L10 = b / L00, L11 = Math.sqrt(c - L10 * L10);
+    for (let i = 0; i < 120; i++) {
+      const z0 = randn(), z1 = randn();
+      points.push({
+        x: L00 * z0,
+        y: L10 * z0 + L11 * z1
+      });
+    }
+
+    // View transform: data roughly in [-3,3] -> canvas
+    const scale = 55;
+    const cx = W / 2, cy = H / 2;
+    function toScreen(x, y) {
+      return { sx: cx + x * scale, sy: cy - y * scale };
+    }
+    function toData(sx, sy) {
+      return { x: (sx - cx) / scale, y: (cy - sy) / scale };
+    }
+
+    let testPoint = null;
+    let mode = 'both'; // both | l2 | mah
+
+    function euclidean(p) {
+      const dx = p.x - mean.x, dy = p.y - mean.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    function mahalanobis(p) {
+      const dx = p.x - mean.x, dy = p.y - mean.y;
+      // (dx,dy) Sinv (dx;dy)
+      const t0 = Sinv[0][0] * dx + Sinv[0][1] * dy;
+      const t1 = Sinv[1][0] * dx + Sinv[1][1] * dy;
+      return Math.sqrt(dx * t0 + dy * t1);
+    }
+
+    function drawEllipse(r, color, isMah) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (!isMah) {
+        // circle in data space
+        for (let i = 0; i <= 64; i++) {
+          const th = (i / 64) * Math.PI * 2;
+          const x = mean.x + r * Math.cos(th);
+          const y = mean.y + r * Math.sin(th);
+          const s = toScreen(x, y);
+          if (i === 0) ctx.moveTo(s.sx, s.sy);
+          else ctx.lineTo(s.sx, s.sy);
+        }
+      } else {
+        // Mahalanobis ball: points where d_M = r
+        // Solve via eigen of S: ellipse axes
+        // For 2D correlated, parametric via whitening inverse
+        for (let i = 0; i <= 64; i++) {
+          const th = (i / 64) * Math.PI * 2;
+          // unit circle in whitened space, map back by L * r
+          const z0 = r * Math.cos(th), z1 = r * Math.sin(th);
+          const x = mean.x + L00 * z0;
+          const y = mean.y + L10 * z0 + L11 * z1;
+          const s = toScreen(x, y);
+          if (i === 0) ctx.moveTo(s.sx, s.sy);
+          else ctx.lineTo(s.sx, s.sy);
+        }
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function render() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      // grid
+      ctx.strokeStyle = '#1e222d';
+      ctx.lineWidth = 1;
+      for (let i = -4; i <= 4; i++) {
+        const p1 = toScreen(i, -4), p2 = toScreen(i, 4);
+        ctx.beginPath(); ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy); ctx.stroke();
+        const q1 = toScreen(-4, i), q2 = toScreen(4, i);
+        ctx.beginPath(); ctx.moveTo(q1.sx, q1.sy); ctx.lineTo(q2.sx, q2.sy); ctx.stroke();
+      }
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+      ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+      ctx.stroke();
+
+      // contour levels
+      const levels = [1, 1.8, 2.6];
+      if (mode === 'both' || mode === 'l2') {
+        levels.forEach(r => drawEllipse(r, 'rgba(253, 214, 99, 0.7)', false));
+      }
+      if (mode === 'both' || mode === 'mah') {
+        levels.forEach(r => drawEllipse(r, 'rgba(197, 138, 249, 0.85)', true));
+      }
+
+      // data points
+      points.forEach(p => {
+        const s = toScreen(p.x, p.y);
+        ctx.fillStyle = '#8ab4f8';
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // mean
+      const m = toScreen(mean.x, mean.y);
+      ctx.fillStyle = '#81c995';
+      ctx.beginPath();
+      ctx.arc(m.sx, m.sy, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // test point
+      if (testPoint) {
+        const s = toScreen(testPoint.x, testPoint.y);
+        ctx.fillStyle = '#f28b82';
+        ctx.beginPath();
+        ctx.arc(s.sx, s.sy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        const d2 = euclidean(testPoint);
+        const dM = mahalanobis(testPoint);
+        document.getElementById('coord').textContent =
+          '(' + testPoint.x.toFixed(2) + ', ' + testPoint.y.toFixed(2) + ')';
+        document.getElementById('dL2').textContent = d2.toFixed(3);
+        document.getElementById('dMah').textContent = dM.toFixed(3);
+
+        let verdict = '';
+        if (dM < d2 - 0.15) verdict = '沿相关方向：马氏更近（更「正常」）';
+        else if (d2 < dM - 0.15) verdict = '逆相关方向：马氏更远（更异常）';
+        else verdict = '两种距离接近';
+        document.getElementById('verdict').textContent = verdict;
+      }
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = (e.clientX - rect.left) * (W / rect.width);
+      const sy = (e.clientY - rect.top) * (H / rect.height);
+      testPoint = toData(sx, sy);
+      render();
+    });
+
+    document.getElementById('btnBoth').onclick = () => {
+      mode = 'both';
+      document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+      document.getElementById('btnBoth').classList.add('active');
+      render();
+    };
+    document.getElementById('btnL2').onclick = () => {
+      mode = 'l2';
+      document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+      document.getElementById('btnL2').classList.add('active');
+      render();
+    };
+    document.getElementById('btnMah').onclick = () => {
+      mode = 'mah';
+      document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+      document.getElementById('btnMah').classList.add('active');
+      render();
+    };
+    document.getElementById('btnReset').onclick = () => {
+      testPoint = null;
+      document.getElementById('coord').textContent = '点击画布设置';
+      document.getElementById('dL2').textContent = '—';
+      document.getElementById('dMah').textContent = '—';
+      document.getElementById('verdict').textContent = '—';
+      render();
+    };
+
+    render();
+  </script>
+</body>
+</html>

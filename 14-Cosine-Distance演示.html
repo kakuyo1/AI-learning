@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosine Similarity / Distance 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1rem; align-items: center;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+      background: #12141c;
+      border-radius: 10px;
+      cursor: crosshair;
+    }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 1rem;
+      justify-content: center; margin-top: 0.7rem;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.88rem;
+    }
+    .info-card h3 {
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 0.3rem; font-weight: 500;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      color: #fff; font-size: 0.95rem;
+    }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 { color: #fff; font-size: 1rem; margin: 0.8rem 0 0.35rem; }
+    .hint {
+      text-align: center;
+      color: var(--orange);
+      font-size: 0.9rem;
+      margin-bottom: 0.6rem;
+      min-height: 1.3em;
+    }
+    footer {
+      margin-top: 1.8rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cosine Similarity / Distance 演示</h1>
+    <p class="subtitle">只比方向、不比长短 · 同射线上的点 Cosine 距离为 0</p>
+
+    <div class="controls">
+      <button class="primary" id="btnReset">重置向量</button>
+      <span style="color:#9aa0a6;font-size:0.85rem">先点设 A，再点设 B（可反复点）</span>
+    </div>
+
+    <div class="hint" id="hint">点击画布设置向量 A</div>
+
+    <div class="panel">
+      <canvas id="cv" width="640" height="400"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:#8ab4f8"></i> 向量 A</span>
+        <span><i class="dot" style="background:#fdd663"></i> 向量 B</span>
+        <span><i class="dot" style="background:#81c995"></i> 单位圆</span>
+        <span><i class="dot" style="background:#c58af9"></i> 夹角弧</span>
+        <span><i class="dot" style="background:#f28b82"></i> A 的方向射线（同射线 Cosine=1）</span>
+      </div>
+    </div>
+
+    <div class="info">
+      <div class="info-card">
+        <h3>向量 A</h3>
+        <div class="val" id="vA">—</div>
+      </div>
+      <div class="info-card">
+        <h3>向量 B</h3>
+        <div class="val" id="vB">—</div>
+      </div>
+      <div class="info-card">
+        <h3>夹角 θ</h3>
+        <div class="val" id="angle">—</div>
+      </div>
+      <div class="info-card">
+        <h3>Cosine 相似度</h3>
+        <div class="val" id="cosSim">—</div>
+      </div>
+      <div class="info-card">
+        <h3>Cosine 距离</h3>
+        <div class="val" id="cosDist">—</div>
+      </div>
+      <div class="info-card">
+        <h3>欧氏距离</h3>
+        <div class="val" id="euclid">—</div>
+      </div>
+    </div>
+
+    <div class="explain">
+      <strong>怎么看这张图？</strong>
+      <h3>1. Cosine 只看方向</h3>
+      绿色单位圆上，角度相同的点余弦相似度都是 1。<br>
+      红色虚线是 A 的方向射线：B 只要落在这条射线上（同向、可长短不同），Cosine 相似度 = 1，距离 = 0。
+      <h3>2. 和欧氏的差别</h3>
+      把 B 沿 A 的方向拉远：欧氏距离变大，但 Cosine 不变。<br>
+      这就是为什么「长文 vs 短文、同一主题」用 Cosine 更合适。
+      <h3>3. 数值</h3>
+      cos_sim = (A·B) / (|A||B|) ∈ [-1, 1]<br>
+      cos_dist = 1 - cos_sim ∈ [0, 2]
+    </div>
+
+    <footer>Cosine Similarity & Distance · 14-norms-and-distances</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    const scale = 70;
+
+    let vecA = { x: 1.8, y: 1.2 };
+    let vecB = { x: 0.9, y: 1.6 };
+    let step = 0; // 0 set A, 1 set B
+
+    function toScreen(x, y) {
+      return { sx: cx + x * scale, sy: cy - y * scale };
+    }
+    function toData(sx, sy) {
+      return { x: (sx - cx) / scale, y: (cy - sy) / scale };
+    }
+    function norm(v) {
+      return Math.sqrt(v.x * v.x + v.y * v.y);
+    }
+    function dot(a, b) {
+      return a.x * b.x + a.y * b.y;
+    }
+
+    function drawArrow(x0, y0, x1, y1, color, lw) {
+      const s0 = toScreen(x0, y0);
+      const s1 = toScreen(x1, y1);
+      const dx = s1.sx - s0.sx, dy = s1.sy - s0.sy;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 2) return;
+      const ux = dx / len, uy = dy / len;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = lw || 2.5;
+      ctx.beginPath();
+      ctx.moveTo(s0.sx, s0.sy);
+      ctx.lineTo(s1.sx, s1.sy);
+      ctx.stroke();
+      const ah = 12;
+      ctx.beginPath();
+      ctx.moveTo(s1.sx, s1.sy);
+      ctx.lineTo(s1.sx - ah * ux + ah * 0.4 * uy, s1.sy - ah * uy - ah * 0.4 * ux);
+      ctx.lineTo(s1.sx - ah * ux - ah * 0.4 * uy, s1.sy - ah * uy + ah * 0.4 * ux);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function render() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      // grid
+      ctx.strokeStyle = '#1e222d';
+      ctx.lineWidth = 1;
+      for (let i = -5; i <= 5; i++) {
+        const a = toScreen(i, -5), b = toScreen(i, 5);
+        ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+        const c = toScreen(-5, i), d = toScreen(5, i);
+        ctx.beginPath(); ctx.moveTo(c.sx, c.sy); ctx.lineTo(d.sx, d.sy); ctx.stroke();
+      }
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, cy); ctx.lineTo(W, cy);
+      ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+      ctx.stroke();
+
+      // unit circle
+      ctx.strokeStyle = 'rgba(129, 201, 149, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      const u0 = toScreen(1, 0);
+      ctx.arc(cx, cy, scale, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // ray of A (same direction = cos 1)
+      if (norm(vecA) > 0.05) {
+        const n = norm(vecA);
+        const far = 4.5;
+        const rx = (vecA.x / n) * far;
+        const ry = (vecA.y / n) * far;
+        ctx.strokeStyle = 'rgba(242, 139, 130, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath();
+        const o = toScreen(0, 0);
+        const f = toScreen(rx, ry);
+        const f2 = toScreen(-rx * 0.3, -ry * 0.3);
+        ctx.moveTo(f2.sx, f2.sy);
+        ctx.lineTo(f.sx, f.sy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // angle arc
+      if (norm(vecA) > 0.05 && norm(vecB) > 0.05) {
+        const angA = Math.atan2(vecA.y, vecA.x);
+        const angB = Math.atan2(vecB.y, vecB.x);
+        let a0 = angA, a1 = angB;
+        // draw shorter arc
+        let diff = a1 - a0;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        ctx.strokeStyle = 'rgba(197, 138, 249, 0.9)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, scale * 0.55, -a0, -a0 - diff, diff > 0);
+        ctx.stroke();
+      }
+
+      // vectors
+      drawArrow(0, 0, vecA.x, vecA.y, '#8ab4f8', 3);
+      drawArrow(0, 0, vecB.x, vecB.y, '#fdd663', 3);
+
+      // tips
+      const sa = toScreen(vecA.x, vecA.y);
+      const sb = toScreen(vecB.x, vecB.y);
+      ctx.fillStyle = '#8ab4f8';
+      ctx.beginPath(); ctx.arc(sa.sx, sa.sy, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fdd663';
+      ctx.beginPath(); ctx.arc(sb.sx, sb.sy, 6, 0, Math.PI * 2); ctx.fill();
+
+      // labels
+      ctx.font = '13px sans-serif';
+      ctx.fillStyle = '#8ab4f8';
+      ctx.fillText('A', sa.sx + 8, sa.sy - 8);
+      ctx.fillStyle = '#fdd663';
+      ctx.fillText('B', sb.sx + 8, sb.sy - 8);
+
+      // numbers
+      const nA = norm(vecA), nB = norm(vecB);
+      document.getElementById('vA').textContent =
+        '(' + vecA.x.toFixed(2) + ', ' + vecA.y.toFixed(2) + ')  |A|=' + nA.toFixed(2);
+      document.getElementById('vB').textContent =
+        '(' + vecB.x.toFixed(2) + ', ' + vecB.y.toFixed(2) + ')  |B|=' + nB.toFixed(2);
+
+      if (nA > 1e-6 && nB > 1e-6) {
+        const c = dot(vecA, vecB) / (nA * nB);
+        const clamped = Math.max(-1, Math.min(1, c));
+        const theta = Math.acos(clamped) * 180 / Math.PI;
+        const dCos = 1 - c;
+        const dL2 = Math.sqrt((vecA.x - vecB.x) ** 2 + (vecA.y - vecB.y) ** 2);
+        document.getElementById('angle').textContent = theta.toFixed(1) + '°';
+        document.getElementById('cosSim').textContent = c.toFixed(4);
+        document.getElementById('cosDist').textContent = dCos.toFixed(4);
+        document.getElementById('euclid').textContent = dL2.toFixed(4);
+      } else {
+        document.getElementById('angle').textContent = '—';
+        document.getElementById('cosSim').textContent = '—';
+        document.getElementById('cosDist').textContent = '—';
+        document.getElementById('euclid').textContent = '—';
+      }
+    }
+
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = (e.clientX - rect.left) * (W / rect.width);
+      const sy = (e.clientY - rect.top) * (H / rect.height);
+      const p = toData(sx, sy);
+      if (step === 0) {
+        vecA = p;
+        step = 1;
+        document.getElementById('hint').textContent = '再点击设置向量 B（可继续点以更新 B）';
+      } else {
+        vecB = p;
+        document.getElementById('hint').textContent = '已设置 A、B · 再点可改 B，或点「重置」';
+      }
+      render();
+    });
+
+    document.getElementById('btnReset').onclick = () => {
+      vecA = { x: 1.8, y: 1.2 };
+      vecB = { x: 0.9, y: 1.6 };
+      step = 0;
+      document.getElementById('hint').textContent = '点击画布设置向量 A';
+      render();
+    };
+
+    render();
+  </script>
+</body>
+</html>
