@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pearson vs Spearman 相关演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.active, button.primary {
+      background: #1a73e8; border-color: #1a73e8; color: #fff;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem;
+      margin-bottom: 1rem;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+      background: #12141c;
+      border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+    }
+    .info-card h3 {
+      font-size: 0.8rem; color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.35rem;
+      color: #fff;
+    }
+    .info-card .sub {
+      font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem;
+    }
+    .desc {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 0.8rem;
+      line-height: 1.7;
+    }
+    .desc strong { color: #fff; }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Pearson vs Spearman</h1>
+    <p class="subtitle">线性相关 vs 等级/单调相关 · 切换数据集看两者何时分叉</p>
+
+    <div class="controls">
+      <button class="active" data-mode="linear">线性 y≈x</button>
+      <button data-mode="cubic">单调曲线 y=x³</button>
+      <button data-mode="outlier">带异常点</button>
+      <button data-mode="noise">无相关噪声</button>
+      <button data-mode="neg">负相关</button>
+    </div>
+
+    <div class="panel">
+      <canvas id="cv" width="520" height="360"></canvas>
+      <div class="info">
+        <div class="info-card">
+          <h3>Pearson r（线性）</h3>
+          <div class="val" id="pearson">—</div>
+          <div class="sub" id="pearsonNote"></div>
+        </div>
+        <div class="info-card">
+          <h3>Spearman ρ（等级）</h3>
+          <div class="val" id="spearman">—</div>
+          <div class="sub" id="spearmanNote"></div>
+        </div>
+      </div>
+      <div class="desc" id="desc">选择上方模式查看</div>
+    </div>
+
+    <footer>Pearson vs Spearman · 15-statistics-for-ml</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const pad = 40;
+    const plotW = W - pad * 2, plotH = H - pad * 2;
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function generate(mode) {
+      const n = 40;
+      const pts = [];
+      if (mode === 'linear') {
+        for (let i = 0; i < n; i++) {
+          const x = -2 + 4 * (i / (n - 1)) + randn() * 0.08;
+          const y = x + randn() * 0.25;
+          pts.push({ x, y });
+        }
+      } else if (mode === 'cubic') {
+        for (let i = 0; i < n; i++) {
+          const t = -1.3 + 2.6 * (i / (n - 1));
+          const x = t + randn() * 0.03;
+          const y = t * t * t + randn() * 0.08;
+          pts.push({ x, y });
+        }
+      } else if (mode === 'outlier') {
+        for (let i = 0; i < n - 2; i++) {
+          const x = -2 + 4 * (i / (n - 3)) + randn() * 0.1;
+          const y = 0.15 * x + randn() * 0.35;
+          pts.push({ x, y });
+        }
+        pts.push({ x: 2.5, y: 3.2 });
+        pts.push({ x: 2.7, y: 3.5 });
+      } else if (mode === 'noise') {
+        for (let i = 0; i < n; i++) {
+          pts.push({ x: randn(), y: randn() });
+        }
+      } else if (mode === 'neg') {
+        for (let i = 0; i < n; i++) {
+          const x = -2 + 4 * (i / (n - 1)) + randn() * 0.08;
+          const y = -x + randn() * 0.3;
+          pts.push({ x, y });
+        }
+      }
+      return pts;
+    }
+
+    function mean(arr) {
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+    function pearson(pts) {
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      const mx = mean(xs), my = mean(ys);
+      let num = 0, dx = 0, dy = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const a = xs[i] - mx, b = ys[i] - my;
+        num += a * b;
+        dx += a * a;
+        dy += b * b;
+      }
+      return num / Math.sqrt(dx * dy);
+    }
+    function rank(arr) {
+      const idx = arr.map((v, i) => ({ v, i }));
+      idx.sort((a, b) => a.v - b.v);
+      const ranks = new Array(arr.length);
+      for (let i = 0; i < idx.length; i++) ranks[idx[i].i] = i + 1;
+      // simple average for ties could be added; skip for demo
+      return ranks;
+    }
+    function spearman(pts) {
+      const rx = rank(pts.map(p => p.x));
+      const ry = rank(pts.map(p => p.y));
+      const ranked = rx.map((x, i) => ({ x, y: ry[i] }));
+      return pearson(ranked);
+    }
+
+    function draw(pts, mode) {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      pts.forEach(p => {
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      });
+      const mx = (maxX - minX) * 0.1 || 0.5;
+      const my = (maxY - minY) * 0.1 || 0.5;
+      minX -= mx; maxX += mx; minY -= my; maxY += my;
+
+      function sx(x) { return pad + ((x - minX) / (maxX - minX)) * plotW; }
+      function sy(y) { return pad + plotH - ((y - minY) / (maxY - minY)) * plotH; }
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad, pad); ctx.lineTo(pad, H - pad); ctx.lineTo(W - pad, H - pad);
+      ctx.stroke();
+
+      // points
+      pts.forEach(p => {
+        ctx.fillStyle = '#8ab4f8';
+        ctx.beginPath();
+        ctx.arc(sx(p.x), sy(p.y), 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // linear regression line for visual (Pearson spirit)
+      const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+      const mxv = mean(xs), myv = mean(ys);
+      let num = 0, den = 0;
+      for (let i = 0; i < pts.length; i++) {
+        num += (xs[i] - mxv) * (ys[i] - myv);
+        den += (xs[i] - mxv) ** 2;
+      }
+      const slope = num / den;
+      const intercept = myv - slope * mxv;
+      ctx.strokeStyle = 'rgba(253, 214, 99, 0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx(minX), sy(slope * minX + intercept));
+      ctx.lineTo(sx(maxX), sy(slope * maxX + intercept));
+      ctx.stroke();
+
+      const r = pearson(pts);
+      const rho = spearman(pts);
+      document.getElementById('pearson').textContent = r.toFixed(3);
+      document.getElementById('spearman').textContent = rho.toFixed(3);
+
+      const notes = {
+        linear: {
+          p: '接近 ±1：线性很强',
+          s: '也接近 ±1：名次一致',
+          d: '<strong>线性关系：</strong>两者都高。黄线是线性拟合，点大致贴线。'
+        },
+        cubic: {
+          p: '明显小于 1：不是直线',
+          s: '仍接近 1：一直单调上升',
+          d: '<strong>y≈x³：</strong>曲线但单调。Pearson 下降（非线），Spearman 仍很高（排序一致）。这是两者最典型的分叉。'
+        },
+        outlier: {
+          p: '被异常点拉高/扭曲',
+          s: '更稳，受影响小',
+          d: '<strong>带异常点：</strong>右上角离群点会强烈拉动 Pearson；Spearman 只看名次，更稳健。'
+        },
+        noise: {
+          p: '接近 0',
+          s: '接近 0',
+          d: '<strong>无相关：</strong>两方向都接近 0，没有线性也没有单调关系。'
+        },
+        neg: {
+          p: '接近 −1',
+          s: '接近 −1',
+          d: '<strong>负相关：</strong>一个增、另一个减。两者都会给出接近 −1 的值。'
+        }
+      };
+      const n = notes[mode];
+      document.getElementById('pearsonNote').textContent = n.p;
+      document.getElementById('spearmanNote').textContent = n.s;
+      document.getElementById('desc').innerHTML = n.d;
+    }
+
+    let mode = 'linear';
+    function run() {
+      const pts = generate(mode);
+      draw(pts, mode);
+    }
+
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        mode = btn.dataset.mode;
+        run();
+      };
+    });
+
+    run();
+  </script>
+</body>
+</html>

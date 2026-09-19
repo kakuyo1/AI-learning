@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hypothesis Testing · p值直观演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.6rem;
+      align-items: center; margin-bottom: 1rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.88rem; color: var(--muted); flex-wrap: wrap;
+    }
+    input[type="range"] { width: 140px; }
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      background: #12141c;
+      border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.7rem 0.85rem;
+      font-size: 0.88rem;
+    }
+    .info-card h3 {
+      font-size: 0.75rem; color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.1rem; color: #fff;
+    }
+    .verdict {
+      margin-top: 0.8rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      background: #12141c;
+    }
+    .verdict.reject { border-left: 4px solid #81c995; }
+    .verdict.keep { border-left: 4px solid #fdd663; }
+    .explain {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 1rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 { color: #fff; font-size: 0.98rem; margin: 0.7rem 0 0.3rem; }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Hypothesis Testing · p 值直观演示</h1>
+    <p class="subtitle">H₀：两模型准确率相同 · 看「差值」在零假设下有多极端</p>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>模型 B 比 A 高多少（真实差值）</span>
+          <input type="range" id="effect" min="0" max="0.12" step="0.005" value="0.04">
+          <span id="effectLabel">0.040</span>
+        </div>
+        <div class="slider-row">
+          <span>每折样本量感（噪声）</span>
+          <input type="range" id="noise" min="0.01" max="0.08" step="0.005" value="0.035">
+          <span id="noiseLabel">0.035</span>
+        </div>
+        <button class="primary" id="btnSample">重新抽样一次</button>
+      </div>
+
+      <canvas id="cv" width="680" height="280"></canvas>
+
+      <div class="info">
+        <div class="info-card">
+          <h3>观察到的差值 d̄</h3>
+          <div class="val" id="obsDiff">—</div>
+        </div>
+        <div class="info-card">
+          <h3>p 值（双侧近似）</h3>
+          <div class="val" id="pval">—</div>
+        </div>
+        <div class="info-card">
+          <h3>α = 0.05</h3>
+          <div class="val" id="alpha">0.05</div>
+        </div>
+        <div class="info-card">
+          <h3>结论</h3>
+          <div class="val" id="decision" style="font-size:0.95rem">—</div>
+        </div>
+      </div>
+      <div class="verdict keep" id="verdict">拖动滑块并抽样，观察红线（观测差值）落在哪里</div>
+    </div>
+
+    <div class="explain">
+      <strong>图在画什么？</strong>
+      <h3>灰色钟形 = 「若 H₀ 为真」时，差值的抽样分布</h3>
+      假设两模型其实一样好，反复做实验，得分差会在 0 附近波动，形成这团分布。
+      <h3>红色竖线 = 你这次实验真正看到的差值</h3>
+      <h3>橙色尾部面积 ≈ p 值</h3>
+      在 H₀ 下，出现「像红线这样或更极端」的比例。<br>
+      红线越靠外，尾部越小，p 越小 → 越难用「纯运气」解释 → 越倾向拒绝 H₀。
+      <h3>怎么玩</h3>
+      • 真实差值调大、噪声调小 → 红线常跑到外面，p 小，拒绝 H₀<br>
+      • 真实差值≈0 或噪声很大 → 红线常在中间，p 大，无法拒绝 H₀
+    </div>
+
+    <footer>Hypothesis Testing 直观演示 · 15-statistics-for-ml</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let trueEffect = 0.04;
+    let noise = 0.035;
+    let observed = 0.04;
+    const nFolds = 10; // paired differences
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function sampleOnce() {
+      // simulate paired fold differences under true effect + noise
+      let sum = 0;
+      for (let i = 0; i < nFolds; i++) {
+        sum += trueEffect + randn() * noise;
+      }
+      observed = sum / nFolds;
+      // SE under H0 approx noise/sqrt(n)
+      const se = noise / Math.sqrt(nFolds);
+      const t = observed / se;
+      // two-sided p from normal approx
+      const p = 2 * (1 - normalCdf(Math.abs(t)));
+      return { observed, se, p };
+    }
+
+    function normalCdf(z) {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const d = 0.3989423 * Math.exp(-z * z / 2);
+      const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return z > 0 ? 1 - p : p;
+    }
+
+    function draw(se, p) {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      // x range for difference
+      const xMin = -0.15, xMax = 0.15;
+      function sx(x) {
+        return 50 + ((x - xMin) / (xMax - xMin)) * (W - 100);
+      }
+      const baseY = H - 40;
+      const peakH = 160;
+
+      // null distribution N(0, se^2) but use a display se for visibility
+      const dispSe = Math.max(se, 0.012);
+
+      // density curve under H0
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        const z = x / dispSe;
+        const y = Math.exp(-0.5 * z * z);
+        const px = sx(x);
+        const py = baseY - y * peakH;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // fill tails beyond |observed|
+      const thr = Math.abs(observed);
+      ctx.fillStyle = 'rgba(253, 214, 99, 0.35)';
+      // right tail
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i <= 200; i++) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        if (x < thr) continue;
+        const z = x / dispSe;
+        const y = Math.exp(-0.5 * z * z);
+        const px = sx(x);
+        const py = baseY - y * peakH;
+        if (!started) { ctx.moveTo(px, baseY); ctx.lineTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMax), baseY);
+      ctx.closePath();
+      ctx.fill();
+      // left tail
+      ctx.beginPath();
+      started = false;
+      for (let i = 200; i >= 0; i--) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        if (x > -thr) continue;
+        const z = x / dispSe;
+        const y = Math.exp(-0.5 * z * z);
+        const px = sx(x);
+        const py = baseY - y * peakH;
+        if (!started) { ctx.moveTo(px, baseY); ctx.lineTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMin), baseY);
+      ctx.closePath();
+      ctx.fill();
+
+      // axis
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(40, baseY);
+      ctx.lineTo(W - 40, baseY);
+      ctx.stroke();
+
+      // zero line
+      ctx.strokeStyle = '#5f6368';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sx(0), 20);
+      ctx.lineTo(sx(0), baseY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('0 (H₀: 无差别)', sx(0) + 6, 32);
+
+      // observed line
+      ctx.strokeStyle = '#f28b82';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(sx(observed), 25);
+      ctx.lineTo(sx(observed), baseY);
+      ctx.stroke();
+      ctx.fillStyle = '#f28b82';
+      ctx.fillText('观测差值', sx(observed) + 6, 50);
+
+      // labels
+      ctx.fillStyle = '#9aa0a6';
+      ctx.fillText('若 H₀ 为真，差值的抽样分布', 50, 22);
+      ctx.fillStyle = '#fdd663';
+      ctx.fillText('橙色面积 ≈ p 值（双侧）', W - 200, 22);
+
+      // ticks
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '11px sans-serif';
+      [-0.1, -0.05, 0, 0.05, 0.1].forEach(v => {
+        ctx.fillText(v.toFixed(2), sx(v) - 10, baseY + 16);
+      });
+
+      // update cards
+      document.getElementById('obsDiff').textContent = observed.toFixed(4);
+      document.getElementById('pval').textContent = p < 0.001 ? '< 0.001' : p.toFixed(3);
+      const reject = p < 0.05;
+      document.getElementById('decision').textContent = reject ? '拒绝 H₀' : '不拒绝 H₀';
+      document.getElementById('decision').style.color = reject ? '#81c995' : '#fdd663';
+
+      const box = document.getElementById('verdict');
+      if (reject) {
+        box.className = 'verdict reject';
+        box.innerHTML = '<strong style="color:#81c995">拒绝 H₀：</strong>在「两模型一样好」的假设下，这么大的差值很少见（p &lt; 0.05）。更有理由认为存在真实差别。';
+      } else {
+        box.className = 'verdict keep';
+        box.innerHTML = '<strong style="color:#fdd663">不拒绝 H₀：</strong>当前差值仍可能由随机波动产生。证据不足以宣称 B 更好（也可能是样本不够或差别太小）。';
+      }
+    }
+
+    function refresh() {
+      const { se, p } = sampleOnce();
+      draw(se, p);
+    }
+
+    document.getElementById('effect').oninput = (e) => {
+      trueEffect = parseFloat(e.target.value);
+      document.getElementById('effectLabel').textContent = trueEffect.toFixed(3);
+      refresh();
+    };
+    document.getElementById('noise').oninput = (e) => {
+      noise = parseFloat(e.target.value);
+      document.getElementById('noiseLabel').textContent = noise.toFixed(3);
+      refresh();
+    };
+    document.getElementById('btnSample').onclick = refresh;
+
+    refresh();
+  </script>
+</body>
+</html>
