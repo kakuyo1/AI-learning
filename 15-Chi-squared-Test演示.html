@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi-squared Test · 完整演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .tab.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.55rem;
+      align-items: center; margin-bottom: 0.9rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 120px; }
+    table.freq {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.88rem; margin: 0.5rem 0;
+    }
+    table.freq th, table.freq td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.6rem; text-align: center;
+    }
+    table.freq th { background: #12141c; color: var(--blue); }
+    table.freq td.num { font-family: "SF Mono", Consolas, monospace; }
+    .bars {
+      display: flex; align-items: flex-end; gap: 1rem;
+      height: 160px; margin: 0.8rem 0;
+    }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+    .bar-group {
+      flex: 1; display: flex; align-items: flex-end; gap: 0.3rem;
+      justify-content: center; width: 100%;
+    }
+    .bar {
+      width: 32px; border-radius: 5px 5px 0 0;
+      transition: height 0.2s;
+    }
+    .bar.obs { background: #8ab4f8; }
+    .bar.exp { background: rgba(253, 214, 99, 0.75); }
+    .bar-label { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; }
+    .legend {
+      display: flex; gap: 1rem; justify-content: center;
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 0.3rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.25rem; }
+    .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.45rem; margin-top: 0.6rem;
+    }
+    .info-card {
+      background: #12141c; border-radius: 10px;
+      padding: 0.55rem 0.7rem; font-size: 0.86rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1rem; color: #fff;
+    }
+    .formula {
+      background: #12141c; border-radius: 10px;
+      padding: 0.7rem 0.9rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.85rem; color: var(--blue);
+      margin: 0.6rem 0; line-height: 1.65;
+    }
+    .verdict {
+      padding: 0.65rem 0.9rem; border-radius: 10px;
+      font-size: 0.9rem; background: #12141c; margin-top: 0.5rem;
+    }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .explain {
+      font-size: 0.9rem; color: #c4c7ce;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.95rem;
+      margin: 0.65rem 0 0.25rem;
+    }
+    .hidden { display: none; }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Chi-squared Test · 完整演示</h1>
+    <p class="subtitle">拟合优度 · χ² 公式 · 卡方分布右尾 = p 值</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="fit">拟合优度实验</button>
+      <button class="tab" data-tab="dist">卡方分布与 p 值</button>
+      <button class="tab" data-tab="theory">原理说明</button>
+    </div>
+
+    <!-- FIT TAB -->
+    <div id="tab-fit">
+      <div class="panel">
+        <div class="controls">
+          <button class="active" data-preset="match">接近期望</button>
+          <button data-preset="mild">轻度偏离</button>
+          <button data-preset="strong">明显偏离</button>
+          <div class="slider-row">
+            <span>总样本 n</span>
+            <input type="range" id="nSlider" min="50" max="500" step="10" value="200">
+            <span id="nLabel">200</span>
+          </div>
+          <button class="primary" id="btnRand">随机扰动</button>
+        </div>
+
+        <div class="legend">
+          <span><i class="dot" style="background:#8ab4f8"></i> 观察 O</span>
+          <span><i class="dot" style="background:#fdd663"></i> 期望 E</span>
+        </div>
+        <div class="bars" id="bars"></div>
+
+        <table class="freq">
+          <thead>
+            <tr><th>类别</th><th>观察 O</th><th>期望 E</th><th>(O−E)²/E</th></tr>
+          </thead>
+          <tbody id="freqBody"></tbody>
+        </table>
+
+        <div class="formula" id="formula">χ² = Σ (O−E)²/E = …</div>
+
+        <div class="info">
+          <div class="info-card"><h3>χ² 统计量</h3><div class="val" id="chi2">—</div></div>
+          <div class="info-card"><h3>df = k−1</h3><div class="val" id="dfVal">2</div></div>
+          <div class="info-card"><h3>近似 p 值</h3><div class="val" id="pval">—</div></div>
+          <div class="info-card"><h3>α=0.05</h3><div class="val" id="decision">—</div></div>
+        </div>
+        <div class="verdict" id="verdict">—</div>
+      </div>
+    </div>
+
+    <!-- DIST TAB -->
+    <div id="tab-dist" class="hidden">
+      <div class="panel">
+        <div class="controls">
+          <div class="slider-row">
+            <span>自由度 df</span>
+            <input type="range" id="dfSlider" min="1" max="12" step="1" value="2">
+            <span id="dfLabel">2</span>
+          </div>
+          <div class="slider-row">
+            <span>观测 χ²</span>
+            <input type="range" id="chiSlider" min="0.2" max="25" step="0.1" value="8">
+            <span id="chiLabel">8.0</span>
+          </div>
+          <button class="primary" id="btnSync">用上方实验的 χ²</button>
+        </div>
+        <canvas id="cvChi" width="900" height="300"></canvas>
+        <div class="info" style="margin-top:0.7rem">
+          <div class="info-card"><h3>观测 χ²</h3><div class="val" id="dChi">—</div></div>
+          <div class="info-card"><h3>右尾 p = P(χ²_df ≥ 观测)</h3><div class="val" id="dP">—</div></div>
+          <div class="info-card"><h3>df</h3><div class="val" id="dDf">—</div></div>
+          <div class="info-card"><h3>结论</h3><div class="val" id="dDec">—</div></div>
+        </div>
+      </div>
+      <div class="panel explain">
+        <strong>图怎么读？</strong>
+        <h3>蓝色曲线</h3>
+        当前 df 下，H₀ 为真时 χ² 统计量的概率密度（卡方分布）。
+        <h3>红色竖线</h3>
+        你观测到的 χ²。
+        <h3>橙色区域</h3>
+        右尾：≥ 观测值的概率 = <strong>p 值</strong>。<br>
+        竖线越往右 → 橙色越小 → p 越小 → 越倾向拒绝「观察=期望」。
+      </div>
+    </div>
+
+    <!-- THEORY -->
+    <div id="tab-theory" class="hidden">
+      <div class="panel explain">
+        <strong>卡方检验要点</strong>
+        <h3>公式</h3>
+        χ² = Σ (Oᵢ − Eᵢ)² / Eᵢ<br>
+        差越大、期望越小，该项越大。
+        <h3>自由度</h3>
+        拟合给定比例时 df = 类别数 − 1（比例总和为 1）。
+        <h3>χ² 与 p 的对应</h3>
+        p = P(卡方随机量 ≥ 你的 χ²)，即分布右尾面积。<br>
+        χ² 大 → 尾部小 → p 小；不是简单反比，而是由卡方密度积分决定。
+        <h3>常见用途</h3>
+        输出类别比例是否偏离训练分布；问卷/实验计数是否符合理论比例；列联表独立性（扩展形式）。
+        <h3>注意</h3>
+        各类期望频数不宜过小（经验上常希望 E≥5），否则近似变差。
+      </div>
+    </div>
+
+    <footer>Chi-squared Test 完整演示 · 15-statistics-for-ml</footer>
+  </div>
+
+  <script>
+    const categories = ['正面', '中性', '负面'];
+    const expProp = [0.5, 0.3, 0.2];
+    let n = 200;
+    let observed = [100, 60, 40];
+    let preset = 'match';
+    let lastChi2 = 0;
+
+    function normalCdf(z) {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const d = 0.3989423 * Math.exp(-z * z / 2);
+      const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return z > 0 ? 1 - p : p;
+    }
+    function chi2PValue(x, df) {
+      if (x <= 0) return 1;
+      const h = 2 / (9 * df);
+      const z = ((x / df) ** (1 / 3) - (1 - h)) / Math.sqrt(h);
+      return Math.max(0, Math.min(1, 1 - normalCdf(z)));
+    }
+    function lngamma(z) {
+      const g = 7;
+      const p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+        771.32342877765313, -176.61502916214059, 12.507343278686905,
+        -0.13857109526572012, 9.984369654078761e-6, 1.5056327351493116e-7];
+      if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lngamma(1 - z);
+      z -= 1;
+      let x = p[0];
+      for (let i = 1; i < g + 2; i++) x += p[i] / (z + i);
+      const t = z + g + 0.5;
+      return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+    }
+    function chi2Pdf(x, df) {
+      if (x <= 0) return 0;
+      const k = df / 2;
+      return Math.exp(-lngamma(k) - k * Math.log(2) + (k - 1) * Math.log(x) - x / 2);
+    }
+
+    // tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        ['fit', 'dist', 'theory'].forEach(id => {
+          document.getElementById('tab-' + id).classList.toggle('hidden', tab.dataset.tab !== id);
+        });
+        if (tab.dataset.tab === 'dist') drawChi();
+      };
+    });
+
+    function setPreset(name) {
+      preset = name;
+      document.querySelectorAll('[data-preset]').forEach(b => {
+        b.classList.toggle('active', b.dataset.preset === name);
+      });
+      let raw;
+      if (name === 'match') raw = expProp.slice();
+      else if (name === 'mild') raw = [0.58, 0.27, 0.15];
+      else raw = [0.72, 0.18, 0.1];
+      observed = raw.map(p => Math.round(p * n));
+      observed[0] += n - observed.reduce((a, b) => a + b, 0);
+      renderFit();
+    }
+
+    function randomize() {
+      let raw = expProp.map(p => Math.max(0.03, p + (Math.random() - 0.5) * 0.28));
+      const s = raw.reduce((a, b) => a + b, 0);
+      raw = raw.map(x => x / s);
+      observed = raw.map(p => Math.round(p * n));
+      observed[0] += n - observed.reduce((a, b) => a + b, 0);
+      document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('active'));
+      renderFit();
+    }
+
+    function renderFit() {
+      const expected = expProp.map(p => p * n);
+      const terms = observed.map((o, i) => (o - expected[i]) ** 2 / expected[i]);
+      const chi2 = terms.reduce((a, b) => a + b, 0);
+      lastChi2 = chi2;
+      const df = categories.length - 1;
+      const p = chi2PValue(chi2, df);
+
+      document.getElementById('freqBody').innerHTML = categories.map((c, i) =>
+        '<tr><td>' + c + '</td><td class="num">' + observed[i] +
+        '</td><td class="num">' + expected[i].toFixed(1) +
+        '</td><td class="num">' + terms[i].toFixed(3) + '</td></tr>'
+      ).join('');
+
+      document.getElementById('formula').textContent =
+        'χ² = Σ (O−E)²/E = ' + terms.map(t => t.toFixed(3)).join(' + ') + ' = ' + chi2.toFixed(3);
+
+      document.getElementById('chi2').textContent = chi2.toFixed(3);
+      document.getElementById('dfVal').textContent = String(df);
+      document.getElementById('pval').textContent = p < 0.001 ? '<0.001' : p.toFixed(3);
+      const reject = p < 0.05;
+      document.getElementById('decision').textContent = reject ? '拒绝「一致」' : '不拒绝';
+      document.getElementById('decision').style.color = reject ? '#f28b82' : '#81c995';
+
+      const v = document.getElementById('verdict');
+      if (reject) {
+        v.style.borderLeft = '4px solid #f28b82';
+        v.innerHTML = '<strong style="color:#f28b82">差异显著</strong>：在「真按期望比例」下，这种 χ² 较少见。可到「卡方分布」页查看右尾。';
+      } else {
+        v.style.borderLeft = '4px solid #81c995';
+        v.innerHTML = '<strong style="color:#81c995">尚不显著</strong>：偏离仍可能由随机波动解释。';
+      }
+
+      const maxV = Math.max(...observed, ...expected, 1);
+      document.getElementById('bars').innerHTML = categories.map((c, i) =>
+        '<div class="bar-col"><div class="bar-group">' +
+        '<div class="bar obs" style="height:' + (observed[i] / maxV * 140) + 'px"></div>' +
+        '<div class="bar exp" style="height:' + (expected[i] / maxV * 140) + 'px"></div>' +
+        '</div><div class="bar-label">' + c + '</div></div>'
+      ).join('');
+    }
+
+    function drawChi() {
+      const canvas = document.getElementById('cvChi');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const df = parseInt(document.getElementById('dfSlider').value, 10);
+      const chiObs = parseFloat(document.getElementById('chiSlider').value);
+      document.getElementById('dfLabel').textContent = df;
+      document.getElementById('chiLabel').textContent = chiObs.toFixed(1);
+
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const xMax = Math.max(20, chiObs * 1.6, df * 4);
+      const padL = 45, padR = 20, padT = 24, padB = 32;
+      function sx(x) { return padL + (x / xMax) * (W - padL - padR); }
+
+      let maxP = 0;
+      for (let i = 1; i <= 200; i++) {
+        const x = (i / 200) * xMax;
+        maxP = Math.max(maxP, chi2Pdf(x, df));
+      }
+      function sy(p) { return padT + (1 - p / (maxP * 1.15)) * (H - padT - padB); }
+
+      // tail fill
+      ctx.fillStyle = 'rgba(253, 214, 99, 0.4)';
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i <= 200; i++) {
+        const x = (i / 200) * xMax;
+        if (x < chiObs) continue;
+        const px = sx(x), py = sy(chi2Pdf(x, df));
+        if (!started) {
+          ctx.moveTo(px, H - padB);
+          ctx.lineTo(px, py);
+          started = true;
+        } else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMax), H - padB);
+      ctx.closePath();
+      ctx.fill();
+
+      // curve
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const x = (i / 200) * xMax + 0.001;
+        const px = sx(x), py = sy(chi2Pdf(x, df));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // observed line
+      ctx.strokeStyle = '#f28b82';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(sx(chiObs), padT);
+      ctx.lineTo(sx(chiObs), H - padB);
+      ctx.stroke();
+      ctx.fillStyle = '#f28b82';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('观测 χ²', sx(chiObs) + 6, padT + 14);
+
+      // axis
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('卡方分布 df=' + df + ' · 橙区 = p 值（右尾）', padL, 16);
+
+      const p = chi2PValue(chiObs, df);
+      document.getElementById('dChi').textContent = chiObs.toFixed(2);
+      document.getElementById('dP').textContent = p < 0.001 ? '<0.001' : p.toFixed(3);
+      document.getElementById('dDf').textContent = String(df);
+      const rej = p < 0.05;
+      document.getElementById('dDec').textContent = rej ? '拒绝 H₀' : '不拒绝 H₀';
+      document.getElementById('dDec').style.color = rej ? '#f28b82' : '#81c995';
+    }
+
+    document.querySelectorAll('[data-preset]').forEach(b => {
+      b.onclick = () => setPreset(b.dataset.preset);
+    });
+    document.getElementById('nSlider').oninput = e => {
+      n = parseInt(e.target.value, 10);
+      document.getElementById('nLabel').textContent = n;
+      setPreset(preset);
+    };
+    document.getElementById('btnRand').onclick = randomize;
+    document.getElementById('dfSlider').oninput = drawChi;
+    document.getElementById('chiSlider').oninput = drawChi;
+    document.getElementById('btnSync').onclick = () => {
+      document.getElementById('chiSlider').value = Math.min(25, Math.max(0.2, lastChi2));
+      document.getElementById('dfSlider').value = categories.length - 1;
+      drawChi();
+    };
+
+    setPreset('match');
+  </script>
+</body>
+</html>

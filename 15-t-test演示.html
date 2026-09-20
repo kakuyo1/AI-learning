@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>t-test 完整演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.55rem; color: #fff; margin-bottom: 0.2rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    h2 {
+      font-size: 1.1rem; color: var(--blue);
+      margin: 1.6rem 0 0.7rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .tab.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.7rem;
+      align-items: center; margin-bottom: 0.9rem;
+    }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 110px; }
+    button.primary {
+      background: #1a73e8; color: #fff; border: none;
+      border-radius: 8px; padding: 0.4rem 0.85rem;
+      font-size: 0.85rem; cursor: pointer;
+    }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 0.9rem;
+      margin-top: 0.8rem;
+    }
+    @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.65rem 0.8rem;
+      font-size: 0.86rem;
+      margin-bottom: 0.45rem;
+    }
+    .info-card h3 {
+      font-size: 0.72rem; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.05rem; color: #fff;
+    }
+    table.folds {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.78rem;
+      font-family: "SF Mono", Consolas, monospace;
+    }
+    table.folds th, table.folds td {
+      border: 1px solid #2a2e3a;
+      padding: 0.25rem 0.35rem;
+      text-align: center;
+    }
+    table.folds th { background: #12141c; color: var(--blue); }
+    .pos { color: #81c995; }
+    .neg { color: #f28b82; }
+    .formula {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.88rem;
+      color: var(--blue);
+      margin: 0.6rem 0;
+      line-height: 1.7;
+    }
+    .steps {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+    }
+    .steps li { margin-bottom: 0.4rem; }
+    .verdict {
+      margin-top: 0.7rem;
+      padding: 0.7rem 0.95rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      background: #12141c;
+    }
+    .explain {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.95rem;
+      margin: 0.75rem 0 0.3rem;
+    }
+    .compare {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.85rem; margin: 0.6rem 0;
+    }
+    .compare th, .compare td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.6rem;
+      text-align: left; vertical-align: top;
+    }
+    .compare th { background: #12141c; color: var(--blue); }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>t-test 完整演示</h1>
+    <p class="subtitle">单样本 · 双样本 · 配对 · 公式逐步拆解 · t 分布与 p 值</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="paired">配对 t（比两模型）</button>
+      <button class="tab" data-tab="theory">公式与三种检验</button>
+      <button class="tab" data-tab="tdist">t 分布示意</button>
+    </div>
+
+    <!-- ========== PAIRED ========== -->
+    <div id="tab-paired">
+      <div class="panel">
+        <div class="controls">
+          <div class="slider-row">
+            <span>B 相对 A 真实优势</span>
+            <input type="range" id="effect" min="-0.04" max="0.1" step="0.005" value="0.035">
+            <span id="effectLabel">0.035</span>
+          </div>
+          <div class="slider-row">
+            <span>折间噪声</span>
+            <input type="range" id="noise" min="0.01" max="0.06" step="0.005" value="0.022">
+            <span id="noiseLabel">0.022</span>
+          </div>
+          <div class="slider-row">
+            <span>折数 k</span>
+            <input type="range" id="kfolds" min="5" max="15" step="1" value="10">
+            <span id="kLabel">10</span>
+          </div>
+          <button class="primary" id="btnResample">重新抽样</button>
+        </div>
+
+        <canvas id="cvBars" width="900" height="200"></canvas>
+
+        <div class="grid2">
+          <div>
+            <div style="font-size:0.8rem;color:#9aa0a6;margin-bottom:0.3rem">配对得分与差值 dᵢ = B − A</div>
+            <div style="max-height:260px;overflow:auto">
+              <table class="folds" id="foldTable">
+                <thead>
+                  <tr><th>折</th><th>A</th><th>B</th><th>d</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="info-card"><h3>① 平均差值 d̄</h3><div class="val" id="meanD">—</div></div>
+            <div class="info-card"><h3>② 差值样本标准差 s_d</h3><div class="val" id="sd">—</div></div>
+            <div class="info-card"><h3>③ 标准误 SE = s_d/√n</h3><div class="val" id="se">—</div></div>
+            <div class="info-card"><h3>④ t = d̄ / SE</h3><div class="val" id="tStat">—</div></div>
+            <div class="info-card"><h3>⑤ df = n−1 · p 值</h3><div class="val" id="pval">—</div></div>
+            <div class="info-card"><h3>⑥ 95% CI for d̄（近似）</h3><div class="val" id="ci">—</div></div>
+            <div class="info-card"><h3>⑦ Cohen's d 效应量</h3><div class="val" id="cohen">—</div></div>
+          </div>
+        </div>
+
+        <div class="formula" id="formulaLive">
+          t = d̄ / (s_d / √n) = … 
+        </div>
+        <div class="verdict" id="verdict">—</div>
+      </div>
+
+      <div class="panel explain">
+        <strong>逐步在做什么？</strong>
+        <ol class="steps" style="padding-left:1.2rem;margin-top:0.5rem">
+          <li>同一 k 折上跑 A、B，得到配对差值 dᵢ（消掉折难度的共同波动）</li>
+          <li>算平均差 d̄：B 平均高多少</li>
+          <li>算 s_d：这些差值自身波动有多大（除以 n−1，Bessel）</li>
+          <li>标准误 SE = s_d/√n：均值估得有多准</li>
+          <li>t = d̄/SE：差值相对「噪音」有多大；|t| 大 → 不像运气</li>
+          <li>在 df=n−1 的 t 分布下把 |t| 转成 p 值</li>
+          <li>CI：d̄ ± t<sub>临界</sub>×SE；若 CI 不含 0，常与拒绝 H₀ 一致</li>
+          <li>Cohen's d = d̄/s_d：差别「实际有多大」（与样本量无关的尺度）</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ========== THEORY ========== -->
+    <div id="tab-theory" class="hidden">
+      <div class="panel explain">
+        <strong>三种 t 检验对比</strong>
+        <table class="compare">
+          <tr>
+            <th>类型</th>
+            <th>问题</th>
+            <th>核心公式</th>
+            <th>ML 场景</th>
+          </tr>
+          <tr>
+            <td>单样本</td>
+            <td>均值是否等于 μ₀？</td>
+            <td>t = (x̄−μ₀)/(s/√n)</td>
+            <td>准确率是否高于 0.9 这类基线</td>
+          </tr>
+          <tr>
+            <td>双样本（Welch）</td>
+            <td>两组独立均值是否不同？</td>
+            <td>t = (x̄₁−x̄₂)/√(s₁²/n₁+s₂²/n₂)</td>
+            <td>两组用户、两批独立测试集</td>
+          </tr>
+          <tr>
+            <td><strong>配对</strong></td>
+            <td>成对差值均值是否为 0？</td>
+            <td>先 dᵢ=xᵢ−yᵢ，再单样本 t</td>
+            <td><strong>同一折上比两模型（最常用）</strong></td>
+          </tr>
+        </table>
+
+        <h3>为什么配对更合适比模型？</h3>
+        同一折数据「天生难/易」会同时影响 A 和 B。用差值后，这部分共同方差被减掉，只剩下「谁相对更好」的信号，检验更灵敏。
+
+        <h3>H₀ / H₁</h3>
+        H₀：平均差值 = 0（两模型无差别）<br>
+        H₁：平均差值 ≠ 0（双侧）或 &gt; 0（只关心 B 更好）
+
+        <h3>p 值与决策</h3>
+        p = 在 H₀ 下，出现 |T| 像现在这么大或更大的概率。<br>
+        常用 α=0.05：p&lt;α → 拒绝 H₀。仍要看效应量与业务成本。
+
+        <h3>效应量 Cohen's d</h3>
+        d = 0.2 小 · 0.5 中 · 0.8 大。<br>
+        样本极大时，微弱差别也能显著；Cohen's d 帮你判断「有没有实际意义」。
+      </div>
+    </div>
+
+    <!-- ========== T DIST ========== -->
+    <div id="tab-tdist" class="hidden">
+      <div class="panel">
+        <div class="controls">
+          <div class="slider-row">
+            <span>自由度 df</span>
+            <input type="range" id="dfSlider" min="2" max="40" step="1" value="9">
+            <span id="dfLabel">9</span>
+          </div>
+          <div class="slider-row">
+            <span>当前 |t|</span>
+            <input type="range" id="tSlider" min="0" max="4" step="0.05" value="2.2">
+            <span id="tLabel">2.20</span>
+          </div>
+        </div>
+        <canvas id="cvT" width="900" height="280"></canvas>
+        <div class="info-card" style="margin-top:0.7rem">
+          <h3>示意：双侧尾部面积 ≈ p 值</h3>
+          <div class="val" id="tPval">—</div>
+        </div>
+      </div>
+      <div class="panel explain">
+        <strong>t 分布在干什么？</strong>
+        <h3>和标准正态的关系</h3>
+        用样本标准差估总体标准差时，统计量不再精确服从标准正态，而是更「胖尾」的 t 分布。<br>
+        df 越小尾巴越厚（更不确定）；df→∞ 时 t 分布接近标准正态。
+        <h3>图中</h3>
+        蓝色曲线 = 当前 df 下的 t 密度；橙色 = |T| ≥ 你设的 |t| 的双侧尾部（即 p 值）。<br>
+        把「配对」页算出来的 t 填到这里，就能从分布上看到 p 从哪来。
+      </div>
+    </div>
+
+    <footer>t-test 完整演示 · 15-statistics-for-ml</footer>
+  </div>
+
+  <script>
+    // ----- tabs -----
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        ['paired', 'theory', 'tdist'].forEach(id => {
+          document.getElementById('tab-' + id).classList.toggle('hidden', tab.dataset.tab !== id);
+        });
+        if (tab.dataset.tab === 'tdist') drawT();
+      };
+    });
+
+    // ----- utils -----
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    function mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }
+    function sampleStd(a) {
+      const m = mean(a);
+      return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1));
+    }
+    function normalCdf(z) {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const d = 0.3989423 * Math.exp(-z * z / 2);
+      const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return z > 0 ? 1 - p : p;
+    }
+    // crude t-tail via normal for large df; for small df slightly anti-conservative ok for demo
+    function tPValue(t, df) {
+      // simple approximation: use normal for display; scale a bit for small df
+      const adj = Math.abs(t) * Math.sqrt(df / (df + 1));
+      return 2 * (1 - normalCdf(adj));
+    }
+
+    // ----- paired demo -----
+    let effect = 0.035, noise = 0.022, n = 10;
+    let scoresA = [], scoresB = [], diffs = [];
+
+    function resample() {
+      scoresA = []; scoresB = []; diffs = [];
+      for (let i = 0; i < n; i++) {
+        const base = 0.82 + randn() * 0.025;
+        const a = Math.min(0.97, Math.max(0.55, base + randn() * noise * 0.45));
+        const b = Math.min(0.97, Math.max(0.55, base + effect + randn() * noise * 0.45));
+        scoresA.push(a); scoresB.push(b); diffs.push(b - a);
+      }
+      renderPaired();
+    }
+
+    function renderPaired() {
+      const m = mean(diffs);
+      const s = sampleStd(diffs);
+      const se = s / Math.sqrt(n);
+      const t = m / se;
+      const p = tPValue(t, n - 1);
+      const tCrit = 1.96; // approx 95% for large df; fine for demo
+      const ciLo = m - tCrit * se, ciHi = m + tCrit * se;
+      const cohen = m / s;
+
+      const tbody = document.querySelector('#foldTable tbody');
+      tbody.innerHTML = diffs.map((d, i) =>
+        '<tr><td>' + (i + 1) + '</td><td>' + scoresA[i].toFixed(3) +
+        '</td><td>' + scoresB[i].toFixed(3) +
+        '</td><td class="' + (d >= 0 ? 'pos' : 'neg') + '">' +
+        (d >= 0 ? '+' : '') + d.toFixed(3) + '</td></tr>'
+      ).join('');
+
+      document.getElementById('meanD').textContent = (m >= 0 ? '+' : '') + m.toFixed(4);
+      document.getElementById('sd').textContent = s.toFixed(4);
+      document.getElementById('se').textContent = se.toFixed(4);
+      document.getElementById('tStat').textContent = t.toFixed(3);
+      document.getElementById('pval').textContent = 'df=' + (n - 1) + ' · p=' + (p < 0.001 ? '<0.001' : p.toFixed(3));
+      document.getElementById('ci').textContent = '[' + ciLo.toFixed(3) + ', ' + ciHi.toFixed(3) + ']';
+      document.getElementById('cohen').textContent = cohen.toFixed(3) + (Math.abs(cohen) < 0.2 ? '（小）' : Math.abs(cohen) < 0.5 ? '（中小）' : Math.abs(cohen) < 0.8 ? '（中）' : '（大）');
+
+      document.getElementById('formulaLive').textContent =
+        't = d̄ / (s_d / √n) = ' + m.toFixed(4) + ' / (' + s.toFixed(4) + ' / √' + n + ') = ' +
+        m.toFixed(4) + ' / ' + se.toFixed(4) + ' = ' + t.toFixed(3);
+
+      const reject = p < 0.05;
+      const v = document.getElementById('verdict');
+      const ciExcludes0 = ciLo > 0 || ciHi < 0;
+      if (reject) {
+        v.style.borderLeft = '4px solid #81c995';
+        v.innerHTML = '<strong style="color:#81c995">拒绝 H₀（α=0.05）</strong>：平均差值显著异于 0。' +
+          (ciExcludes0 ? ' 95% CI 也不含 0。' : '') +
+          ' 请同时看 Cohen\'s d 判断是否值得上线。';
+      } else {
+        v.style.borderLeft = '4px solid #fdd663';
+        v.innerHTML = '<strong style="color:#fdd663">不拒绝 H₀</strong>：现有折数与噪声下，尚不能断定平均差值不是随机波动。可增大 k 或降低噪声再试。';
+      }
+
+      // bars
+      const canvas = document.getElementById('cvBars');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+      const padL = 45, padR = 20, padT = 24, padB = 28;
+      const maxAbs = Math.max(0.06, ...diffs.map(d => Math.abs(d)));
+      const gap = (W - padL - padR) / n;
+      const barW = gap * 0.65;
+      const midY = padT + (H - padT - padB) / 2;
+      function yOf(d) { return midY - (d / maxAbs) * (H - padT - padB) / 2; }
+
+      ctx.strokeStyle = '#f28b82';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(padL, midY); ctx.lineTo(W - padR, midY); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#f28b82';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('0', W - padR - 14, midY - 4);
+
+      ctx.strokeStyle = '#81c995';
+      ctx.setLineDash([6, 4]);
+      const my = yOf(m);
+      ctx.beginPath(); ctx.moveTo(padL, my); ctx.lineTo(W - padR, my); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#81c995';
+      ctx.fillText('d̄', padL + 2, my - 5);
+
+      diffs.forEach((d, i) => {
+        const x = padL + i * gap + (gap - barW) / 2;
+        const y1 = yOf(d);
+        ctx.fillStyle = d >= 0 ? 'rgba(129,201,149,0.8)' : 'rgba(242,139,130,0.8)';
+        ctx.fillRect(x, Math.min(midY, y1), barW, Math.abs(y1 - midY) || 1);
+        ctx.fillStyle = '#9aa0a6';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(String(i + 1), x + barW / 2 - 3, H - 10);
+      });
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('各折差值 dᵢ（绿虚线=平均，红虚线=0）', padL, 16);
+    }
+
+    document.getElementById('effect').oninput = e => {
+      effect = parseFloat(e.target.value);
+      document.getElementById('effectLabel').textContent = effect.toFixed(3);
+      resample();
+    };
+    document.getElementById('noise').oninput = e => {
+      noise = parseFloat(e.target.value);
+      document.getElementById('noiseLabel').textContent = noise.toFixed(3);
+      resample();
+    };
+    document.getElementById('kfolds').oninput = e => {
+      n = parseInt(e.target.value, 10);
+      document.getElementById('kLabel').textContent = n;
+      resample();
+    };
+    document.getElementById('btnResample').onclick = resample;
+
+    // ----- t distribution panel -----
+    function studentTPdf(x, df) {
+      // Gamma approx via Stirling-ish for demo
+      const a = (df + 1) / 2;
+      // use log form roughly: proportional
+      return Math.exp(
+        Math.log(Math.exp(lngamma(a) - lngamma(df / 2))) -
+        0.5 * Math.log(df * Math.PI) -
+        a * Math.log(1 + (x * x) / df)
+      );
+    }
+    function lngamma(z) {
+      // Lanczos approx simplified
+      const g = 7;
+      const p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028,
+        771.32342877765313, -176.61502916214059, 12.507343278686905,
+        -0.13857109526572012, 9.984369654078761e-6, 1.5056327351493116e-7];
+      if (z < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * z)) - lngamma(1 - z);
+      z -= 1;
+      let x = p[0];
+      for (let i = 1; i < g + 2; i++) x += p[i] / (z + i);
+      const t = z + g + 0.5;
+      return 0.5 * Math.log(2 * Math.PI) + (z + 0.5) * Math.log(t) - t + Math.log(x);
+    }
+
+    function drawT() {
+      const canvas = document.getElementById('cvT');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      const df = parseInt(document.getElementById('dfSlider').value, 10);
+      const t0 = parseFloat(document.getElementById('tSlider').value);
+      document.getElementById('dfLabel').textContent = df;
+      document.getElementById('tLabel').textContent = t0.toFixed(2);
+
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const xMin = -4.5, xMax = 4.5;
+      const padL = 40, padR = 20, padT = 20, padB = 30;
+      function sx(x) { return padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR); }
+      // find max pdf
+      let maxP = 0;
+      for (let i = 0; i <= 100; i++) {
+        const x = xMin + (i / 100) * (xMax - xMin);
+        maxP = Math.max(maxP, studentTPdf(x, df));
+      }
+      function sy(p) { return padT + (1 - p / (maxP * 1.1)) * (H - padT - padB); }
+
+      // fill tails
+      ctx.fillStyle = 'rgba(253, 214, 99, 0.35)';
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i <= 200; i++) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        if (x > -t0) continue;
+        const px = sx(x), py = sy(studentTPdf(x, df));
+        if (!started) { ctx.moveTo(px, sy(0)); ctx.lineTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMin), sy(0));
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      started = false;
+      for (let i = 0; i <= 200; i++) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        if (x < t0) continue;
+        const px = sx(x), py = sy(studentTPdf(x, df));
+        if (!started) { ctx.moveTo(px, sy(0)); ctx.lineTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMax), sy(0));
+      ctx.closePath();
+      ctx.fill();
+
+      // curve
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        const px = sx(x), py = sy(studentTPdf(x, df));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // ±t lines
+      ctx.strokeStyle = '#f28b82';
+      ctx.lineWidth = 2;
+      [t0, -t0].forEach(tv => {
+        ctx.beginPath();
+        ctx.moveTo(sx(tv), padT);
+        ctx.lineTo(sx(tv), H - padB);
+        ctx.stroke();
+      });
+
+      // axis
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('t 分布 df=' + df + ' · 橙尾 = 双侧 p', padL, 16);
+
+      const p = tPValue(t0, df);
+      document.getElementById('tPval').textContent =
+        '|t|=' + t0.toFixed(2) + ' → 近似 p=' + (p < 0.001 ? '<0.001' : p.toFixed(3)) +
+        (p < 0.05 ? '  → 可拒绝 H₀' : '  → 尚不足以拒绝 H₀');
+    }
+
+    document.getElementById('dfSlider').oninput = drawT;
+    document.getElementById('tSlider').oninput = drawT;
+
+    resample();
+  </script>
+</body>
+</html>
