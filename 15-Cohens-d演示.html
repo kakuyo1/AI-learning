@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cohen's d 效应量演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.2rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.7rem;
+      align-items: center; margin-bottom: 1rem;
+    }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.85rem; color: var(--muted);
+    }
+    input[type="range"] { width: 130px; }
+    button {
+      background: #1a73e8; color: #fff; border: none;
+      border-radius: 8px; padding: 0.4rem 0.85rem;
+      font-size: 0.85rem; cursor: pointer;
+    }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.65rem 0.8rem;
+      font-size: 0.88rem;
+    }
+    .info-card h3 {
+      font-size: 0.72rem; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.1rem; color: #fff;
+    }
+    .scale {
+      display: flex;
+      margin-top: 0.9rem;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 36px;
+      font-size: 0.75rem;
+    }
+    .scale div {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      color: #111;
+      font-weight: 600;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.7rem 0.95rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem;
+      color: var(--blue);
+      margin: 0.7rem 0;
+    }
+    .explain {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.95rem;
+      margin: 0.7rem 0 0.3rem;
+    }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cohen's d 效应量演示</h1>
+    <p class="subtitle">d = 均值差 / 标准差 · 与样本量无关的「差别有多大」</p>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>两组均值差 Δ</span>
+          <input type="range" id="delta" min="0" max="2" step="0.05" value="0.5">
+          <span id="deltaLabel">0.50</span>
+        </div>
+        <div class="slider-row">
+          <span>合并标准差 σ</span>
+          <input type="range" id="sigma" min="0.3" max="2" step="0.05" value="1">
+          <span id="sigmaLabel">1.00</span>
+        </div>
+        <div class="slider-row">
+          <span>每组样本 n</span>
+          <input type="range" id="nSize" min="20" max="5000" step="10" value="50">
+          <span id="nLabel">50</span>
+        </div>
+        <button id="btnResample">重新抽样</button>
+      </div>
+
+      <canvas id="cv" width="880" height="260"></canvas>
+
+      <div class="formula" id="formula">d = Δ / σ = 0.50 / 1.00 = 0.50</div>
+
+      <div class="info">
+        <div class="info-card">
+          <h3>Cohen's d</h3>
+          <div class="val" id="dVal">—</div>
+        </div>
+        <div class="info-card">
+          <h3>效应大小</h3>
+          <div class="val" id="dSize">—</div>
+        </div>
+        <div class="info-card">
+          <h3>示意 t 检验 p（随 n 变）</h3>
+          <div class="val" id="pVal">—</div>
+        </div>
+        <div class="info-card">
+          <h3>对比</h3>
+          <div class="val" id="note" style="font-size:0.85rem;font-family:inherit">—</div>
+        </div>
+      </div>
+
+      <div class="scale">
+        <div style="background:#81c995">小 0.2</div>
+        <div style="background:#fdd663">中 0.5</div>
+        <div style="background:#f28b82">大 0.8</div>
+        <div style="background:#c58af9;color:#fff">更大</div>
+      </div>
+      <div style="position:relative;height:18px;margin-top:4px">
+        <div id="marker" style="position:absolute;top:0;width:0;border-left:2px solid #fff;height:14px"></div>
+      </div>
+    </div>
+
+    <div class="panel explain">
+      <strong>怎么读这个演示？</strong>
+      <h3>两团分布</h3>
+      蓝 / 黄是两组数据的示意分布。中心距离是 Δ，各自宽度由 σ 决定。
+      <h3>Cohen's d = Δ / σ</h3>
+      差了「几个标准差」。重叠越多 → d 越小；分得越开 → d 越大。
+      <h3>和 p 值的对比（关键）</h3>
+      固定 Δ 和 σ（即固定 d），只把 n 调大：<br>
+      · <strong>d 几乎不变</strong>（效应量不依赖样本量）<br>
+      · <strong>p 会变小</strong>（大样本下连微小差别也显著）<br>
+      这就是为什么要同时报告 d：避免「显著但没用」的提升。
+    </div>
+
+    <footer>Cohen's d · effect size · 15-statistics-for-ml</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let delta = 0.5, sigma = 1, n = 50;
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    function normalCdf(z) {
+      const t = 1 / (1 + 0.2316419 * Math.abs(z));
+      const d = 0.3989423 * Math.exp(-z * z / 2);
+      const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return z > 0 ? 1 - p : p;
+    }
+    function gauss(x, mu, sig) {
+      const z = (x - mu) / sig;
+      return Math.exp(-0.5 * z * z) / (sig * Math.sqrt(2 * Math.PI));
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const mu1 = 0, mu2 = delta;
+      const xMin = -3.5 * sigma, xMax = delta + 3.5 * sigma;
+      const padL = 30, padR = 20, padT = 20, padB = 30;
+      function sx(x) {
+        return padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      }
+      let maxP = 0;
+      for (let i = 0; i <= 100; i++) {
+        const x = xMin + (i / 100) * (xMax - xMin);
+        maxP = Math.max(maxP, gauss(x, mu1, sigma), gauss(x, mu2, sigma));
+      }
+      function sy(p) {
+        return padT + (1 - p / (maxP * 1.15)) * (H - padT - padB);
+      }
+
+      // fill group1
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(gauss(x, mu1, sigma));
+        if (i === 0) ctx.moveTo(px, H - padB); else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMax), H - padB);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(138, 180, 248, 0.25)';
+      ctx.fill();
+
+      // fill group2
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(gauss(x, mu2, sigma));
+        if (i === 0) ctx.moveTo(px, H - padB); else ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMax), H - padB);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(253, 214, 99, 0.25)';
+      ctx.fill();
+
+      // curves
+      function strokeGauss(mu, color) {
+        ctx.beginPath();
+        for (let i = 0; i <= 120; i++) {
+          const x = xMin + (i / 120) * (xMax - xMin);
+          const px = sx(x), py = sy(gauss(x, mu, sigma));
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+      }
+      strokeGauss(mu1, '#8ab4f8');
+      strokeGauss(mu2, '#fdd663');
+
+      // mean lines
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.beginPath();
+      ctx.moveTo(sx(mu1), padT);
+      ctx.lineTo(sx(mu1), H - padB);
+      ctx.stroke();
+      ctx.strokeStyle = '#fdd663';
+      ctx.beginPath();
+      ctx.moveTo(sx(mu2), padT);
+      ctx.lineTo(sx(mu2), H - padB);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // delta arrow
+      const yArr = padT + 30;
+      ctx.strokeStyle = '#81c995';
+      ctx.fillStyle = '#81c995';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx(mu1), yArr);
+      ctx.lineTo(sx(mu2), yArr);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx(mu2), yArr);
+      ctx.lineTo(sx(mu2) - 8, yArr - 4);
+      ctx.lineTo(sx(mu2) - 8, yArr + 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Δ = ' + delta.toFixed(2), (sx(mu1) + sx(mu2)) / 2 - 20, yArr - 8);
+
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('组 A', sx(mu1) - 10, H - 10);
+      ctx.fillText('组 B', sx(mu2) - 10, H - 10);
+
+      // metrics
+      const d = delta / sigma;
+      document.getElementById('formula').textContent =
+        'd = Δ / σ = ' + delta.toFixed(2) + ' / ' + sigma.toFixed(2) + ' = ' + d.toFixed(3);
+
+      document.getElementById('dVal').textContent = d.toFixed(3);
+      let size = '可忽略';
+      let color = '#9aa0a6';
+      if (d >= 0.8) { size = '大'; color = '#f28b82'; }
+      else if (d >= 0.5) { size = '中'; color = '#fdd663'; }
+      else if (d >= 0.2) { size = '小'; color = '#81c995'; }
+      document.getElementById('dSize').textContent = size;
+      document.getElementById('dSize').style.color = color;
+
+      // approximate two-sample t p under true effect (power-ish demo)
+      // t ≈ delta / (sigma * sqrt(2/n))
+      const se = sigma * Math.sqrt(2 / n);
+      const t = delta / se;
+      const p = 2 * (1 - normalCdf(Math.abs(t)));
+      document.getElementById('pVal').textContent = p < 0.001 ? '<0.001' : p.toFixed(3);
+
+      if (d < 0.2 && p < 0.05) {
+        document.getElementById('note').textContent = '显著但效应小';
+        document.getElementById('note').style.color = '#fdd663';
+      } else if (d >= 0.5 && p < 0.05) {
+        document.getElementById('note').textContent = '显著且效应可观';
+        document.getElementById('note').style.color = '#81c995';
+      } else if (p >= 0.05) {
+        document.getElementById('note').textContent = '尚不显著';
+        document.getElementById('note').style.color = '#9aa0a6';
+      } else {
+        document.getElementById('note').textContent = '显著 · 效应中等';
+        document.getElementById('note').style.color = '#8ab4f8';
+      }
+
+      // marker on scale: map d 0~1.2 to 0~100%
+      const pct = Math.min(100, (d / 1.2) * 100);
+      document.getElementById('marker').style.left = pct + '%';
+    }
+
+    document.getElementById('delta').oninput = e => {
+      delta = parseFloat(e.target.value);
+      document.getElementById('deltaLabel').textContent = delta.toFixed(2);
+      draw();
+    };
+    document.getElementById('sigma').oninput = e => {
+      sigma = parseFloat(e.target.value);
+      document.getElementById('sigmaLabel').textContent = sigma.toFixed(2);
+      draw();
+    };
+    document.getElementById('nSize').oninput = e => {
+      n = parseInt(e.target.value, 10);
+      document.getElementById('nLabel').textContent = n;
+      draw();
+    };
+    document.getElementById('btnResample').onclick = draw;
+
+    draw();
+  </script>
+</body>
+</html>

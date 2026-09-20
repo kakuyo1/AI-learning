@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>15 Statistics for ML · 详细复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.75;
+      padding: 2rem 1rem 3.5rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.08rem; margin: 1.4rem 0 0.55rem; color: #202124; }
+    p, li { margin-bottom: 0.5rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.15rem 1.35rem;
+      margin: 1rem 0;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.2rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note-green {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.85rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.95rem 1.15rem;
+      font-family: "SF Mono", Consolas, "Courier New", monospace;
+      font-size: 0.94rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.65;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.78rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 4px;
+      margin-right: 0.25rem;
+      font-weight: 500;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>15 Statistics for Machine Learning</h1>
+    <p class="subtitle">详细复习 · 描述统计 · 相关 · 假设检验 · t/卡方 · A/B · 效应量 · Bootstrap · CLT</p>
+
+    <div class="one-liner">
+      <strong>统计的作用：</strong>区分「模型真的更好」还是「只是运气好」。没有区间、检验和效应量，上线的可能只是噪声。
+    </div>
+
+    <!-- 1 -->
+    <h2>1. 描述统计</h2>
+    <h3>中心趋势</h3>
+    <ul>
+      <li><strong>均值</strong>：平衡点，对异常值敏感</li>
+      <li><strong>中位数</strong>：排序后正中，更稳健</li>
+      <li><strong>众数</strong>：出现最多的值，分类变量更有用</li>
+    </ul>
+    <div class="note">
+      均值 ≫ 中位数 → 常为右偏（长尾在右，如收入）。<br>
+      训练 loss 常见「多数样本很容易、少数很难」→ 右偏 → 均值往往 &gt; 中位数；应同时看分位数。
+    </div>
+
+    <h3>离散程度</h3>
+    <ul>
+      <li><strong>方差 / 标准差</strong>：相对均值的波动；标准差与原数据同单位</li>
+      <li><strong>范围</strong>：max−min，极不稳健</li>
+      <li><strong>IQR</strong>：Q3−Q1，中间 50% 的跨度，较稳健</li>
+    </ul>
+
+    <h3>分位数（P50 / P95 / P99）</h3>
+    <p>ML 中特别关心：推理延迟、置信度分布、误差尾部。</p>
+    <div class="note-green">
+      平均误差低但 <strong>P99 误差极差</strong> 的模型，在安全关键场景可能不可用。平均值会掩盖尾部风险。
+    </div>
+
+    <h3>Bessel 校正</h3>
+    <div class="formula">
+      总体方差：除以 N<br>
+      样本方差：除以 (n−1)  ← 用了样本均值，自由度少 1，避免低估方差
+    </div>
+    <p>n 很小时差别明显；n 很大时可忽略。</p>
+
+    <!-- 2 -->
+    <h2>2. 相关与协方差</h2>
+    <h3>Pearson</h3>
+    <div class="formula">
+      r = Σ(x−x̄)(y−ȳ) / (与标准差有关的分母) ∈ [-1, 1]
+    </div>
+    <p>量<strong>线性</strong>相关；对异常值敏感。</p>
+
+    <h3>Spearman</h3>
+    <p>先变名次，再算 Pearson（或用名次差简式）。量<strong>单调</strong>关系；对异常更稳；y=x³ 时 Spearman 仍可接近 1。</p>
+
+    <h3>协方差矩阵</h3>
+    <ul>
+      <li>对角 = 各特征方差；非对角 = 两两协方差</li>
+      <li>对称；编码线性共变结构</li>
+      <li><strong>PCA</strong> 对其做特征分解；<strong>马氏距离</strong>用到 S⁻¹</li>
+      <li>相关矩阵 = 标准化后的协方差矩阵</li>
+    </ul>
+
+    <!-- 3 -->
+    <h2>3. 假设检验与 p 值</h2>
+    <div class="formula">
+      H₀：默认（通常「无差别」）<br>
+      H₁：你想支持的（「有差别」）<br>
+      p = P(数据像现在这样或更极端 | H₀ 为真)
+    </div>
+    <ul>
+      <li>p 小（如 &lt; 0.05）→ 拒绝 H₀，称统计显著</li>
+      <li>p 不小 → <strong>不拒绝</strong> H₀（≠ 证明 H₀ 为真）</li>
+      <li>p <strong>不是</strong>「H₀ 为真的概率」</li>
+    </ul>
+    <p>置信区间给出参数的合理范围；宽 = 不确定，窄 = 较精确（仍可能有偏）。</p>
+
+    <h3>自由度 df</h3>
+    <p>在已有约束下还剩多少独立信息。例如：用了样本均值再算方差 → df = n−1；卡方拟合比例 → df = 类别数−1。df 影响 t/χ² 分布形态与 p 值。</p>
+
+    <!-- 4 -->
+    <h2>4. t 检验</h2>
+    <table>
+      <tr>
+        <th>类型</th>
+        <th>问题</th>
+        <th>要点</th>
+      </tr>
+      <tr>
+        <td>单样本</td>
+        <td>均值是否等于 μ₀？</td>
+        <td>t = (x̄−μ₀)/(s/√n)，df=n−1</td>
+      </tr>
+      <tr>
+        <td>双样本 Welch</td>
+        <td>两组独立均值是否不同？</td>
+        <td>不假定等方差</td>
+      </tr>
+      <tr>
+        <td><strong>配对</strong></td>
+        <td>成对差值均值是否为 0？</td>
+        <td>ML 比两模型最常用：同一折上 dᵢ=Bᵢ−Aᵢ</td>
+      </tr>
+    </table>
+    <div class="formula">
+      配对：t = d̄ / (s_d / √n)
+    </div>
+    <p>|t| 大 → 相对噪声的信号强 → p 小。|t| 与 p 是「尾部面积」关系，不是简单反比；正态近似下 |z|≈1.96→双侧 p≈0.05，|z|≈2.58→约 0.01。</p>
+
+    <!-- 5 -->
+    <h2>5. 卡方检验（Chi-squared）</h2>
+    <div class="formula">
+      χ² = Σ (O − E)² / E<br>
+      df = k − 1（拟合给定比例时）
+    </div>
+    <p>比较观察频数与期望频数是否一致。χ² 大 → 卡方分布右尾小 → p 小 → 拒绝「一致」。适用于类别计数，不是连续均值。</p>
+
+    <!-- 6 -->
+    <h2>6. A/B Testing for ML Models</h2>
+    <div class="one-liner">
+      A/B 是实验框架；t / 卡方 / 假设检验是决策工具。模型 A/B 常 = 同一数据配对 + 配对 t（或 Bootstrap CI）。
+    </div>
+    <ol>
+      <li>同一测试集 / 同一 k 折</li>
+      <li>多指标 + 估计方差</li>
+      <li>配对差值 → 检验 + 置信区间</li>
+      <li>效应量判断是否值得上线</li>
+      <li>最终 hold-out 防泄漏</li>
+    </ol>
+
+    <!-- 7 -->
+    <h2>7. 统计显著 vs 实际有用 · Cohen’s d</h2>
+    <div class="formula">
+      Cohen’s d = (均值差) / 标准差　（配对可用 d̄ / s_d）
+    </div>
+    <table>
+      <tr><th>|d|</th><th>经验称呼</th></tr>
+      <tr><td>0.2</td><td>小</td></tr>
+      <tr><td>0.5</td><td>中</td></tr>
+      <tr><td>0.8</td><td>大</td></tr>
+    </table>
+    <p><strong>为何 p 受样本量影响？</strong></p>
+    <div class="formula">
+      t ≈ √n × (差值 / 标准差) ≈ √n × d
+    </div>
+    <p>n 变大 → 标准误变小 → 同样差别也更「显著」。故必须同时看 d：避免「显著但极小的提升」。</p>
+
+    <!-- 8 -->
+    <h2>8. 多重比较问题</h2>
+    <div class="formula">
+      P(至少一次假阳性) ≈ 1 − (1−α)^m<br>
+      m=20, α=0.05 → 约 64%
+    </div>
+    <p>试得越多，越容易偶然显著。Bonferroni：α′ = α/m。也可用 FDR 等方法。超参搜索、多指标、多数据集时都要警惕。</p>
+
+    <!-- 9 -->
+    <h2>9. Bootstrap（自助法）</h2>
+    <ol>
+      <li>有放回抽 n 个（有的点重复，有的缺失）</li>
+      <li>在自助样本上算指标</li>
+      <li>重复 B 次（如 1000～10000）</li>
+      <li>95% CI ≈ [2.5% 分位, 97.5% 分位]</li>
+    </ol>
+    <p>几乎不挑指标、少分布假定。比较两模型：每次重采下标算 diff=B−A，看 <strong>CI 是否含 0</strong>。</p>
+    <div class="note-green">
+      <strong>0 的含义：</strong>两模型指标差为 0（一样好）。CI 含 0 → 仍可能没差别；不含 0 → 更支持存在真差别。
+    </div>
+
+    <!-- 10 -->
+    <h2>10. 参数 vs 非参数</h2>
+    <table>
+      <tr>
+        <th></th>
+        <th>参数</th>
+        <th>非参数</th>
+      </tr>
+      <tr>
+        <td>假定</td>
+        <td>常假定正态等</td>
+        <td>少假定形态</td>
+      </tr>
+      <tr>
+        <td>例子</td>
+        <td>t 检验、Pearson</td>
+        <td>Spearman、Bootstrap、秩检验</td>
+      </tr>
+      <tr>
+        <td>何时</td>
+        <td>n 大、大致对称</td>
+        <td>偏态、异常、小 n、怪异指标</td>
+      </tr>
+    </table>
+    <p>CV 只有 5～10 折时，有时 Wilcoxon 等比 t 更合适。</p>
+
+    <!-- 11 -->
+    <h2>11. 中心极限定理（CLT）实用含义</h2>
+    <div class="formula">
+      样本均值 X̄ 在 n 大时 ≈ Normal(μ, σ²/n)
+    </div>
+    <ul>
+      <li>支撑均值类指标的 CI 与 t 检验</li>
+      <li>解释 CV 平均、mini-batch 梯度平均、集成平均为何更稳</li>
+      <li><strong>不</strong>让原始数据变正态；只作用于均值的抽样分布</li>
+      <li>重尾无限方差或强依赖数据时不能直接套</li>
+    </ul>
+
+    <!-- 12 -->
+    <h2>12. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">描述</span> 均值/中位数/分位数一起看，盯住尾部</li>
+        <li><span class="tag">Bessel</span> 样本方差除以 n−1</li>
+        <li><span class="tag">Pearson</span> 线性；Spearman 单调/秩</li>
+        <li><span class="tag">协方差阵</span> PCA 与马氏距离的基础</li>
+        <li><span class="tag">p 值</span> H₀ 下数据极端程度，非 H₀ 为真概率</li>
+        <li><span class="tag">df</span> 去掉约束后的独立信息量</li>
+        <li><span class="tag">配对 t</span> 同一折比两模型</li>
+        <li><span class="tag">卡方</span> 观察 vs 期望频数</li>
+        <li><span class="tag">A/B</span> 框架；检验是工具</li>
+        <li><span class="tag">Cohen’s d</span> 效应大小；p 随 n 变、d 不太随</li>
+        <li><span class="tag">多重比较</span> 多试抬高假阳性；Bonferroni</li>
+        <li><span class="tag">Bootstrap</span> 重采样得任意指标 CI；差值 CI 是否含 0</li>
+        <li><span class="tag">CLT</span> 均值变正态，不是数据本身</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>最终记住：</strong>点估计不够 → 加置信区间与检验；显著不够 → 加效应量；多试要校正；分布可疑或指标复杂就用 Bootstrap。统计是为了少把噪声当成进步。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · Phase 1 · 15-statistics-for-ml<br>
+      结合学习问答详细整理
+    </footer>
+  </div>
+</body>
+</html>

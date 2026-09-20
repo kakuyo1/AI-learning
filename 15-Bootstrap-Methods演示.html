@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bootstrap Methods 详细演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.1rem; font-size: 0.92rem; }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .tab.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.55rem;
+      align-items: center; margin-bottom: 0.9rem;
+    }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 110px; }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.8rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.86rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1rem; color: #fff;
+    }
+    .steps {
+      font-size: 0.88rem; color: #c4c7ce;
+      padding-left: 1.2rem;
+    }
+    .steps li { margin-bottom: 0.35rem; }
+    .formula {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.65rem 0.9rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.85rem;
+      color: var(--blue);
+      margin: 0.6rem 0;
+      line-height: 1.6;
+    }
+    .explain {
+      font-size: 0.9rem; color: #c4c7ce;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.95rem;
+      margin: 0.65rem 0 0.25rem;
+    }
+    .hidden { display: none; }
+    .sample-box {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      margin: 0.5rem 0;
+    }
+    .chip {
+      width: 28px; height: 28px;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem;
+      font-family: "SF Mono", Consolas, monospace;
+      background: #1e3a5f; color: var(--blue);
+      border: 1px solid #3b6ea5;
+    }
+    .chip.dup { background: #3d2e1a; color: var(--orange); border-color: #a67c2a; }
+    .chip.miss { opacity: 0.25; }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bootstrap Methods 详细演示</h1>
+    <p class="subtitle">有放回重采样 · 指标的抽样分布 · 百分位置信区间 · 模型差值</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="how">① 重采样过程</button>
+      <button class="tab" data-tab="ci">② 置信区间</button>
+      <button class="tab" data-tab="ab">③ 比较两模型</button>
+    </div>
+
+    <!-- HOW -->
+    <div id="tab-how">
+      <div class="panel">
+        <div class="controls">
+          <button class="primary" id="btnOne">抽 1 次自助样本</button>
+          <button id="btnMany">连续抽 20 次</button>
+          <button id="btnResetHow">重置</button>
+        </div>
+        <div style="font-size:0.85rem;color:#9aa0a6;margin-bottom:0.3rem">原始数据（n=12 个分数）</div>
+        <div class="sample-box" id="origBox"></div>
+        <div style="font-size:0.85rem;color:#9aa0a6;margin:0.7rem 0 0.3rem">当前自助样本（有放回 · 橙色=本轮重复抽到）</div>
+        <div class="sample-box" id="bootBox"></div>
+        <div class="formula" id="howFormula">点「抽 1 次」开始</div>
+        <div class="info">
+          <div class="info-card"><h3>原始均值</h3><div class="val" id="origMean">—</div></div>
+          <div class="info-card"><h3>本轮自助均值</h3><div class="val" id="bootMean">—</div></div>
+          <div class="info-card"><h3>已累计轮数</h3><div class="val" id="bootCount">0</div></div>
+        </div>
+      </div>
+      <div class="panel explain">
+        <strong>这一步在干什么？</strong>
+        <ol class="steps">
+          <li>从 n 个点中<strong>有放回</strong>抽 n 次 → 有的点出现多次，有的一次都没有</li>
+          <li>在新样本上算同一个统计量（这里是均值）</li>
+          <li>重复很多次，得到统计量的一堆值 ≈ 抽样分布</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- CI -->
+    <div id="tab-ci">
+      <div class="panel">
+        <div class="controls">
+          <div class="slider-row">
+            <span>Bootstrap 次数 B</span>
+            <input type="range" id="bSlider" min="100" max="2000" step="100" value="1000">
+            <span id="bLabel">1000</span>
+          </div>
+          <div class="slider-row">
+            <span>数据噪声</span>
+            <input type="range" id="noiseSlider" min="0.05" max="0.4" step="0.01" value="0.15">
+            <span id="noiseLabel">0.15</span>
+          </div>
+          <button class="primary" id="btnRunCI">运行 Bootstrap</button>
+        </div>
+        <canvas id="cvCI" width="900" height="260"></canvas>
+        <div class="info">
+          <div class="info-card"><h3>点估计（原始均值）</h3><div class="val" id="ciPoint">—</div></div>
+          <div class="info-card"><h3>95% CI 下界 (2.5%)</h3><div class="val" id="ciLo">—</div></div>
+          <div class="info-card"><h3>95% CI 上界 (97.5%)</h3><div class="val" id="ciHi">—</div></div>
+          <div class="info-card"><h3>区间宽度</h3><div class="val" id="ciWidth">—</div></div>
+        </div>
+        <div class="formula" id="ciFormula">95% CI = [第2.5百分位, 第97.5百分位]</div>
+      </div>
+      <div class="panel explain">
+        <strong>直方图</strong> = B 次自助均值的分布；<strong>橙线</strong> = 2.5% 与 97.5% 分位（百分位置信区间）。
+        噪声大或 n 小时，区间会变宽 → 不确定度更大。
+      </div>
+    </div>
+
+    <!-- AB -->
+    <div id="tab-ab">
+      <div class="panel">
+        <div class="controls">
+          <div class="slider-row">
+            <span>B 真实优势</span>
+            <input type="range" id="effSlider" min="-0.02" max="0.08" step="0.005" value="0.03">
+            <span id="effLabel">0.030</span>
+          </div>
+          <div class="slider-row">
+            <span>B 次数</span>
+            <input type="range" id="b2Slider" min="200" max="2000" step="100" value="800">
+            <span id="b2Label">800</span>
+          </div>
+          <button class="primary" id="btnRunAB">Bootstrap 比较 A/B</button>
+        </div>
+        <canvas id="cvAB" width="900" height="260"></canvas>
+        <div class="info">
+          <div class="info-card"><h3>观测差值 Ā 点估计</h3><div class="val" id="abDiff">—</div></div>
+          <div class="info-card"><h3>差值 95% CI</h3><div class="val" id="abCI">—</div></div>
+          <div class="info-card"><h3>CI 是否含 0</h3><div class="val" id="abZero">—</div></div>
+          <div class="info-card"><h3>结论</h3><div class="val" id="abDec">—</div></div>
+        </div>
+      </div>
+      <div class="panel explain">
+        <strong>流程：</strong>每次重采测试下标 → 算 metric_A、metric_B → 存 diff=B−A。
+        对 diff 的分布取 2.5%～97.5%。<strong>若 CI 不含 0</strong>，更有理由认为两模型有差别（无需假定正态）。
+      </div>
+    </div>
+
+    <footer>Bootstrap Methods · 15-statistics-for-ml</footer>
+  </div>
+
+  <script>
+    // tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        ['how', 'ci', 'ab'].forEach(id => {
+          document.getElementById('tab-' + id).classList.toggle('hidden', tab.dataset.tab !== id);
+        });
+      };
+    });
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    function mean(a) { return a.reduce((s, x) => s + x, 0) / a.length; }
+    function percentile(sorted, p) {
+      const idx = (sorted.length - 1) * p;
+      const lo = Math.floor(idx), hi = Math.ceil(idx);
+      if (lo === hi) return sorted[lo];
+      return sorted[lo] * (hi - idx) + sorted[hi] * (idx - lo);
+    }
+
+    // ===== HOW =====
+    const orig = [0.72, 0.81, 0.65, 0.90, 0.78, 0.70, 0.85, 0.68, 0.88, 0.75, 0.82, 0.77];
+    let bootMeans = [];
+    let lastBoot = [];
+
+    function renderOrig() {
+      document.getElementById('origBox').innerHTML = orig.map((v, i) =>
+        '<div class="chip" title="#' + i + '">' + v.toFixed(2).slice(2) + '</div>'
+      ).join('');
+      // show last 2 digits-ish; better show short
+      document.getElementById('origBox').innerHTML = orig.map((v, i) =>
+        '<div class="chip" title="x' + i + '=' + v.toFixed(2) + '">' + (i + 1) + '</div>'
+      ).join('');
+      document.getElementById('origMean').textContent = mean(orig).toFixed(3);
+    }
+
+    function oneBootstrap() {
+      const counts = new Array(orig.length).fill(0);
+      lastBoot = [];
+      for (let i = 0; i < orig.length; i++) {
+        const j = Math.floor(Math.random() * orig.length);
+        counts[j]++;
+        lastBoot.push(orig[j]);
+      }
+      const m = mean(lastBoot);
+      bootMeans.push(m);
+      document.getElementById('bootBox').innerHTML = orig.map((v, i) => {
+        const c = counts[i];
+        const cls = c === 0 ? 'chip miss' : (c > 1 ? 'chip dup' : 'chip');
+        return '<div class="' + cls + '" title="出现' + c + '次">' + (i + 1) + (c > 1 ? '×' + c : '') + '</div>';
+      }).join('');
+      document.getElementById('bootMean').textContent = m.toFixed(3);
+      document.getElementById('bootCount').textContent = String(bootMeans.length);
+      document.getElementById('howFormula').textContent =
+        '本轮：有放回抽 ' + orig.length + ' 次 → 均值 = ' + m.toFixed(3) +
+        '（原始均值 ' + mean(orig).toFixed(3) + '）· 已累计 ' + bootMeans.length + ' 个自助统计量';
+    }
+
+    document.getElementById('btnOne').onclick = oneBootstrap;
+    document.getElementById('btnMany').onclick = () => {
+      for (let i = 0; i < 20; i++) oneBootstrap();
+    };
+    document.getElementById('btnResetHow').onclick = () => {
+      bootMeans = [];
+      document.getElementById('bootBox').innerHTML = '';
+      document.getElementById('bootMean').textContent = '—';
+      document.getElementById('bootCount').textContent = '0';
+      document.getElementById('howFormula').textContent = '点「抽 1 次」开始';
+    };
+    renderOrig();
+
+    // ===== CI =====
+    function runCI() {
+      const B = parseInt(document.getElementById('bSlider').value, 10);
+      const noise = parseFloat(document.getElementById('noiseSlider').value);
+      const n = 40;
+      const data = [];
+      for (let i = 0; i < n; i++) data.push(0.8 + randn() * noise);
+
+      const point = mean(data);
+      const stats = [];
+      for (let b = 0; b < B; b++) {
+        let s = 0;
+        for (let i = 0; i < n; i++) s += data[Math.floor(Math.random() * n)];
+        stats.push(s / n);
+      }
+      stats.sort((a, b) => a - b);
+      const lo = percentile(stats, 0.025);
+      const hi = percentile(stats, 0.975);
+
+      document.getElementById('ciPoint').textContent = point.toFixed(4);
+      document.getElementById('ciLo').textContent = lo.toFixed(4);
+      document.getElementById('ciHi').textContent = hi.toFixed(4);
+      document.getElementById('ciWidth').textContent = (hi - lo).toFixed(4);
+      document.getElementById('ciFormula').textContent =
+        '95% CI = [' + lo.toFixed(4) + ', ' + hi.toFixed(4) + ']  （B=' + B + '）';
+
+      // histogram
+      const canvas = document.getElementById('cvCI');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const minV = stats[0], maxV = stats[stats.length - 1];
+      const bins = 30;
+      const counts = new Array(bins).fill(0);
+      stats.forEach(v => {
+        let bi = Math.floor(((v - minV) / (maxV - minV || 1)) * bins);
+        if (bi >= bins) bi = bins - 1;
+        counts[bi]++;
+      });
+      const maxC = Math.max(...counts);
+      const padL = 40, padR = 20, padT = 20, padB = 35;
+      const barW = (W - padL - padR) / bins;
+
+      counts.forEach((c, i) => {
+        const h = (c / maxC) * (H - padT - padB);
+        ctx.fillStyle = 'rgba(138, 180, 248, 0.75)';
+        ctx.fillRect(padL + i * barW, H - padB - h, barW - 1, h);
+      });
+
+      function sx(v) {
+        return padL + ((v - minV) / (maxV - minV || 1)) * (W - padL - padR);
+      }
+      ctx.strokeStyle = '#fdd663';
+      ctx.lineWidth = 2;
+      [lo, hi].forEach(v => {
+        ctx.beginPath();
+        ctx.moveTo(sx(v), padT);
+        ctx.lineTo(sx(v), H - padB);
+        ctx.stroke();
+      });
+      ctx.strokeStyle = '#81c995';
+      ctx.beginPath();
+      ctx.moveTo(sx(point), padT);
+      ctx.lineTo(sx(point), H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('自助均值分布 · 绿=点估计 · 橙=95% CI 边界', padL, 16);
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+    }
+
+    document.getElementById('bSlider').oninput = e => {
+      document.getElementById('bLabel').textContent = e.target.value;
+    };
+    document.getElementById('noiseSlider').oninput = e => {
+      document.getElementById('noiseLabel').textContent = parseFloat(e.target.value).toFixed(2);
+    };
+    document.getElementById('btnRunCI').onclick = runCI;
+    runCI();
+
+    // ===== AB =====
+    function runAB() {
+      const effect = parseFloat(document.getElementById('effSlider').value);
+      const B = parseInt(document.getElementById('b2Slider').value, 10);
+      const n = 80;
+      // fixed predictions on test set
+      const y = [];
+      const predA = [], predB = [];
+      for (let i = 0; i < n; i++) {
+        const truth = Math.random() < 0.55 ? 1 : 0;
+        y.push(truth);
+        const base = 0.5 + (truth ? 0.2 : -0.15) + randn() * 0.25;
+        predA.push(base);
+        predB.push(base + effect + randn() * 0.05);
+      }
+      function accuracy(pred, idx) {
+        let ok = 0;
+        idx.forEach(i => {
+          const p = pred[i] >= 0.5 ? 1 : 0;
+          if (p === y[i]) ok++;
+        });
+        return ok / idx.length;
+      }
+      const allIdx = Array.from({ length: n }, (_, i) => i);
+      const pointDiff = accuracy(predB, allIdx) - accuracy(predA, allIdx);
+
+      const diffs = [];
+      for (let b = 0; b < B; b++) {
+        const idx = [];
+        for (let i = 0; i < n; i++) idx.push(Math.floor(Math.random() * n));
+        diffs.push(accuracy(predB, idx) - accuracy(predA, idx));
+      }
+      diffs.sort((a, b) => a - b);
+      const lo = percentile(diffs, 0.025);
+      const hi = percentile(diffs, 0.975);
+      const contains0 = lo <= 0 && hi >= 0;
+
+      document.getElementById('abDiff').textContent = (pointDiff >= 0 ? '+' : '') + pointDiff.toFixed(4);
+      document.getElementById('abCI').textContent = '[' + lo.toFixed(3) + ', ' + hi.toFixed(3) + ']';
+      document.getElementById('abZero').textContent = contains0 ? '含 0' : '不含 0';
+      document.getElementById('abZero').style.color = contains0 ? '#fdd663' : '#81c995';
+      document.getElementById('abDec').textContent = contains0 ? '不足以称有差别' : '差别较可信';
+      document.getElementById('abDec').style.color = contains0 ? '#fdd663' : '#81c995';
+
+      // hist of diffs
+      const canvas = document.getElementById('cvAB');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const minV = Math.min(diffs[0], -0.02);
+      const maxV = Math.max(diffs[diffs.length - 1], 0.02);
+      const bins = 35;
+      const counts = new Array(bins).fill(0);
+      diffs.forEach(v => {
+        let bi = Math.floor(((v - minV) / (maxV - minV)) * bins);
+        if (bi >= bins) bi = bins - 1;
+        if (bi < 0) bi = 0;
+        counts[bi]++;
+      });
+      const maxC = Math.max(...counts, 1);
+      const padL = 40, padR = 20, padT = 20, padB = 35;
+      const barW = (W - padL - padR) / bins;
+      counts.forEach((c, i) => {
+        const h = (c / maxC) * (H - padT - padB);
+        ctx.fillStyle = 'rgba(197, 138, 249, 0.75)';
+        ctx.fillRect(padL + i * barW, H - padB - h, barW - 1, h);
+      });
+      function sx(v) {
+        return padL + ((v - minV) / (maxV - minV)) * (W - padL - padR);
+      }
+      ctx.strokeStyle = '#f28b82';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sx(0), padT);
+      ctx.lineTo(sx(0), H - padB);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#fdd663';
+      ctx.lineWidth = 2;
+      [lo, hi].forEach(v => {
+        ctx.beginPath();
+        ctx.moveTo(sx(v), padT);
+        ctx.lineTo(sx(v), H - padB);
+        ctx.stroke();
+      });
+      ctx.strokeStyle = '#81c995';
+      ctx.beginPath();
+      ctx.moveTo(sx(pointDiff), padT);
+      ctx.lineTo(sx(pointDiff), H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('diff = acc_B − acc_A 的自助分布 · 红虚线=0 · 橙=CI · 绿=点估计', padL, 16);
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+    }
+
+    document.getElementById('effSlider').oninput = e => {
+      document.getElementById('effLabel').textContent = parseFloat(e.target.value).toFixed(3);
+    };
+    document.getElementById('b2Slider').oninput = e => {
+      document.getElementById('b2Label').textContent = e.target.value;
+    };
+    document.getElementById('btnRunAB').onclick = runAB;
+    runAB();
+  </script>
+</body>
+</html>
