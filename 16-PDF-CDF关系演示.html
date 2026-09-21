@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 与 CDF 关系动画</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.9rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 160px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.88rem;
+    }
+    .info-card h3 {
+      font-size: 0.72rem; color: var(--muted); margin-bottom: 0.2rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1.05rem; color: #fff;
+    }
+    .explain {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 0.8rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.95rem;
+      margin: 0.6rem 0 0.25rem;
+    }
+    footer {
+      margin-top: 1.5rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>PDF 与 CDF 的区别和关联</h1>
+    <p class="subtitle">密度是「局部多厚」· 累积是「从左边加到这里一共多少概率」</p>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="active" data-dist="normal">正态</button>
+        <button data-dist="exp">指数</button>
+        <button data-dist="bimodal">双峰</button>
+        <div class="slider-row">
+          <span>当前 x</span>
+          <input type="range" id="xSlider" min="0" max="1000" value="500">
+          <span id="xLabel">0.00</span>
+        </div>
+        <button class="primary" id="btnPlay">▶ 动画：从左扫到右</button>
+      </div>
+
+      <canvas id="cv" width="880" height="380"></canvas>
+
+      <div class="info">
+        <div class="info-card">
+          <h3>当前 x</h3>
+          <div class="val" id="xVal">—</div>
+        </div>
+        <div class="info-card">
+          <h3>PDF f(x) 密度</h3>
+          <div class="val" id="pdfVal">—</div>
+        </div>
+        <div class="info-card">
+          <h3>CDF F(x)=P(X≤x)</h3>
+          <div class="val" id="cdfVal">—</div>
+        </div>
+        <div class="info-card">
+          <h3>左侧橙色面积</h3>
+          <div class="val" id="areaVal">—</div>
+        </div>
+      </div>
+
+      <div class="explain">
+        <strong>怎么看？</strong>
+        <h3>上图 · PDF（绿）</h3>
+        曲线高度 = 在该点附近的相对「密度」。橙色区域 = 从最左边积到当前 x 的面积 = 概率 P(X≤x)。
+        <h3>下图 · CDF（蓝）</h3>
+        曲线高度 = 同一个概率 F(x)。所以：<strong>CDF 上的高度 = PDF 左侧涂色面积</strong>。
+        <h3>拖动滑块或播放动画</h3>
+        x 右移 → 橙色面积变大 → CDF 单调上升。PDF 可以起伏，CDF 只会不减地从 0 走到 1。
+      </div>
+    </div>
+
+    <footer>PDF vs CDF · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let dist = 'normal';
+    let xCur = 0;
+    let playing = false;
+    let raf = null;
+
+    // x range depends on dist
+    function range() {
+      if (dist === 'exp') return { xMin: 0, xMax: 6 };
+      if (dist === 'bimodal') return { xMin: -4, xMax: 4 };
+      return { xMin: -3.5, xMax: 3.5 };
+    }
+
+    function pdf(x) {
+      if (dist === 'exp') {
+        const lam = 1;
+        return x < 0 ? 0 : lam * Math.exp(-lam * x);
+      }
+      if (dist === 'bimodal') {
+        const g = (mu, s) => {
+          const z = (x - mu) / s;
+          return Math.exp(-0.5 * z * z) / (s * Math.sqrt(2 * Math.PI));
+        };
+        return 0.45 * g(-1.5, 0.55) + 0.55 * g(1.2, 0.7);
+      }
+      // standard normal
+      return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+    }
+
+    // numerical CDF from left
+    function cdfAt(x) {
+      const { xMin } = range();
+      const n = 200;
+      const a = xMin;
+      const b = x;
+      if (b <= a) return 0;
+      let s = 0;
+      const dx = (b - a) / n;
+      for (let i = 0; i < n; i++) {
+        const t = a + (i + 0.5) * dx;
+        s += pdf(t) * dx;
+      }
+      return Math.min(1, Math.max(0, s));
+    }
+
+    function maxPdf() {
+      const { xMin, xMax } = range();
+      let m = 0;
+      for (let i = 0; i <= 100; i++) {
+        const x = xMin + (i / 100) * (xMax - xMin);
+        m = Math.max(m, pdf(x));
+      }
+      return m * 1.12;
+    }
+
+    function draw() {
+      const { xMin, xMax } = range();
+      // map slider 0..1000 to x
+      const slider = document.getElementById('xSlider');
+      xCur = xMin + (parseInt(slider.value, 10) / 1000) * (xMax - xMin);
+      document.getElementById('xLabel').textContent = xCur.toFixed(2);
+
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 48, padR = 20, padT = 26, gap = 16;
+      const topH = (H - padT - gap - 28) / 2;
+      const botY0 = padT + topH + gap;
+
+      function sx(x) {
+        return padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      }
+      const mPdf = maxPdf();
+      function syPdf(p) {
+        return padT + topH - (p / mPdf) * (topH - 10);
+      }
+      function syCdf(p) {
+        return botY0 + topH - p * (topH - 10);
+      }
+
+      // titles
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('PDF f(x) · 橙色 = 已累积面积 P(X≤x)', padL, 16);
+      ctx.fillText('CDF F(x) · 高度等于上方橙色面积', padL, botY0 - 4);
+
+      // PDF fill left of xCur
+      ctx.beginPath();
+      const n = 120;
+      ctx.moveTo(sx(xMin), syPdf(0));
+      for (let i = 0; i <= n; i++) {
+        const x = xMin + (i / n) * (xCur - xMin);
+        if (x > xCur) break;
+        ctx.lineTo(sx(x), syPdf(pdf(x)));
+      }
+      ctx.lineTo(sx(Math.min(xCur, xMax)), syPdf(0));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(253, 214, 99, 0.4)';
+      ctx.fill();
+
+      // PDF curve
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const x = xMin + (i / n) * (xMax - xMin);
+        const px = sx(x), py = syPdf(pdf(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // CDF curve
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const x = xMin + (i / n) * (xMax - xMin);
+        const px = sx(x), py = syCdf(cdfAt(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // vertical line at xCur
+      ctx.strokeStyle = '#f28b82';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx(xCur), padT);
+      ctx.lineTo(sx(xCur), padT + topH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx(xCur), botY0);
+      ctx.lineTo(sx(xCur), botY0 + topH);
+      ctx.stroke();
+
+      // point on CDF
+      const Fx = cdfAt(xCur);
+      ctx.fillStyle = '#f28b82';
+      ctx.beginPath();
+      ctx.arc(sx(xCur), syCdf(Fx), 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // horizontal to show F(x) height
+      ctx.strokeStyle = 'rgba(138, 180, 248, 0.6)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(padL, syCdf(Fx));
+      ctx.lineTo(sx(xCur), syCdf(Fx));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, padT + topH);
+      ctx.lineTo(W - padR, padT + topH);
+      ctx.moveTo(padL, botY0 + topH);
+      ctx.lineTo(W - padR, botY0 + topH);
+      ctx.stroke();
+
+      // cards
+      document.getElementById('xVal').textContent = xCur.toFixed(3);
+      document.getElementById('pdfVal').textContent = pdf(xCur).toFixed(4);
+      document.getElementById('cdfVal').textContent = Fx.toFixed(4);
+      document.getElementById('areaVal').textContent = Fx.toFixed(4) + '（= CDF）';
+    }
+
+    function play() {
+      if (playing) {
+        playing = false;
+        document.getElementById('btnPlay').textContent = '▶ 动画：从左扫到右';
+        return;
+      }
+      playing = true;
+      document.getElementById('btnPlay').textContent = '⏸ 暂停';
+      const slider = document.getElementById('xSlider');
+      slider.value = 0;
+      const tick = () => {
+        if (!playing) return;
+        let v = parseInt(slider.value, 10) + 4;
+        if (v >= 1000) {
+          v = 1000;
+          slider.value = v;
+          draw();
+          playing = false;
+          document.getElementById('btnPlay').textContent = '▶ 动画：从左扫到右';
+          return;
+        }
+        slider.value = v;
+        draw();
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }
+
+    document.querySelectorAll('[data-dist]').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('[data-dist]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        dist = btn.dataset.dist;
+        document.getElementById('xSlider').value = 500;
+        draw();
+      };
+    });
+    document.getElementById('xSlider').oninput = draw;
+    document.getElementById('btnPlay').onclick = play;
+
+    draw();
+  </script>
+</body>
+</html>
