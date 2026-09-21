@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metropolis-Hastings MCMC 详细演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.38rem 0.8rem; font-size: 0.84rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    input[type="range"] { width: 95px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.12rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .log {
+      font-size: 0.84rem;
+      color: #c4c7ce;
+      margin-top: 0.5rem;
+      min-height: 2.6em;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.45rem 0 0.2rem;
+    }
+    .step-bar {
+      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      margin-bottom: 0.7rem;
+    }
+    .step {
+      padding: 0.25rem 0.6rem;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      background: #12141c;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .step.on {
+      background: rgba(26,115,232,0.25);
+      color: var(--blue);
+      border-color: #1a73e8;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Metropolis-Hastings MCMC 详细演示</h1>
+    <p class="subtitle">目标：双峰分布 · 对称正态提议 · 接受率 α = p(x')/p(x)</p>
+
+    <div class="intro">
+      <strong>在干什么：</strong>从当前位置用随机游走提议下一步；若新位置目标密度更高则常接受，更低则按比例偶尔接受。
+      走久之后，轨迹在各处停留的频率 ≈ 目标分布。下方直方图应逐渐出现两个峰。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary" id="btnStep">单步（细看）</button>
+        <button id="btnRun">连续跑</button>
+        <button id="btnStop">停止</button>
+        <button id="btnReset">重置</button>
+        <div class="slider-row">
+          <span>提议步长 σ</span>
+          <input type="range" id="sig" min="0.15" max="2.5" step="0.05" value="0.6">
+          <span id="sigLabel">0.60</span>
+        </div>
+        <div class="slider-row">
+          <span>速度</span>
+          <input type="range" id="spd" min="20" max="200" step="10" value="80">
+        </div>
+      </div>
+
+      <div class="step-bar">
+        <span class="step on" id="st0">当前 x</span>
+        <span class="step" id="st1">提议 x'</span>
+        <span class="step" id="st2">算 α</span>
+        <span class="step" id="st3">掷 u 决定</span>
+        <span class="step" id="st4">更新 / 停留</span>
+      </div>
+
+      <canvas id="cv" width="940" height="400"></canvas>
+      <div class="log" id="log">点「单步」逐步查看一次 MH 更新</div>
+
+      <div class="info">
+        <div class="info-card"><h3>步数 t</h3><div class="val" id="tVal">0</div></div>
+        <div class="info-card"><h3>当前位置 x</h3><div class="val" id="xVal">—</div></div>
+        <div class="info-card"><h3>接受 / 拒绝</h3><div class="val" id="arVal">0 / 0</div></div>
+        <div class="info-card"><h3>接受率</h3><div class="val" id="rateVal">—</div></div>
+        <div class="info-card"><h3>上次 α</h3><div class="val" id="alphaVal">—</div></div>
+      </div>
+
+      <div class="explain">
+        <strong>图例</strong>
+        <h3>绿线</h3>目标双峰密度 p(x)（未强制归一化也可，MH 只用比）
+        <h3>黄点</h3>当前状态 · <strong>紫点</strong>提议 x' · 箭头表示提案
+        <h3>底部柱</h3>访问直方图（应慢慢显出双峰）
+        <h3>步长 σ</h3>太小：挪得慢；太大：常被拒。观察接受率变化。
+      </div>
+    </div>
+
+    <footer>Metropolis-Hastings · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Target unnormalized: mixture of two bumps
+    function p(x) {
+      const g = (mu, s) => Math.exp(-0.5 * ((x - mu) / s) ** 2);
+      return 0.45 * g(-2.0, 0.55) + 0.55 * g(1.8, 0.65);
+    }
+
+    let x = -2.5;
+    let sigma = 0.6;
+    let t = 0;
+    let nAcc = 0, nRej = 0;
+    let hist = [];
+    let phase = 0; // 0 idle/current, 1 proposed, 2 alpha, 3 decide, 4 done
+    let xProp = null;
+    let alpha = null;
+    let uRand = null;
+    let accepted = null;
+    let timer = null;
+    let lastAlpha = null;
+
+    const xMin = -5, xMax = 5;
+
+    function setSteps() {
+      for (let i = 0; i <= 4; i++) {
+        const el = document.getElementById('st' + i);
+        el.className = 'step' + (i === phase ? ' on' : '');
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 45, padR = 18, padT = 28, padB = 70;
+      let yMax = 0;
+      for (let i = 0; i <= 100; i++) {
+        const xx = xMin + (i / 100) * (xMax - xMin);
+        yMax = Math.max(yMax, p(xx));
+      }
+      yMax *= 1.15;
+
+      function sx(v) {
+        return padL + ((v - xMin) / (xMax - xMin)) * (W - padL - padR);
+      }
+      function sy(v) {
+        return padT + (1 - v / yMax) * (H - padT - padB - 50);
+      }
+
+      // density
+      ctx.beginPath();
+      for (let i = 0; i <= 140; i++) {
+        const xx = xMin + (i / 140) * (xMax - xMin);
+        const px = sx(xx), py = sy(p(xx));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.3;
+      ctx.stroke();
+
+      // histogram of visited states
+      if (hist.length > 5) {
+        const bins = 40;
+        const counts = new Array(bins).fill(0);
+        hist.forEach(v => {
+          let bi = Math.floor(((v - xMin) / (xMax - xMin)) * bins);
+          if (bi < 0) bi = 0;
+          if (bi >= bins) bi = bins - 1;
+          counts[bi]++;
+        });
+        const maxC = Math.max(...counts);
+        const barW = (W - padL - padR) / bins;
+        const base = H - 28;
+        counts.forEach((c, i) => {
+          const h = (c / maxC) * 48;
+          ctx.fillStyle = 'rgba(138, 180, 248, 0.45)';
+          ctx.fillRect(padL + i * barW, base - h, barW - 1, h);
+        });
+      }
+
+      // proposal arrow / points
+      if (xProp !== null && phase >= 1) {
+        ctx.strokeStyle = '#c58af9';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(sx(x), sy(p(x)));
+        ctx.lineTo(sx(xProp), sy(p(xProp)));
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#c58af9';
+        ctx.beginPath();
+        ctx.arc(sx(xProp), sy(p(xProp)), 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c58af9';
+        ctx.font = '12px sans-serif';
+        ctx.fillText("x'", sx(xProp) + 8, sy(p(xProp)) - 8);
+      }
+
+      // current
+      ctx.fillStyle = '#fdd663';
+      ctx.beginPath();
+      ctx.arc(sx(x), sy(p(x)), 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fdd663';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('x', sx(x) + 10, sy(p(x)) + 4);
+
+      // axis
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB + 20);
+      ctx.lineTo(W - padR, H - padB + 20);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('目标 p(x) 双峰 · 黄=当前 · 紫=提议 · 底=访问直方图', padL, 16);
+
+      document.getElementById('tVal').textContent = t;
+      document.getElementById('xVal').textContent = x.toFixed(3);
+      document.getElementById('arVal').textContent = nAcc + ' / ' + nRej;
+      const tot = nAcc + nRej;
+      document.getElementById('rateVal').textContent =
+        tot ? ((100 * nAcc) / tot).toFixed(1) + '%' : '—';
+      document.getElementById('alphaVal').textContent =
+        lastAlpha === null ? '—' : lastAlpha.toFixed(3);
+    }
+
+    function log(msg) {
+      document.getElementById('log').textContent = msg;
+    }
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function microStep() {
+      if (phase === 0) {
+        // propose
+        xProp = x + sigma * randn();
+        phase = 1;
+        log('① 提议 x\' = x + σ·ε = ' + x.toFixed(3) + ' + 噪声 → ' + xProp.toFixed(3));
+      } else if (phase === 1) {
+        const px = p(x), pp = p(xProp);
+        alpha = Math.min(1, pp / (px || 1e-12));
+        lastAlpha = alpha;
+        phase = 2;
+        log('② α = min(1, p(x\')/p(x)) = min(1, ' + pp.toFixed(4) + '/' + px.toFixed(4) + ') = ' + alpha.toFixed(3));
+      } else if (phase === 2) {
+        uRand = Math.random();
+        phase = 3;
+        log('③ 抽 u = ' + uRand.toFixed(3) + '，与 α=' + alpha.toFixed(3) + ' 比较');
+      } else if (phase === 3) {
+        accepted = uRand < alpha;
+        phase = 4;
+        if (accepted) {
+          log('④ u < α → 接受，移动到 x\'');
+        } else {
+          log('④ u ≥ α → 拒绝，留在 x');
+        }
+      } else {
+        // apply
+        if (accepted) {
+          x = xProp;
+          nAcc++;
+        } else {
+          nRej++;
+        }
+        hist.push(x);
+        if (hist.length > 3000) hist.shift();
+        t++;
+        xProp = null;
+        alpha = null;
+        uRand = null;
+        accepted = null;
+        phase = 0;
+        log('状态已更新。再点「单步」开始下一轮。');
+      }
+      setSteps();
+      draw();
+    }
+
+    function autoTick() {
+      // run full MH step quickly
+      xProp = x + sigma * randn();
+      const px = p(x), pp = p(xProp);
+      alpha = Math.min(1, pp / (px || 1e-12));
+      lastAlpha = alpha;
+      uRand = Math.random();
+      accepted = uRand < alpha;
+      if (accepted) {
+        x = xProp;
+        nAcc++;
+      } else {
+        nRej++;
+      }
+      hist.push(x);
+      if (hist.length > 3000) hist.shift();
+      t++;
+      xProp = null;
+      phase = 0;
+      setSteps();
+      draw();
+      log('连续运行中… t=' + t + ' · 接受率 ' +
+        ((100 * nAcc) / (nAcc + nRej || 1)).toFixed(1) + '%');
+    }
+
+    document.getElementById('btnStep').onclick = microStep;
+    document.getElementById('btnRun').onclick = () => {
+      if (timer) return;
+      phase = 0;
+      const spd = 220 - parseInt(document.getElementById('spd').value, 10);
+      timer = setInterval(autoTick, spd);
+    };
+    document.getElementById('btnStop').onclick = () => {
+      clearInterval(timer); timer = null;
+      log('已停止');
+    };
+    document.getElementById('btnReset').onclick = () => {
+      clearInterval(timer); timer = null;
+      x = -2.5; t = 0; nAcc = 0; nRej = 0;
+      hist = []; phase = 0; xProp = null; lastAlpha = null;
+      setSteps(); draw();
+      log('已重置到 x=-2.5');
+    };
+    document.getElementById('sig').oninput = e => {
+      sigma = parseFloat(e.target.value);
+      document.getElementById('sigLabel').textContent = sigma.toFixed(2);
+    };
+
+    setSteps();
+    draw();
+  </script>
+</body>
+</html>

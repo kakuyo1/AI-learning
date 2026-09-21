@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monte Carlo Estimation 动画演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .tab.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.85rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 1rem; color: #fff;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.75rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.5rem 0 0.2rem;
+    }
+    .hidden { display: none; }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Monte Carlo Estimation 动画</h1>
+    <p class="subtitle">随机抽样平均 ≈ 积分 / 期望 · 误差约 1/√N</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="pi">① 扔点估 π</button>
+      <button class="tab" data-tab="exp">② 估期望 E[f(X)]</button>
+    </div>
+
+    <!-- PI -->
+    <div id="tab-pi">
+      <div class="panel">
+        <div class="controls">
+          <button class="primary" id="btnPiOne">扔 1 个点</button>
+          <button id="btnPiMany">扔 50 个</button>
+          <button id="btnPiAuto">连续扔</button>
+          <button id="btnPiStop">停止</button>
+          <button id="btnPiReset">清空</button>
+        </div>
+        <canvas id="cvPi" width="420" height="420" style="max-width:420px;margin:0 auto"></canvas>
+        <div class="info">
+          <div class="info-card"><h3>总点数 N</h3><div class="val" id="piN">0</div></div>
+          <div class="info-card"><h3>圆内点数</h3><div class="val" id="piIn" style="color:#81c995">0</div></div>
+          <div class="info-card"><h3>π 估计 = 4×(圆内/N)</h3><div class="val" id="piEst">—</div></div>
+          <div class="info-card"><h3>真值 π</h3><div class="val">3.14159…</div></div>
+          <div class="info-card"><h3>|误差|</h3><div class="val" id="piErr">—</div></div>
+        </div>
+        <div class="explain">
+          <strong>做法：</strong>在正方形 [-1,1]² 均匀扔点；落在单位圆 x²+y²≤1 内则计为「圆内」。
+          面积比 = π/4，故 π ≈ 4 × 圆内比例。绿点在圆内，红点在圆外。N 越大通常越接近 π。
+        </div>
+      </div>
+    </div>
+
+    <!-- EXP -->
+    <div id="tab-exp" class="hidden">
+      <div class="panel">
+        <div class="controls">
+          <button class="primary" id="btnExpOne">抽 1 个样本</button>
+          <button id="btnExpMany">抽 30 个</button>
+          <button id="btnExpAuto">连续抽</button>
+          <button id="btnExpStop">停止</button>
+          <button id="btnExpReset">清空</button>
+        </div>
+        <canvas id="cvExp" width="900" height="300"></canvas>
+        <div class="info">
+          <div class="info-card"><h3>样本数 N</h3><div class="val" id="expN">0</div></div>
+          <div class="info-card"><h3>样本平均 (1/N)Σf</h3><div class="val" id="expEst">—</div></div>
+          <div class="info-card"><h3>真值 E[X²]（X~N(0,1)）</h3><div class="val">1.000</div></div>
+          <div class="info-card"><h3>|误差|</h3><div class="val" id="expErr">—</div></div>
+        </div>
+        <div class="explain">
+          <strong>做法：</strong>从标准正态抽 X，算 f(X)=X²，用平均估 E[X²]=1。
+          下图黄线 = 当前平均，绿线 = 真值 1。可看到平均如何随 N 抖动着靠近真值（约按 1/√N 收敛）。
+        </div>
+      </div>
+    </div>
+
+    <footer>Monte Carlo Estimation · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    // tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-pi').classList.toggle('hidden', tab.dataset.tab !== 'pi');
+        document.getElementById('tab-exp').classList.toggle('hidden', tab.dataset.tab !== 'exp');
+      };
+    });
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    // ===== PI =====
+    const cvPi = document.getElementById('cvPi');
+    const ctxPi = cvPi.getContext('2d');
+    let points = [];
+    let nIn = 0;
+    let piTimer = null;
+
+    function drawPi() {
+      const W = cvPi.width, H = cvPi.height;
+      ctxPi.fillStyle = '#12141c';
+      ctxPi.fillRect(0, 0, W, H);
+      const pad = 30;
+      const side = Math.min(W, H) - pad * 2;
+      const cx = W / 2, cy = H / 2;
+      const r = side / 2;
+
+      // square
+      ctxPi.strokeStyle = '#5f6368';
+      ctxPi.lineWidth = 2;
+      ctxPi.strokeRect(cx - r, cy - r, 2 * r, 2 * r);
+
+      // circle
+      ctxPi.strokeStyle = '#8ab4f8';
+      ctxPi.beginPath();
+      ctxPi.arc(cx, cy, r, 0, Math.PI * 2);
+      ctxPi.stroke();
+
+      points.forEach(pt => {
+        ctxPi.fillStyle = pt.inside ? '#81c995' : '#f28b82';
+        ctxPi.beginPath();
+        ctxPi.arc(cx + pt.x * r, cy - pt.y * r, 3, 0, Math.PI * 2);
+        ctxPi.fill();
+      });
+
+      const N = points.length;
+      const est = N ? 4 * nIn / N : NaN;
+      document.getElementById('piN').textContent = N;
+      document.getElementById('piIn').textContent = nIn;
+      document.getElementById('piEst').textContent = N ? est.toFixed(5) : '—';
+      document.getElementById('piErr').textContent = N ? Math.abs(est - Math.PI).toFixed(5) : '—';
+    }
+
+    function addPiPoint() {
+      const x = Math.random() * 2 - 1;
+      const y = Math.random() * 2 - 1;
+      const inside = x * x + y * y <= 1;
+      points.push({ x, y, inside });
+      if (inside) nIn++;
+      // keep last 2000 for display speed
+      if (points.length > 2500) {
+        const removed = points.shift();
+        if (removed.inside) nIn--;
+      }
+      drawPi();
+    }
+
+    document.getElementById('btnPiOne').onclick = addPiPoint;
+    document.getElementById('btnPiMany').onclick = () => { for (let i = 0; i < 50; i++) addPiPoint(); };
+    document.getElementById('btnPiAuto').onclick = () => {
+      if (piTimer) return;
+      piTimer = setInterval(addPiPoint, 40);
+    };
+    document.getElementById('btnPiStop').onclick = () => {
+      clearInterval(piTimer); piTimer = null;
+    };
+    document.getElementById('btnPiReset').onclick = () => {
+      clearInterval(piTimer); piTimer = null;
+      points = []; nIn = 0; drawPi();
+    };
+    drawPi();
+
+    // ===== EXP =====
+    const cvExp = document.getElementById('cvExp');
+    const ctxExp = cvExp.getContext('2d');
+    let fVals = [];
+    let runningMean = [];
+    let expTimer = null;
+
+    function drawExp() {
+      const W = cvExp.width, H = cvExp.height;
+      ctxExp.fillStyle = '#12141c';
+      ctxExp.fillRect(0, 0, W, H);
+      const padL = 50, padR = 20, padT = 24, padB = 30;
+      const N = fVals.length;
+
+      // true line y=1
+      const yMin = 0, yMax = 3;
+      function sy(v) {
+        return padT + (1 - (v - yMin) / (yMax - yMin)) * (H - padT - padB);
+      }
+      function sx(i) {
+        const maxN = Math.max(N, 50);
+        return padL + (i / maxN) * (W - padL - padR);
+      }
+
+      ctxExp.strokeStyle = '#81c995';
+      ctxExp.lineWidth = 2;
+      ctxExp.setLineDash([6, 4]);
+      ctxExp.beginPath();
+      ctxExp.moveTo(padL, sy(1));
+      ctxExp.lineTo(W - padR, sy(1));
+      ctxExp.stroke();
+      ctxExp.setLineDash([]);
+      ctxExp.fillStyle = '#81c995';
+      ctxExp.font = '12px sans-serif';
+      ctxExp.fillText('真值 1', W - 70, sy(1) - 6);
+
+      if (N > 1) {
+        ctxExp.beginPath();
+        for (let i = 0; i < N; i++) {
+          const px = sx(i), py = sy(Math.min(yMax, Math.max(yMin, runningMean[i])));
+          if (i === 0) ctxExp.moveTo(px, py); else ctxExp.lineTo(px, py);
+        }
+        ctxExp.strokeStyle = '#fdd663';
+        ctxExp.lineWidth = 2.2;
+        ctxExp.stroke();
+      }
+
+      // scatter of recent f values faintly
+      const start = Math.max(0, N - 80);
+      for (let i = start; i < N; i++) {
+        ctxExp.fillStyle = 'rgba(138, 180, 248, 0.35)';
+        ctxExp.beginPath();
+        ctxExp.arc(sx(i), sy(Math.min(yMax, fVals[i])), 2.5, 0, Math.PI * 2);
+        ctxExp.fill();
+      }
+
+      ctxExp.strokeStyle = '#2a2e3a';
+      ctxExp.beginPath();
+      ctxExp.moveTo(padL, H - padB);
+      ctxExp.lineTo(W - padR, H - padB);
+      ctxExp.stroke();
+      ctxExp.fillStyle = '#9aa0a6';
+      ctxExp.fillText('N →', W - 40, H - 12);
+      ctxExp.fillText('运行平均 →', padL, 16);
+
+      document.getElementById('expN').textContent = N;
+      if (N) {
+        const est = runningMean[N - 1];
+        document.getElementById('expEst').textContent = est.toFixed(4);
+        document.getElementById('expErr').textContent = Math.abs(est - 1).toFixed(4);
+      } else {
+        document.getElementById('expEst').textContent = '—';
+        document.getElementById('expErr').textContent = '—';
+      }
+    }
+
+    function addExp() {
+      const x = randn();
+      const fx = x * x;
+      fVals.push(fx);
+      const n = fVals.length;
+      const prev = n === 1 ? 0 : runningMean[n - 2];
+      runningMean.push(prev + (fx - prev) / n);
+      if (fVals.length > 500) {
+        // keep all means aligned - simple reset display window only for points
+      }
+      drawExp();
+    }
+
+    document.getElementById('btnExpOne').onclick = addExp;
+    document.getElementById('btnExpMany').onclick = () => { for (let i = 0; i < 30; i++) addExp(); };
+    document.getElementById('btnExpAuto').onclick = () => {
+      if (expTimer) return;
+      expTimer = setInterval(addExp, 50);
+    };
+    document.getElementById('btnExpStop').onclick = () => {
+      clearInterval(expTimer); expTimer = null;
+    };
+    document.getElementById('btnExpReset').onclick = () => {
+      clearInterval(expTimer); expTimer = null;
+      fVals = []; runningMean = []; drawExp();
+    };
+    drawExp();
+  </script>
+</body>
+</html>
