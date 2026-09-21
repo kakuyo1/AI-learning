@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Importance Sampling 动画演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 110px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.85rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .log {
+      font-size: 0.85rem;
+      color: #c4c7ce;
+      margin-top: 0.5rem;
+      min-height: 1.3em;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.75rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.5rem 0 0.2rem;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Importance Sampling 动画</h1>
+    <p class="subtitle">从 q 抽样 · 权重 w=p/q · 加权估计 E_p[f]</p>
+
+    <div class="intro">
+      <strong>任务：</strong>估计在目标分布 <span style="color:#81c995">p</span>（偏左的峰）下，函数 f(x)=x² 的期望。<br>
+      我们却从提议 <span style="color:#8ab4f8">q</span>（更居中、更宽）抽样，用权重把平均「纠正」回 p。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary" id="btnOne">抽 1 个加权样本</button>
+        <button id="btnMany">连抽 20 个</button>
+        <button id="btnAuto">自动</button>
+        <button id="btnStop">停止</button>
+        <button id="btnReset">清空</button>
+        <div class="slider-row">
+          <span>q 中心</span>
+          <input type="range" id="muQ" min="-1" max="2" step="0.1" value="0.5">
+          <span id="muQLabel">0.5</span>
+        </div>
+        <div class="slider-row">
+          <span>q 宽度</span>
+          <input type="range" id="sigQ" min="0.6" max="2.5" step="0.1" value="1.2">
+          <span id="sigQLabel">1.2</span>
+        </div>
+      </div>
+
+      <canvas id="cv" width="920" height="360"></canvas>
+      <div class="log" id="log">点半径 ∝ 权重 w=p/q · 大点 = 对 p 更「重要」</div>
+
+      <div class="info">
+        <div class="info-card"><h3>样本数 N</h3><div class="val" id="nVal">0</div></div>
+        <div class="info-card"><h3>加权估计 Σw f / Σw</h3><div class="val" id="estVal">—</div></div>
+        <div class="info-card"><h3>真值 E_p[x²]（数值）</h3><div class="val" id="trueVal">—</div></div>
+        <div class="info-card"><h3>误差</h3><div class="val" id="errVal">—</div></div>
+        <div class="info-card"><h3>有效权重集中度</h3><div class="val" id="essVal">—</div></div>
+      </div>
+
+      <div class="explain">
+        <strong>怎么读图</strong>
+        <h3>上半：密度</h3>
+        绿 = 目标 p · 蓝 = 提议 q。从蓝线分布抽点。
+        <h3>下半：样本</h3>
+        每个样本画在 x 轴上，<strong>圆越大 = 权重 w=p/q 越大</strong>。
+        落在 p 高、q 相对低的区域 → 权重大。
+        <h3>调 q</h3>
+        q 离 p 太远 → 少数点权重极大，估计不稳（有效样本数下降）。
+        q 靠近 p → 权重较均匀，估计更稳。
+      </div>
+    </div>
+
+    <footer>Importance Sampling · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Target p = N(-0.8, 0.7^2)
+    const muP = -0.8, sigP = 0.7;
+    let muQ = 0.5, sigQ = 1.2;
+
+    function gauss(x, mu, s) {
+      const z = (x - mu) / s;
+      return Math.exp(-0.5 * z * z) / (s * Math.sqrt(2 * Math.PI));
+    }
+    function p(x) { return gauss(x, muP, sigP); }
+    function q(x) { return gauss(x, muQ, sigQ); }
+    function f(x) { return x * x; }
+
+    let samples = []; // {x, w, fx}
+    let timer = null;
+    let last = null;
+
+    const xMin = -4, xMax = 4;
+
+    function trueExpectation() {
+      // E[x^2] for N(mu,s^2) = s^2 + mu^2
+      return sigP * sigP + muP * muP;
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 48, padR = 18, padT = 26, padB = 50;
+      const topH = (H - padT - padB - 20) * 0.55;
+      const botY = padT + topH + 16;
+
+      let yMax = 0;
+      for (let i = 0; i <= 80; i++) {
+        const x = xMin + (i / 80) * (xMax - xMin);
+        yMax = Math.max(yMax, p(x), q(x));
+      }
+      yMax *= 1.15;
+
+      function sx(x) {
+        return padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      }
+      function sy(v) {
+        return padT + (1 - v / yMax) * topH;
+      }
+
+      // densities
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('密度：绿 p（目标）· 蓝 q（提议）', padL, 16);
+
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(p(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.3;
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(q(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // axis mid
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, padT + topH);
+      ctx.lineTo(W - padR, padT + topH);
+      ctx.stroke();
+
+      // samples as circles sized by weight
+      ctx.fillStyle = '#9aa0a6';
+      ctx.fillText('样本（半径 ∝ 权重 w=p/q）', padL, botY - 4);
+
+      const maxW = samples.reduce((m, s) => Math.max(m, s.w), 0.01);
+      samples.forEach(s => {
+        const r = 4 + 18 * (s.w / maxW);
+        ctx.fillStyle = 'rgba(197, 138, 249, 0.55)';
+        ctx.beginPath();
+        ctx.arc(sx(s.x), botY + 40, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (last) {
+        const r = 4 + 18 * (last.w / maxW);
+        ctx.strokeStyle = '#fdd663';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx(last.x), botY + 40, r + 2, 0, Math.PI * 2);
+        ctx.stroke();
+        // line from density
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(sx(last.x), sy(Math.max(p(last.x), q(last.x))));
+        ctx.lineTo(sx(last.x), botY + 40);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // baseline
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, botY + 40);
+      ctx.lineTo(W - padR, botY + 40);
+      ctx.stroke();
+
+      // metrics
+      const N = samples.length;
+      document.getElementById('nVal').textContent = N;
+      const truth = trueExpectation();
+      document.getElementById('trueVal').textContent = truth.toFixed(3);
+
+      if (N > 0) {
+        let sw = 0, swf = 0, sw2 = 0;
+        samples.forEach(s => {
+          sw += s.w;
+          swf += s.w * s.fx;
+          sw2 += s.w * s.w;
+        });
+        const est = swf / sw;
+        // ESS ≈ (sum w)^2 / sum w^2
+        const ess = (sw * sw) / sw2;
+        document.getElementById('estVal').textContent = est.toFixed(3);
+        document.getElementById('errVal').textContent = (est - truth).toFixed(3);
+        document.getElementById('essVal').textContent =
+          ess.toFixed(1) + ' / ' + N + '（越大越好）';
+      } else {
+        document.getElementById('estVal').textContent = '—';
+        document.getElementById('errVal').textContent = '—';
+        document.getElementById('essVal').textContent = '—';
+      }
+    }
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function oneSample() {
+      const x = muQ + sigQ * randn();
+      const qq = q(x);
+      const pp = p(x);
+      const w = qq > 1e-12 ? pp / qq : 0;
+      const fx = f(x);
+      const s = { x, w, fx };
+      samples.push(s);
+      last = s;
+      document.getElementById('log').textContent =
+        'x=' + x.toFixed(2) + ' · f(x)=x²=' + fx.toFixed(2) +
+        ' · w=p/q=' + w.toFixed(3) +
+        ' · 贡献 ∝ w·f';
+      draw();
+    }
+
+    function many() {
+      for (let i = 0; i < 20; i++) oneSample();
+    }
+    function startAuto() {
+      stopAuto();
+      timer = setInterval(oneSample, 150);
+    }
+    function stopAuto() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnOne').onclick = oneSample;
+    document.getElementById('btnMany').onclick = many;
+    document.getElementById('btnAuto').onclick = startAuto;
+    document.getElementById('btnStop').onclick = stopAuto;
+    document.getElementById('btnReset').onclick = () => {
+      stopAuto();
+      samples = [];
+      last = null;
+      document.getElementById('log').textContent = '已清空';
+      draw();
+    };
+    document.getElementById('muQ').oninput = e => {
+      muQ = parseFloat(e.target.value);
+      document.getElementById('muQLabel').textContent = muQ.toFixed(1);
+      draw();
+    };
+    document.getElementById('sigQ').oninput = e => {
+      sigQ = parseFloat(e.target.value);
+      document.getElementById('sigQLabel').textContent = sigQ.toFixed(1);
+      draw();
+    };
+
+    draw();
+  </script>
+</body>
+</html>

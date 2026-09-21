@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rejection Sampling · 双峰目标 × 正态提议</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 100px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.12rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .log {
+      font-size: 0.85rem;
+      color: #c4c7ce;
+      margin-top: 0.5rem;
+      min-height: 1.3em;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.75rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.5rem 0 0.2rem;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Rejection Sampling · 更真实的例子</h1>
+    <p class="subtitle">目标：双峰混合分布（难直接抽）· 提议：单峰正态（好抽）· 用包络做接受/拒绝</p>
+
+    <div class="intro">
+      <strong>场景：</strong>目标 \(p(x)\) 是两个正态峰的混合（类似「两个模式」的后验），没有简单逆 CDF。
+      我们用<strong>一个更宽的正态</strong>当提议 \(q(x)\)，取 \(M\) 使 \(M q\) 盖住 \(p\)，再拒绝采样。
+      这比「均匀盖半波正弦」更接近实际：提议与目标形状不同，接受率由两者匹配程度决定。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary" id="btnOne">提案 1 次</button>
+        <button id="btnBurst">连投 30 次</button>
+        <button id="btnAuto">自动连续</button>
+        <button id="btnStop">停止</button>
+        <button id="btnReset">清空</button>
+        <div class="slider-row">
+          <span>M</span>
+          <input type="range" id="mSlider" min="1.5" max="6" step="0.1" value="2.8">
+          <span id="mLabel">2.8</span>
+        </div>
+        <div class="slider-row">
+          <span>q 宽度 σ</span>
+          <input type="range" id="sigSlider" min="1.2" max="3.5" step="0.1" value="2.0">
+          <span id="sigLabel">2.0</span>
+        </div>
+      </div>
+
+      <canvas id="cv" width="920" height="380"></canvas>
+      <div class="log" id="log">绿 = 目标双峰 p · 蓝 = 提议 q · 黄 = 包络 M·q · 绿点接受 / 红点拒绝</div>
+
+      <div class="info">
+        <div class="info-card"><h3>提案数</h3><div class="val" id="nProp">0</div></div>
+        <div class="info-card"><h3>接受</h3><div class="val" id="nAcc" style="color:#81c995">0</div></div>
+        <div class="info-card"><h3>拒绝</h3><div class="val" id="nRej" style="color:#f28b82">0</div></div>
+        <div class="info-card"><h3>接受率</h3><div class="val" id="rate">—</div></div>
+        <div class="info-card"><h3>约 1/M</h3><div class="val" id="theory">—</div></div>
+        <div class="info-card"><h3>包络是否盖住</h3><div class="val" id="cover">—</div></div>
+      </div>
+
+      <div class="explain">
+        <strong>建议这样试</strong>
+        <h3>1. 默认参数连投</h3>
+        看绿点是否逐渐堆成两个峰；红点多落在两峰之间的「谷」或包络偏高处。
+        <h3>2. 把 q 的 σ 调小</h3>
+        提议更尖、盖不住双峰时，需要更大 M，或出现「盖不住」警告，接受率乱掉。
+        <h3>3. 把 M 调大</h3>
+        更安全但更浪费：接受率下降，接近 1/M。
+        <h3>算法每步</h3>
+        抽 x~q，再抽 u~U(0,1)；若 u &lt; p(x)/(M q(x)) 则接受。
+      </div>
+    </div>
+
+    <footer>Rejection Sampling · bimodal target · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Target: 0.45*N(-1.8, 0.55^2) + 0.55*N(1.6, 0.65^2)
+    function gauss(x, mu, s) {
+      const z = (x - mu) / s;
+      return Math.exp(-0.5 * z * z) / (s * Math.sqrt(2 * Math.PI));
+    }
+    function p(x) {
+      return 0.45 * gauss(x, -1.8, 0.55) + 0.55 * gauss(x, 1.6, 0.65);
+    }
+    // Proposal: N(0, sigQ^2)
+    let sigQ = 2.0;
+    function q(x) {
+      return gauss(x, 0, sigQ);
+    }
+
+    let M = 2.8;
+    let accepted = [];
+    let rejected = []; // {x,h}
+    let nProp = 0, nAcc = 0, nRej = 0;
+    let last = null;
+    let timer = null;
+
+    const xMin = -6, xMax = 6;
+
+    function ratioMax() {
+      // numerical max of p/q for coverage check
+      let m = 0;
+      for (let i = 0; i <= 400; i++) {
+        const x = xMin + (i / 400) * (xMax - xMin);
+        const qq = q(x);
+        if (qq > 1e-12) m = Math.max(m, p(x) / qq);
+      }
+      return m;
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 48, padR = 18, padT = 28, padB = 36;
+      let yMax = 0;
+      for (let i = 0; i <= 100; i++) {
+        const x = xMin + (i / 100) * (xMax - xMin);
+        yMax = Math.max(yMax, p(x), M * q(x));
+      }
+      yMax *= 1.12;
+
+      function sx(x) {
+        return padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      }
+      function sy(v) {
+        return padT + (1 - v / yMax) * (H - padT - padB);
+      }
+
+      // envelope region
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(M * q(x));
+        if (i === 0) ctx.moveTo(px, sy(0));
+        ctx.lineTo(px, py);
+      }
+      ctx.lineTo(sx(xMax), sy(0));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(253, 214, 99, 0.07)';
+      ctx.fill();
+
+      // M*q
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(M * q(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#fdd663';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // q
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(q(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = 'rgba(138, 180, 248, 0.85)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // p
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(p(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // accepted histogram
+      if (accepted.length > 8) {
+        const bins = 36;
+        const counts = new Array(bins).fill(0);
+        accepted.forEach(x => {
+          let bi = Math.floor(((x - xMin) / (xMax - xMin)) * bins);
+          if (bi < 0) bi = 0;
+          if (bi >= bins) bi = bins - 1;
+          counts[bi]++;
+        });
+        const maxC = Math.max(...counts);
+        const barW = (W - padL - padR) / bins;
+        counts.forEach((c, i) => {
+          const h = (c / maxC) * 55;
+          ctx.fillStyle = 'rgba(129, 201, 149, 0.35)';
+          ctx.fillRect(padL + i * barW, H - padB - h, barW - 1, h);
+        });
+      }
+
+      // rejected
+      rejected.forEach(pt => {
+        ctx.strokeStyle = 'rgba(242, 139, 130, 0.55)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(sx(pt.x), sy(pt.h), 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      // accepted on curve
+      accepted.forEach(x => {
+        ctx.fillStyle = 'rgba(129, 201, 149, 0.9)';
+        ctx.beginPath();
+        ctx.arc(sx(x), sy(p(x)), 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // last
+      if (last) {
+        ctx.strokeStyle = last.ok ? '#81c995' : '#f28b82';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx(last.x), sy(0));
+        ctx.lineTo(sx(last.x), sy(last.h));
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(sx(last.x), sy(last.h), 6, 0, Math.PI * 2);
+        if (last.ok) {
+          ctx.fillStyle = '#81c995';
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#12141c';
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('x', W - 30, H - 14);
+      ctx.fillStyle = '#81c995';
+      ctx.fillText('p 目标双峰', padL, 16);
+      ctx.fillStyle = '#8ab4f8';
+      ctx.fillText('q 提议', padL + 90, 16);
+      ctx.fillStyle = '#fdd663';
+      ctx.fillText('M·q 包络', padL + 150, 16);
+
+      const rmax = ratioMax();
+      const covered = M >= rmax - 1e-6;
+      document.getElementById('nProp').textContent = nProp;
+      document.getElementById('nAcc').textContent = nAcc;
+      document.getElementById('nRej').textContent = nRej;
+      document.getElementById('rate').textContent =
+        nProp ? ((100 * nAcc) / nProp).toFixed(1) + '%' : '—';
+      document.getElementById('theory').textContent = (100 / M).toFixed(1) + '%';
+      document.getElementById('cover').textContent = covered ? 'OK' : '盖不住!';
+      document.getElementById('cover').style.color = covered ? '#81c995' : '#f28b82';
+    }
+
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function propose() {
+      // x ~ N(0, sigQ^2)
+      const x = randn() * sigQ;
+      if (x < xMin || x > xMax) {
+        // rare; count as reject outside view
+        nProp++;
+        nRej++;
+        last = { x, h: 0, ok: false };
+        document.getElementById('log').textContent = '提案落在显示区间外，视为拒绝';
+        draw();
+        return;
+      }
+      const mq = M * q(x);
+      const u = Math.random();
+      const thresh = p(x) / mq;
+      const h = u * mq; // for visualization: uniform height under envelope
+      const ok = u < thresh;
+      nProp++;
+      last = { x, h, ok };
+      if (ok) {
+        accepted.push(x);
+        nAcc++;
+        document.getElementById('log').textContent =
+          'x=' + x.toFixed(2) + ' · u=' + u.toFixed(3) + ' < p/(Mq)=' + thresh.toFixed(3) + ' → 接受';
+      } else {
+        rejected.push({ x, h });
+        if (rejected.length > 100) rejected.shift();
+        nRej++;
+        document.getElementById('log').textContent =
+          'x=' + x.toFixed(2) + ' · u=' + u.toFixed(3) + ' ≥ p/(Mq)=' + thresh.toFixed(3) + ' → 拒绝';
+      }
+      draw();
+    }
+
+    function burst() {
+      for (let i = 0; i < 30; i++) propose();
+    }
+    function startAuto() {
+      stopAuto();
+      timer = setInterval(propose, 90);
+    }
+    function stopAuto() {
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnOne').onclick = propose;
+    document.getElementById('btnBurst').onclick = burst;
+    document.getElementById('btnAuto').onclick = startAuto;
+    document.getElementById('btnStop').onclick = stopAuto;
+    document.getElementById('btnReset').onclick = () => {
+      stopAuto();
+      accepted = []; rejected = [];
+      nProp = nAcc = nRej = 0;
+      last = null;
+      document.getElementById('log').textContent = '已清空';
+      draw();
+    };
+    document.getElementById('mSlider').oninput = e => {
+      M = parseFloat(e.target.value);
+      document.getElementById('mLabel').textContent = M.toFixed(1);
+      draw();
+    };
+    document.getElementById('sigSlider').oninput = e => {
+      sigQ = parseFloat(e.target.value);
+      document.getElementById('sigLabel').textContent = sigQ.toFixed(1);
+      draw();
+    };
+
+    draw();
+  </script>
+</body>
+</html>
