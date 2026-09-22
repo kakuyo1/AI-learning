@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stratified Sampling 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 110px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+    @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.86rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.75rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.5rem 0 0.2rem;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Stratified Sampling 演示</h1>
+    <p class="subtitle">普通随机 vs 分层 · 强制每段都有点 · 积分方差更小</p>
+
+    <div class="intro">
+      <strong>任务：</strong>用 N 个点估计 ∫₀¹ f(x) dx（图中绿线为 f）。
+      左：完全随机；右：把 [0,1] 切成 N 层，每层抽 1 个点。右侧覆盖更均匀，估计通常更稳。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>点数 N</span>
+          <input type="range" id="nSlider" min="4" max="40" step="1" value="12">
+          <span id="nLabel">12</span>
+        </div>
+        <button class="primary" id="btnSample">重新抽样对比</button>
+        <button id="btnMany">重复 50 次看误差</button>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div style="font-size:0.85rem;color:#9aa0a6;margin-bottom:0.3rem">普通蒙特卡洛</div>
+          <canvas id="cvMC" width="440" height="220"></canvas>
+        </div>
+        <div>
+          <div style="font-size:0.85rem;color:#9aa0a6;margin-bottom:0.3rem">分层采样</div>
+          <canvas id="cvSt" width="440" height="220"></canvas>
+        </div>
+      </div>
+
+      <div class="info">
+        <div class="info-card"><h3>真值 ∫f</h3><div class="val" id="truth">—</div></div>
+        <div class="info-card"><h3>MC 估计</h3><div class="val" id="mcEst">—</div></div>
+        <div class="info-card"><h3>分层估计</h3><div class="val" id="stEst">—</div></div>
+        <div class="info-card"><h3>|MC 误差|</h3><div class="val" id="mcErr">—</div></div>
+        <div class="info-card"><h3>|分层误差|</h3><div class="val" id="stErr">—</div></div>
+        <div class="info-card"><h3>50 次平均 |误差|</h3><div class="val" id="avgErr">点「重复50次」</div></div>
+      </div>
+
+      <div class="explain">
+        <strong>读图</strong>
+        <h3>灰竖线</h3>
+        分层边界（仅右图）。每层内一个橙点。
+        <h3>左图</h3>
+        点可能扎堆或留空。
+        <h3>右图</h3>
+        每段必有一点：xᵢ=(i+Uᵢ)/N。
+        <h3>重复 50 次</h3>
+        比较两种方法 |估计−真值| 的平均，分层通常更小。
+      </div>
+    </div>
+
+    <footer>Stratified Sampling · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    // f(x) = 0.5 + 0.4*sin(2*pi*x) + 0.15*sin(6*pi*x) on [0,1]
+    // integral = 0.5 exactly (sines integrate to 0)
+    function f(x) {
+      return 0.5 + 0.4 * Math.sin(2 * Math.PI * x) + 0.15 * Math.sin(6 * Math.PI * x);
+    }
+    const truth = 0.5;
+
+    let N = 12;
+    let mcPts = [], stPts = [];
+
+    function sampleMC(n) {
+      const pts = [];
+      for (let i = 0; i < n; i++) pts.push(Math.random());
+      return pts;
+    }
+    function sampleStrat(n) {
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        pts.push((i + Math.random()) / n);
+      }
+      return pts;
+    }
+    function estimate(pts) {
+      // ∫_0^1 f ≈ mean f(x_i) for uniform / stratified on [0,1]
+      return pts.reduce((s, x) => s + f(x), 0) / pts.length;
+    }
+
+    function drawPanel(canvas, pts, stratified) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+      const padL = 30, padR = 12, padT = 16, padB = 28;
+
+      function sx(x) {
+        return padL + x * (W - padL - padR);
+      }
+      function sy(y) {
+        // y in [0,1.2]
+        return padT + (1 - y / 1.2) * (H - padT - padB);
+      }
+
+      // strata lines
+      if (stratified) {
+        ctx.strokeStyle = 'rgba(95,99,104,0.7)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < N; i++) {
+          const x = i / N;
+          ctx.beginPath();
+          ctx.moveTo(sx(x), padT);
+          ctx.lineTo(sx(x), H - padB);
+          ctx.stroke();
+        }
+      }
+
+      // f curve
+      ctx.beginPath();
+      for (let i = 0; i <= 80; i++) {
+        const x = i / 80;
+        const px = sx(x), py = sy(f(x));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // points
+      pts.forEach(x => {
+        ctx.fillStyle = '#fdd663';
+        ctx.beginPath();
+        ctx.arc(sx(x), sy(f(x)), 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        // drop to axis
+        ctx.strokeStyle = 'rgba(253,214,99,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(sx(x), sy(f(x)));
+        ctx.lineTo(sx(x), H - padB);
+        ctx.stroke();
+      });
+
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+    }
+
+    function refresh() {
+      mcPts = sampleMC(N);
+      stPts = sampleStrat(N);
+      const mcE = estimate(mcPts);
+      const stE = estimate(stPts);
+      drawPanel(document.getElementById('cvMC'), mcPts, false);
+      drawPanel(document.getElementById('cvSt'), stPts, true);
+      document.getElementById('truth').textContent = truth.toFixed(3);
+      document.getElementById('mcEst').textContent = mcE.toFixed(4);
+      document.getElementById('stEst').textContent = stE.toFixed(4);
+      document.getElementById('mcErr').textContent = Math.abs(mcE - truth).toFixed(4);
+      document.getElementById('stErr').textContent = Math.abs(stE - truth).toFixed(4);
+    }
+
+    function trial50() {
+      let sumMc = 0, sumSt = 0;
+      for (let t = 0; t < 50; t++) {
+        sumMc += Math.abs(estimate(sampleMC(N)) - truth);
+        sumSt += Math.abs(estimate(sampleStrat(N)) - truth);
+      }
+      document.getElementById('avgErr').textContent =
+        'MC ' + (sumMc / 50).toFixed(4) + ' · 分层 ' + (sumSt / 50).toFixed(4);
+      refresh();
+    }
+
+    document.getElementById('nSlider').oninput = e => {
+      N = parseInt(e.target.value, 10);
+      document.getElementById('nLabel').textContent = N;
+      document.getElementById('avgErr').textContent = '点「重复50次」';
+      refresh();
+    };
+    document.getElementById('btnSample').onclick = refresh;
+    document.getElementById('btnMany').onclick = trial50;
+
+    refresh();
+  </script>
+</body>
+</html>

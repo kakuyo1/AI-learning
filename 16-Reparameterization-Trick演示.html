@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reparameterization Trick 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 120px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.86rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.7rem 0.95rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.88rem;
+      color: var(--blue);
+      margin: 0.6rem 0;
+      line-height: 1.7;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.5rem 0 0.2rem;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-top: 0.6rem;
+    }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+    .path {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.85rem;
+    }
+    .path h3 { font-size: 0.85rem; margin-bottom: 0.4rem; }
+    .path.bad { border-left: 3px solid #f28b82; }
+    .path.good { border-left: 3px solid #81c995; }
+    .path code {
+      font-family: "SF Mono", Consolas, monospace;
+      color: var(--orange);
+      font-size: 0.82rem;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Reparameterization Trick 演示</h1>
+    <p class="subtitle">z = μ + σ·ε · 随机在 ε，参数在可导路径上</p>
+
+    <div class="intro">
+      <strong>VAE 需要：</strong>从 N(μ,σ²) 采样 z，又要对 μ、σ 反传。<br>
+      直接「z ~ N(μ,σ²)」梯度在采样处断开；改成 z=μ+σϵ 后，μ、σ 只出现在加乘里，可以求导。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>μ</span>
+          <input type="range" id="mu" min="-2" max="2" step="0.05" value="0">
+          <span id="muLabel">0.00</span>
+        </div>
+        <div class="slider-row">
+          <span>σ</span>
+          <input type="range" id="sig" min="0.2" max="2" step="0.05" value="0.8">
+          <span id="sigLabel">0.80</span>
+        </div>
+        <button class="primary" id="btnSample">抽一次 ε → 算 z</button>
+        <button id="btnMany">连抽 40 次</button>
+        <button id="btnClear">清空样本</button>
+      </div>
+
+      <canvas id="cv" width="920" height="320"></canvas>
+
+      <div class="formula" id="formula">
+        ε ~ N(0,1)<br>
+        z = μ + σ · ε
+      </div>
+
+      <div class="info">
+        <div class="info-card"><h3>当前 μ</h3><div class="val" id="muVal">0.00</div></div>
+        <div class="info-card"><h3>当前 σ</h3><div class="val" id="sigVal">0.80</div></div>
+        <div class="info-card"><h3>最近 ε</h3><div class="val" id="epsVal">—</div></div>
+        <div class="info-card"><h3>最近 z = μ+σϵ</h3><div class="val" id="zVal">—</div></div>
+        <div class="info-card"><h3>∂z/∂μ</h3><div class="val">1</div></div>
+        <div class="info-card"><h3>∂z/∂σ = ε</h3><div class="val" id="dzds">—</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="path bad">
+          <h3 style="color:#f28b82">不可导写法</h3>
+          <code>z ~ N(μ, σ²)</code><br>
+          随机节点挡在 μ、σ 与损失之间，反向传播到采样处中断。
+        </div>
+        <div class="path good">
+          <h3 style="color:#81c995">重参数化</h3>
+          <code>ε ~ N(0,1)</code>（无参数）<br>
+          <code>z = μ + σ·ε</code>（对 μ、σ 可导）<br>
+          梯度：∂z/∂μ=1，∂z/∂σ=ε。
+        </div>
+      </div>
+
+      <div class="explain">
+        <strong>图怎么读</strong>
+        <h3>绿曲线</h3>
+        当前 N(μ,σ²) 的密度。拖动 μ、σ 会平移/缩放。
+        <h3>紫点</h3>
+        用同一批 ε 映射出的 z 样本。改 μ、σ 时点会整体移动或散开——这就是参数通过确定性函数影响 z。
+        <h3>训练含义</h3>
+        损失若依赖 z，就能通过 z=μ+σϵ 把梯度传回编码器输出的 μ、σ。
+      </div>
+    </div>
+
+    <footer>Reparameterization Trick · VAE · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let mu = 0, sig = 0.8;
+    let epsList = []; // fixed epsilons so moving mu/sig shows reparam
+    let lastEps = null, lastZ = null;
+
+    function gauss(x, m, s) {
+      const z = (x - m) / s;
+      return Math.exp(-0.5 * z * z) / (s * Math.sqrt(2 * Math.PI));
+    }
+    function randn() {
+      let u = 0, v = 0;
+      while (!u) u = Math.random();
+      while (!v) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const xMin = -4.5, xMax = 4.5;
+      const padL = 45, padR = 20, padT = 28, padB = 36;
+      let yMax = 0;
+      for (let i = 0; i <= 80; i++) {
+        const x = xMin + (i / 80) * (xMax - xMin);
+        yMax = Math.max(yMax, gauss(x, mu, sig));
+      }
+      yMax *= 1.15;
+
+      function sx(x) {
+        return padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      }
+      function sy(v) {
+        return padT + (1 - v / yMax) * (H - padT - padB);
+      }
+
+      // density N(mu,sig)
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(gauss(x, mu, sig));
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+
+      // standard normal faint for reference of epsilon space idea
+      ctx.beginPath();
+      for (let i = 0; i <= 120; i++) {
+        const x = xMin + (i / 120) * (xMax - xMin);
+        const px = sx(x), py = sy(gauss(x, 0, 1) * (sig > 0 ? 0.0001 : 0)); // skip
+      }
+
+      // mean line
+      ctx.strokeStyle = '#fdd663';
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sx(mu), padT);
+      ctx.lineTo(sx(mu), H - padB);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#fdd663';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('μ', sx(mu) + 6, padT + 12);
+
+      // samples z = mu + sig * eps
+      epsList.forEach(eps => {
+        const z = mu + sig * eps;
+        ctx.fillStyle = 'rgba(197, 138, 249, 0.75)';
+        ctx.beginPath();
+        ctx.arc(sx(z), sy(gauss(z, mu, sig)), 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (lastZ !== null) {
+        ctx.strokeStyle = '#f28b82';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx(lastZ), sy(gauss(lastZ, mu, sig)), 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('N(μ,σ²) 与重参数化样本 z=μ+σϵ（紫点）', padL, 16);
+
+      document.getElementById('muVal').textContent = mu.toFixed(2);
+      document.getElementById('sigVal').textContent = sig.toFixed(2);
+      document.getElementById('epsVal').textContent =
+        lastEps === null ? '—' : lastEps.toFixed(3);
+      document.getElementById('zVal').textContent =
+        lastZ === null ? '—' : lastZ.toFixed(3);
+      document.getElementById('dzds').textContent =
+        lastEps === null ? '—' : lastEps.toFixed(3);
+      document.getElementById('formula').innerHTML =
+        'ε ~ N(0,1)<br>z = μ + σ · ε = ' + mu.toFixed(2) + ' + ' + sig.toFixed(2) + ' · ε';
+    }
+
+    function sampleOne() {
+      const eps = randn();
+      epsList.push(eps);
+      if (epsList.length > 60) epsList.shift();
+      lastEps = eps;
+      lastZ = mu + sig * eps;
+      draw();
+    }
+
+    document.getElementById('mu').oninput = e => {
+      mu = parseFloat(e.target.value);
+      document.getElementById('muLabel').textContent = mu.toFixed(2);
+      if (lastEps !== null) lastZ = mu + sig * lastEps;
+      draw();
+    };
+    document.getElementById('sig').oninput = e => {
+      sig = parseFloat(e.target.value);
+      document.getElementById('sigLabel').textContent = sig.toFixed(2);
+      if (lastEps !== null) lastZ = mu + sig * lastEps;
+      draw();
+    };
+    document.getElementById('btnSample').onclick = sampleOne;
+    document.getElementById('btnMany').onclick = () => {
+      for (let i = 0; i < 40; i++) {
+        const eps = randn();
+        epsList.push(eps);
+        lastEps = eps;
+        lastZ = mu + sig * eps;
+      }
+      while (epsList.length > 60) epsList.shift();
+      draw();
+    };
+    document.getElementById('btnClear').onclick = () => {
+      epsList = [];
+      lastEps = lastZ = null;
+      draw();
+    };
+
+    draw();
+  </script>
+</body>
+</html>

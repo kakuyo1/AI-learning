@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gumbel-Softmax 详细演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 110px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.12rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem; color: #fff;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.65rem 0.9rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      color: var(--blue);
+      margin: 0.55rem 0;
+      line-height: 1.65;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.45rem 0 0.2rem;
+    }
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.6rem;
+      height: 140px;
+      margin: 0.6rem 0;
+    }
+    .bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+    }
+    .bar-stack {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 3px;
+    }
+    .bar {
+      width: 18px;
+      border-radius: 4px 4px 0 0;
+      min-height: 2px;
+    }
+    .bar.p { background: #5f6368; }
+    .bar.y { background: #c58af9; }
+    .bar.h { background: #81c995; }
+    .lab { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+    .legend {
+      display: flex; gap: 1rem; flex-wrap: wrap;
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.25rem; }
+    .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gumbel-Softmax 详细演示</h1>
+    <p class="subtitle">Gumbel 噪声 + Softmax(·/τ) → 可导软类别 · τ→0 变硬</p>
+
+    <div class="intro">
+      <strong>流程：</strong>类别概率 p → 加 Gumbel 噪声 → 除以温度 τ 再 Softmax 得到软向量 y。
+      τ 大：y 更均匀、更软；τ 小：y 接近 one-hot。硬 argmax 仍可用于前向（直通估计）。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>温度 τ</span>
+          <input type="range" id="tau" min="0.1" max="5" step="0.1" value="1">
+          <span id="tauLabel">1.0</span>
+        </div>
+        <button class="primary" id="btnSample">抽一组 Gumbel 并计算</button>
+        <button id="btnMany">连抽 20 次看分布</button>
+        <button id="btnResetP">重置类别概率</button>
+      </div>
+
+      <div class="slider-row" style="margin-bottom:0.6rem;flex-wrap:wrap">
+        <span>调各类 logit（相对偏好）</span>
+        <span>A</span><input type="range" id="l0" min="-2" max="3" step="0.1" value="1.5">
+        <span>B</span><input type="range" id="l1" min="-2" max="3" step="0.1" value="0.5">
+        <span>C</span><input type="range" id="l2" min="-2" max="3" step="0.1" value="0.0">
+        <span>D</span><input type="range" id="l3" min="-2" max="3" step="0.1" value="-0.5">
+      </div>
+
+      <div class="legend">
+        <span><i class="dot" style="background:#5f6368"></i> 原始 p（Softmax）</span>
+        <span><i class="dot" style="background:#c58af9"></i> Gumbel-Softmax y</span>
+        <span><i class="dot" style="background:#81c995"></i> 硬 argmax one-hot</span>
+      </div>
+      <div class="bars" id="bars"></div>
+
+      <div class="formula" id="formula">
+        gᵢ = −log(−log Uᵢ)<br>
+        yᵢ = exp((log pᵢ + gᵢ)/τ) / Σ exp((log pⱼ + gⱼ)/τ)
+      </div>
+
+      <div class="info">
+        <div class="info-card"><h3>τ</h3><div class="val" id="tauVal">1.0</div></div>
+        <div class="info-card"><h3>硬选择 argmax</h3><div class="val" id="hardVal">—</div></div>
+        <div class="info-card"><h3>y 最大分量</h3><div class="val" id="ymaxVal">—</div></div>
+        <div class="info-card"><h3>y 的「硬度」</h3><div class="val" id="sharpVal">—</div></div>
+      </div>
+
+      <canvas id="cv" width="900" height="200"></canvas>
+      <div style="font-size:0.82rem;color:#9aa0a6;margin-top:0.4rem">
+        上图：多次采样后，硬 argmax 落在各类的频率（应接近原始 p）
+      </div>
+
+      <div class="explain">
+        <strong>建议这样试</strong>
+        <h3>1. τ 从 5 拖到 0.1</h3>
+        紫柱（y）从较平坦变成几乎 one-hot。
+        <h3>2. 改 logit</h3>
+        改变各类偏好，看 p 与采样频率是否一致。
+        <h3>3. 连抽 20 次</h3>
+        直方图应贴近灰色 p；这是 Gumbel-Max 精确采样类别的体现，Softmax 只是可导松弛。
+      </div>
+    </div>
+
+    <footer>Gumbel-Softmax · 16-sampling-methods</footer>
+  </div>
+
+  <script>
+    const labels = ['A', 'B', 'C', 'D'];
+    let logits = [1.5, 0.5, 0.0, -0.5];
+    let tau = 1.0;
+    let lastY = null;
+    let lastHard = null;
+    let hardCounts = [0, 0, 0, 0];
+    let totalHard = 0;
+
+    function softmax(arr) {
+      const m = Math.max(...arr);
+      const ex = arr.map(v => Math.exp(v - m));
+      const s = ex.reduce((a, b) => a + b, 0);
+      return ex.map(v => v / s);
+    }
+    function gumbel() {
+      const u = Math.min(0.999999, Math.max(1e-10, Math.random()));
+      return -Math.log(-Math.log(u));
+    }
+
+    function probs() {
+      return softmax(logits);
+    }
+
+    function gumbelSoftmax() {
+      const g = logits.map(() => gumbel());
+      const scaled = logits.map((lp, i) => (lp + g[i]) / tau);
+      // logits here treated as log-space preferences; for p we use softmax(logits)
+      // For true log p: log(softmax(logits))
+      const logp = (() => {
+        const p = probs();
+        return p.map(v => Math.log(v + 1e-12));
+      })();
+      const scaled2 = logp.map((lp, i) => (lp + g[i]) / tau);
+      const y = softmax(scaled2);
+      const hardIdx = scaled2.indexOf(Math.max(...scaled2));
+      return { y, hardIdx, g };
+    }
+
+    function renderBars() {
+      const p = probs();
+      const y = lastY || p.map(() => 0);
+      const hard = [0, 0, 0, 0];
+      if (lastHard !== null) hard[lastHard] = 1;
+      const maxH = Math.max(...p, ...y, 1);
+
+      document.getElementById('bars').innerHTML = labels.map((lab, i) => {
+        const hp = (p[i] / maxH) * 120;
+        const hy = (y[i] / maxH) * 120;
+        const hh = hard[i] * 120;
+        return '<div class="bar-col"><div class="bar-stack">' +
+          '<div class="bar p" style="height:' + hp + 'px" title="p"></div>' +
+          '<div class="bar y" style="height:' + hy + 'px" title="y"></div>' +
+          '<div class="bar h" style="height:' + hh + 'px" title="hard"></div>' +
+          '</div><div class="lab">' + lab + '</div></div>';
+      }).join('');
+    }
+
+    function drawHist() {
+      const canvas = document.getElementById('cv');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+      const p = probs();
+      const padL = 40, padR = 20, padT = 20, padB = 30;
+      const groupW = (W - padL - padR) / 4;
+
+      for (let i = 0; i < 4; i++) {
+        const freq = totalHard ? hardCounts[i] / totalHard : 0;
+        const x0 = padL + i * groupW;
+        const barW = groupW * 0.35;
+        // p
+        ctx.fillStyle = 'rgba(95,99,104,0.8)';
+        ctx.fillRect(x0 + groupW * 0.15, padT + (1 - p[i]) * (H - padT - padB), barW, p[i] * (H - padT - padB));
+        // freq
+        ctx.fillStyle = 'rgba(129,201,149,0.8)';
+        ctx.fillRect(x0 + groupW * 0.5, padT + (1 - freq) * (H - padT - padB), barW, freq * (H - padT - padB));
+        ctx.fillStyle = '#9aa0a6';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(labels[i], x0 + groupW * 0.4, H - 10);
+      }
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('灰= p · 绿=硬采样频率', padL, 14);
+    }
+
+    function update() {
+      document.getElementById('tauVal').textContent = tau.toFixed(1);
+      document.getElementById('tauLabel').textContent = tau.toFixed(1);
+      if (lastY) {
+        const ymax = Math.max(...lastY);
+        document.getElementById('ymaxVal').textContent = ymax.toFixed(3);
+        document.getElementById('hardVal').textContent = labels[lastHard];
+        // sharpness: max y
+        document.getElementById('sharpVal').textContent =
+          ymax > 0.9 ? '接近 one-hot' : ymax > 0.5 ? '较尖' : '较软';
+      }
+      document.getElementById('formula').textContent =
+        'yᵢ = softmax( (log pᵢ + gᵢ) / τ )  ·  τ=' + tau.toFixed(1);
+      renderBars();
+      drawHist();
+    }
+
+    function sample() {
+      const { y, hardIdx } = gumbelSoftmax();
+      lastY = y;
+      lastHard = hardIdx;
+      hardCounts[hardIdx]++;
+      totalHard++;
+      update();
+    }
+
+    document.getElementById('tau').oninput = e => {
+      tau = parseFloat(e.target.value);
+      // recompute y with same conceptual noise - just resample for simplicity
+      if (lastY) sample();
+      else update();
+    };
+    ['l0','l1','l2','l3'].forEach((id, i) => {
+      document.getElementById(id).oninput = e => {
+        logits[i] = parseFloat(e.target.value);
+        hardCounts = [0,0,0,0];
+        totalHard = 0;
+        update();
+      };
+    });
+    document.getElementById('btnSample').onclick = sample;
+    document.getElementById('btnMany').onclick = () => {
+      for (let i = 0; i < 20; i++) sample();
+    };
+    document.getElementById('btnResetP').onclick = () => {
+      logits = [1.5, 0.5, 0.0, -0.5];
+      document.getElementById('l0').value = 1.5;
+      document.getElementById('l1').value = 0.5;
+      document.getElementById('l2').value = 0.0;
+      document.getElementById('l3').value = -0.5;
+      hardCounts = [0,0,0,0];
+      totalHard = 0;
+      lastY = null;
+      lastHard = null;
+      update();
+    };
+
+    update();
+  </script>
+</body>
+</html>

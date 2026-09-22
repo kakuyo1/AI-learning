@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>16 Sampling Methods · 详细复习文档</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --purple: #9334e6;
+      --light-blue: #e8f0fe;
+      --light-green: #e6f4ea;
+      --light-orange: #fef7e0;
+      --light-red: #fce8e6;
+      --light-purple: #f3e8fd;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      padding: 2rem 1rem 4rem;
+    }
+    .container { max-width: 920px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; color: #202124; margin-bottom: 0.35rem; }
+    .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.8rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.6rem 0 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.06rem; margin: 1.4rem 0 0.5rem; color: #202124; }
+    p, li { margin-bottom: 0.5rem; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+    .scene {
+      background: var(--light-orange);
+      border-left: 4px solid var(--orange);
+      padding: 0.9rem 1.15rem;
+      margin: 1rem 0 1.05rem;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.97rem;
+    }
+    .scene::before {
+      content: "场景引入";
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--orange);
+      margin-bottom: 0.3rem;
+    }
+    .one-liner {
+      background: var(--light-blue);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.15rem;
+      margin: 1.1rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 1.02rem;
+    }
+    .note {
+      background: var(--light-green);
+      border-left: 4px solid var(--green);
+      padding: 0.8rem 1.05rem;
+      margin: 0.9rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .warn {
+      background: var(--light-red);
+      border-left: 4px solid var(--red);
+      padding: 0.8rem 1.05rem;
+      margin: 0.9rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.3rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--light-blue); color: #174ea6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      font-family: "SF Mono", Consolas, "Courier New", monospace;
+      font-size: 0.9rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+      line-height: 1.7;
+      color: #174ea6;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--light-blue);
+      color: var(--blue);
+      font-size: 0.76rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-right: 0.2rem;
+      font-weight: 500;
+    }
+    .diagram {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .diagram svg { max-width: 100%; height: auto; }
+    .diagram .cap {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.3rem;
+      margin-bottom: 1.8rem;
+    }
+    .toc a { color: var(--blue); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.2rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>16 Sampling Methods · 详细复习</h1>
+    <p class="subtitle">场景引入 + 示意图 + 纯文本公式（无 LaTeX 渲染问题）</p>
+
+    <div class="one-liner">
+      <strong>整章在解决：</strong>计算机只会从简单分布（均匀、标准正态）抽数；实际需要复杂分布上的样本或期望。采样方法 = 搭桥。
+    </div>
+
+    <div class="toc">
+      <strong>目录</strong>
+      <ol>
+        <li><a href="#s1">为什么采样重要</a></li>
+        <li><a href="#s2">均匀 · CDF · 逆变换</a></li>
+        <li><a href="#s3">拒绝采样</a></li>
+        <li><a href="#s4">重要性采样</a></li>
+        <li><a href="#s5">蒙特卡洛估计</a></li>
+        <li><a href="#s6">MCMC · Metropolis-Hastings</a></li>
+        <li><a href="#s7">Gibbs 采样</a></li>
+        <li><a href="#s8">LLM：Temperature / Top-k / Top-p</a></li>
+        <li><a href="#s9">重参数化（VAE）</a></li>
+        <li><a href="#s10">Gumbel-Softmax</a></li>
+        <li><a href="#s11">分层采样</a></li>
+        <li><a href="#s12">与扩散模型的联系</a></li>
+        <li><a href="#s13">速查表</a></li>
+      </ol>
+    </div>
+
+    <!-- 1 -->
+    <h2 id="s1">1. 为什么采样重要</h2>
+    <div class="scene">
+      语言模型算出 5 万个词的概率后必须选一个：永远选最高 → 死板；完全乱选 → 胡话。中间地带由采样策略控制。
+    </div>
+    <ul>
+      <li><strong>生成</strong>：词、图、语音</li>
+      <li><strong>训练</strong>：batch、Dropout、增强</li>
+      <li><strong>估计</strong>：期望、积分（解不出就抽样平均）</li>
+      <li><strong>探索</strong>：RL 轨迹、后验</li>
+    </ul>
+
+    <!-- 2 -->
+    <h2 id="s2">2. 均匀随机 · CDF · 逆变换采样</h2>
+    <div class="scene">
+      只有「0～1 公平骰子」，却想模拟「小雨多、暴雨少」。需要把公平随机数映射成符合目标规律的数值。
+    </div>
+
+    <h3>CDF 是什么？</h3>
+    <p><strong>F(x) = P(X ≤ x)</strong>：不超过 x 的总概率。从 0 升到 1，单调不减。连续时等于 PDF 从左边积到 x 的面积。</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 520 200" width="520" height="200">
+        <!-- PDF panel -->
+        <text x="10" y="18" fill="#5f6368" font-size="12">PDF f(x)</text>
+        <path d="M30,120 Q80,120 100,40 Q120,20 140,40 Q180,120 250,120" fill="none" stroke="#188038" stroke-width="2.5"/>
+        <path d="M30,120 L30,120 Q80,120 100,40 Q120,20 140,40 Q150,70 160,90 L160,120 Z" fill="rgba(227,116,0,0.35)"/>
+        <line x1="160" y1="25" x2="160" y2="120" stroke="#d93025" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="148" y="138" fill="#d93025" font-size="11">x</text>
+        <text x="55" y="100" fill="#e37400" font-size="11">面积=F(x)</text>
+        <!-- CDF panel -->
+        <text x="280" y="18" fill="#5f6368" font-size="12">CDF F(x)</text>
+        <line x1="290" y1="120" x2="500" y2="120" stroke="#e3e6ec"/>
+        <line x1="290" y1="30" x2="290" y2="120" stroke="#e3e6ec"/>
+        <path d="M290,120 Q320,118 360,90 Q400,50 450,35 L500,32" fill="none" stroke="#1a73e8" stroke-width="2.5"/>
+        <line x1="400" y1="55" x2="400" y2="120" stroke="#d93025" stroke-width="1.5" stroke-dasharray="4"/>
+        <line x1="290" y1="55" x2="400" y2="55" stroke="#1a73e8" stroke-width="1" stroke-dasharray="3"/>
+        <text x="392" y="138" fill="#d93025" font-size="11">x</text>
+        <text x="250" y="58" fill="#1a73e8" font-size="11">F(x)</text>
+        <text x="120" y="175" fill="#5f6368" font-size="12">橙色面积 = 右侧 CDF 的高度</text>
+      </svg>
+      <div class="cap">PDF 左侧累积面积 = CDF 在 x 处的高度</div>
+    </div>
+
+    <h3>逆变换采样</h3>
+    <div class="formula">
+      1) 抽 u ~ Uniform(0, 1)<br>
+      2) x = F 的反函数 (u)<br>
+      → x 服从目标分布
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 480 160" width="480" height="160">
+        <text x="10" y="20" fill="#5f6368" font-size="12">CDF</text>
+        <path d="M40,130 Q80,125 140,80 Q200,30 280,20" fill="none" stroke="#1a73e8" stroke-width="2.5"/>
+        <line x1="40" y1="130" x2="300" y2="130" stroke="#e3e6ec"/>
+        <!-- U horizontal -->
+        <line x1="40" y1="55" x2="220" y2="55" stroke="#e37400" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="10" y="58" fill="#e37400" font-size="12">U</text>
+        <!-- vertical to x -->
+        <line x1="220" y1="55" x2="220" y2="130" stroke="#d93025" stroke-width="1.5"/>
+        <circle cx="220" cy="55" r="5" fill="#d93025"/>
+        <text x="210" y="148" fill="#d93025" font-size="12">x = F⁻¹(U)</text>
+        <text x="320" y="50" fill="#202124" font-size="13">抽 U → 水平找 CDF</text>
+        <text x="320" y="72" fill="#202124" font-size="13">→ 垂直落到 x 轴</text>
+        <text x="320" y="94" fill="#188038" font-size="13">得到目标分布样本</text>
+      </svg>
+      <div class="cap">逆变换：概率轴上的 U → 数值轴上的 x</div>
+    </div>
+    <div class="warn">没有简单 F 反函数时（如正态），换其他方法。</div>
+
+    <!-- 3 -->
+    <h2 id="s3">3. 拒绝采样</h2>
+    <div class="scene">
+      想按不规则「人气地图」点名，却只能在大矩形里均匀扔飞镖：扎在人气轮廓内就留下，否则重扔。
+    </div>
+    <div class="formula">
+      需要：p(x) ≤ M · q(x) 对所有 x 成立<br>
+      抽 x~q，再抽 u~U(0,1)<br>
+      若 u &lt; p(x)/(M·q(x)) → 接受，否则拒绝
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 460 180" width="460" height="180">
+        <!-- envelope -->
+        <rect x="40" y="30" width="300" height="100" fill="rgba(253,214,99,0.15)" stroke="#e37400" stroke-width="2"/>
+        <text x="200" y="22" fill="#e37400" font-size="12">包络 M·q</text>
+        <!-- target curve -->
+        <path d="M40,130 Q100,30 160,80 Q220,20 280,90 Q320,120 340,130" fill="rgba(24,128,56,0.2)" stroke="#188038" stroke-width="2.5"/>
+        <text x="150" y="70" fill="#188038" font-size="12">目标 p(x)</text>
+        <!-- points -->
+        <circle cx="100" cy="100" r="5" fill="#188038"/>
+        <circle cx="180" cy="55" r="5" fill="#188038"/>
+        <circle cx="250" cy="70" r="5" fill="#d93025" fill-opacity="0"/>
+        <circle cx="250" cy="70" r="5" stroke="#d93025" stroke-width="2"/>
+        <circle cx="300" cy="50" r="5" stroke="#d93025" stroke-width="2" fill="none"/>
+        <text x="360" y="60" fill="#188038" font-size="12">● 接受（在 p 下）</text>
+        <text x="360" y="80" fill="#d93025" font-size="12">○ 拒绝（在 p 上）</text>
+        <text x="40" y="160" fill="#5f6368" font-size="12">接受率 ≈ 1/M · 维数高时包络太空 → 几乎全拒绝</text>
+      </svg>
+      <div class="cap">在包络下扔点，落在绿线下方才保留</div>
+    </div>
+
+    <!-- 4 -->
+    <h2 id="s4">4. 重要性采样</h2>
+    <div class="scene">
+      想知道真实顾客分布 p 下的平均消费，问卷却按方便的 q 拦人。给每人乘权重 w = p/q：在 p 里重要、在 q 里少见的人，话语权更大。
+    </div>
+    <div class="formula">
+      E_p[f] ≈ 平均 [ f(xᵢ) · w(xᵢ) ]，其中 w = p/q<br>
+      或自归一化：Σ w·f / Σ w
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 480 150" width="480" height="150">
+        <path d="M30,120 Q70,120 90,40 Q110,20 130,50 Q180,120 250,120" fill="none" stroke="#188038" stroke-width="2.5"/>
+        <path d="M50,120 Q120,100 160,50 Q200,30 280,80 Q320,110 350,120" fill="none" stroke="#1a73e8" stroke-width="2" stroke-dasharray="5"/>
+        <text x="90" y="18" fill="#188038" font-size="12">p 目标</text>
+        <text x="250" y="35" fill="#1a73e8" font-size="12">q 提议</text>
+        <!-- sample dots with size = weight -->
+        <circle cx="95" cy="135" r="12" fill="rgba(147,52,230,0.5)"/>
+        <circle cx="160" cy="135" r="6" fill="rgba(147,52,230,0.5)"/>
+        <circle cx="220" cy="135" r="4" fill="rgba(147,52,230,0.5)"/>
+        <circle cx="280" cy="135" r="3" fill="rgba(147,52,230,0.5)"/>
+        <text x="30" y="148" fill="#5f6368" font-size="11">圆越大 = 权重 w=p/q 越大（p 高而 q 相对低）</text>
+      </svg>
+      <div class="cap">从 q 抽样，用权重纠正到 p 下的期望</div>
+    </div>
+    <div class="warn">q 与 p 差太远 → 少数权重爆炸，估计不稳（PPO 里常 clip 权重）。</div>
+
+    <!-- 5 -->
+    <h2 id="s5">5. 蒙特卡洛估计</h2>
+    <div class="scene">
+      不规则湖面积难算：在大矩形里随机扔豆子，用「落在湖内的比例 × 矩形面积」近似湖面积。
+    </div>
+    <div class="formula">
+      E[f(X)] ≈ (1/N) × Σ f(xᵢ)<br>
+      误差大致随 1/√N 下降（与维度无关）
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 200 200" width="180" height="180">
+        <rect x="20" y="20" width="160" height="160" fill="none" stroke="#5f6368" stroke-width="2"/>
+        <circle cx="100" cy="100" r="80" fill="none" stroke="#1a73e8" stroke-width="2"/>
+        <circle cx="70" cy="80" r="3" fill="#188038"/>
+        <circle cx="110" cy="90" r="3" fill="#188038"/>
+        <circle cx="95" cy="120" r="3" fill="#188038"/>
+        <circle cx="130" cy="70" r="3" fill="#188038"/>
+        <circle cx="40" cy="40" r="3" fill="#d93025"/>
+        <circle cx="160" cy="50" r="3" fill="#d93025"/>
+        <circle cx="150" cy="160" r="3" fill="#d93025"/>
+        <circle cx="30" cy="150" r="3" fill="#d93025"/>
+        <text x="45" y="195" fill="#5f6368" font-size="11">π ≈ 4 × 圆内/总数</text>
+      </svg>
+      <div class="cap">经典：扔点估 π</div>
+    </div>
+
+    <!-- 6 -->
+    <h2 id="s6">6. MCMC · Metropolis-Hastings</h2>
+    <div class="scene">
+      目标像一座复杂的山（只知道相对高度）。随机走：上坡多半走，下坡按比例偶尔走，避免卡在小山包。走久了，待在各处的时间比例 ≈ 目标分布。
+    </div>
+    <div class="formula">
+      提议 x' ~ q(·|当前 x)<br>
+      α = min( 1, p(x')/p(x) )　（对称提议时）<br>
+      以概率 α 走到 x'，否则留下
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 480 160" width="480" height="160">
+        <path d="M20,140 Q60,140 90,50 Q120,20 150,60 Q200,140 260,140 Q300,140 330,45 Q360,15 400,55 Q440,120 470,140" fill="none" stroke="#188038" stroke-width="2.5"/>
+        <!-- walk -->
+        <circle cx="90" cy="50" r="6" fill="#e37400"/>
+        <line x1="90" y1="50" x2="140" y2="55" stroke="#9334e6" stroke-width="2" marker-end="url(#arrow)"/>
+        <circle cx="140" cy="55" r="5" fill="#9334e6"/>
+        <line x1="140" y1="55" x2="200" y2="120" stroke="#9334e6" stroke-width="1.5" stroke-dasharray="3"/>
+        <circle cx="200" cy="120" r="5" fill="#e37400"/>
+        <line x1="200" y1="120" x2="330" y2="45" stroke="#9334e6" stroke-width="2"/>
+        <circle cx="330" cy="45" r="6" fill="#e37400"/>
+        <text x="70" y="30" fill="#e37400" font-size="11">当前</text>
+        <text x="145" y="40" fill="#9334e6" font-size="11">提议</text>
+        <text x="20" y="20" fill="#5f6368" font-size="12">双峰目标 · 轨迹逐渐两个峰都走到</text>
+      </svg>
+      <div class="cap">随机游走 + 按密度比接受；需 burn-in；步长太大太小都不好</div>
+    </div>
+
+    <!-- 7 -->
+    <h2 id="s7">7. Gibbs 采样</h2>
+    <div class="scene">
+      身高、体重联合难一次抽：先固定体重抽身高，再固定新身高抽体重，轮流更新。
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 320 160" width="320" height="160">
+        <ellipse cx="160" cy="80" rx="100" ry="50" fill="none" stroke="#188038" stroke-width="2" transform="rotate(-30 160 80)"/>
+        <ellipse cx="160" cy="80" rx="70" ry="30" fill="none" stroke="#188038" stroke-width="1" transform="rotate(-30 160 80)"/>
+        <!-- gibbs path -->
+        <path d="M100,100 H180 V50 H140 V90 H200" fill="none" stroke="#e37400" stroke-width="2"/>
+        <circle cx="100" cy="100" r="5" fill="#e37400"/>
+        <circle cx="200" cy="90" r="5" fill="#1a73e8"/>
+        <text x="60" y="20" fill="#5f6368" font-size="12">水平=更新 x | 竖直=更新 y</text>
+        <text x="210" y="95" fill="#1a73e8" font-size="11">新状态</text>
+      </svg>
+      <div class="cap">沿坐标轴交替更新；强相关时混匀慢</div>
+    </div>
+
+    <!-- 8 -->
+    <h2 id="s8">8. LLM：Temperature · Top-k · Top-p</h2>
+    <div class="scene">
+      写小说：有时要稳，有时要活，还要少出胡话。三个旋钮分工不同。
+    </div>
+    <table>
+      <tr><th>方法</th><th>做什么</th><th>特点</th></tr>
+      <tr><td>Temperature</td><td>logits / T 再 Softmax</td><td>T 小更尖；T 大更平；不删词</td></tr>
+      <tr><td>Top-k</td><td>只留概率最高 k 个</td><td>k 固定，可能过宽或过窄</td></tr>
+      <tr><td>Top-p</td><td>累计概率达 p 的最小前缀</td><td>自信时核小，犹豫时核大</td></tr>
+    </table>
+    <div class="diagram">
+      <svg viewBox="0 0 500 130" width="500" height="130">
+        <!-- bars sorted probs -->
+        <rect x="30" y="20" width="28" height="80" fill="#1a73e8"/>
+        <rect x="62" y="40" width="28" height="60" fill="#1a73e8"/>
+        <rect x="94" y="55" width="28" height="45" fill="#1a73e8"/>
+        <rect x="126" y="70" width="28" height="30" fill="#9334e6"/>
+        <rect x="158" y="80" width="28" height="20" fill="#9334e6"/>
+        <rect x="190" y="88" width="28" height="12" fill="#5f6368"/>
+        <rect x="222" y="92" width="28" height="8" fill="#5f6368"/>
+        <rect x="254" y="95" width="28" height="5" fill="#5f6368"/>
+        <line x1="30" y1="15" x2="186" y2="15" stroke="#e37400" stroke-width="2"/>
+        <text x="70" y="12" fill="#e37400" font-size="11">nucleus：累计 ≥ p</text>
+        <text x="300" y="50" fill="#202124" font-size="12">紫+蓝 = 保留再抽样</text>
+        <text x="300" y="70" fill="#5f6368" font-size="12">灰 = 截掉的长尾</text>
+        <text x="30" y="120" fill="#5f6368" font-size="11">词按概率从高到低 →</text>
+      </svg>
+      <div class="cap">Top-p：只保留「概率质量够 p」的核</div>
+    </div>
+
+    <!-- 9 -->
+    <h2 id="s9">9. 重参数化技巧（VAE）</h2>
+    <div class="scene">
+      编码器给出 μ、σ，要从 N(μ, σ²) 抽 z 再解码。直接「z ~ 该正态」会挡住梯度；必须把随机和参数拆开。
+    </div>
+    <div class="formula">
+      步骤①  ε ~ 标准正态 N(0, 1)　← 不含参数<br>
+      步骤②  z = μ + σ × ε　　　　← 只含可导加乘<br>
+      梯度：∂z/∂μ = 1，　∂z/∂σ = ε
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 520 150" width="520" height="150">
+        <!-- bad path -->
+        <rect x="20" y="20" width="70" height="36" rx="6" fill="#fce8e6" stroke="#d93025"/>
+        <text x="32" y="43" fill="#d93025" font-size="12">μ, σ</text>
+        <text x="100" y="42" fill="#5f6368" font-size="14">→</text>
+        <rect x="120" y="20" width="100" height="36" rx="6" fill="#fce8e6" stroke="#d93025"/>
+        <text x="130" y="43" fill="#d93025" font-size="11">采样 z~N</text>
+        <text x="230" y="42" fill="#5f6368" font-size="14">→</text>
+        <rect x="250" y="20" width="50" height="36" rx="6" fill="#f1f3f4" stroke="#5f6368"/>
+        <text x="260" y="43" fill="#5f6368" font-size="12">损失</text>
+        <text x="320" y="42" fill="#d93025" font-size="12">梯度在此断开 ✕</text>
+        <!-- good path -->
+        <rect x="20" y="90" width="50" height="36" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="28" y="113" fill="#188038" font-size="12">ε~N(0,1)</text>
+        <rect x="85" y="90" width="55" height="36" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="95" y="113" fill="#188038" font-size="12">μ, σ</text>
+        <text x="150" y="112" fill="#5f6368" font-size="14">→</text>
+        <rect x="170" y="90" width="110" height="36" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="180" y="113" fill="#188038" font-size="11">z = μ + σ·ε</text>
+        <text x="290" y="112" fill="#5f6368" font-size="14">→</text>
+        <rect x="310" y="90" width="50" height="36" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="320" y="113" fill="#188038" font-size="12">损失</text>
+        <text x="375" y="112" fill="#188038" font-size="12">梯度可回传 ✓</text>
+      </svg>
+      <div class="cap">上：随机挡路 · 下：噪声在外，参数在公式里</div>
+    </div>
+
+    <!-- 10 -->
+    <h2 id="s10">10. Gumbel-Softmax</h2>
+    <div class="scene">
+      离散选类别也要采样，硬 argmax 同样截断梯度。需要「像抽类别、又略可导」的近似。
+    </div>
+    <div class="formula">
+      gᵢ ~ Gumbel(0,1)<br>
+      yᵢ = softmax( (log pᵢ + gᵢ) / τ )<br>
+      τ → 0 更接近 one-hot；τ 大更软
+    </div>
+    <p>直通估计：前向用硬 argmax，反向当软 y 求导。</p>
+
+    <!-- 11 -->
+    <h2 id="s11">11. 分层采样</h2>
+    <div class="scene">
+      估整条街平均房价：完全随机可能都抽到北段。改成切成 N 段，每段都抽一家 → 覆盖均匀、方差更小。
+    </div>
+    <div class="formula">xᵢ = (i + Uᵢ) / N，Uᵢ ~ Uniform(0,1)，每层一个点</div>
+    <div class="diagram">
+      <svg viewBox="0 0 420 90" width="420" height="90">
+        <line x1="20" y1="50" x2="400" y2="50" stroke="#e3e6ec" stroke-width="2"/>
+        <!-- strata -->
+        <line x1="20" y1="30" x2="20" y2="70" stroke="#5f6368"/>
+        <line x1="115" y1="30" x2="115" y2="70" stroke="#5f6368"/>
+        <line x1="210" y1="30" x2="210" y2="70" stroke="#5f6368"/>
+        <line x1="305" y1="30" x2="305" y2="70" stroke="#5f6368"/>
+        <line x1="400" y1="30" x2="400" y2="70" stroke="#5f6368"/>
+        <circle cx="55" cy="50" r="6" fill="#e37400"/>
+        <circle cx="160" cy="50" r="6" fill="#e37400"/>
+        <circle cx="250" cy="50" r="6" fill="#e37400"/>
+        <circle cx="360" cy="50" r="6" fill="#e37400"/>
+        <text x="40" y="20" fill="#5f6368" font-size="11">层1</text>
+        <text x="145" y="20" fill="#5f6368" font-size="11">层2</text>
+        <text x="235" y="20" fill="#5f6368" font-size="11">层3</text>
+        <text x="340" y="20" fill="#5f6368" font-size="11">层4</text>
+      </svg>
+      <div class="cap">每层必有一点，避免扎堆与空洞</div>
+    </div>
+
+    <!-- 12 -->
+    <h2 id="s12">12. 与扩散模型的联系</h2>
+    <div class="scene">
+      无法直接从「所有自然照片」分布抽图。扩散：先把图一步步加噪成纯噪声；生成时从噪声出发，一步步采样「更干净一点」的图。
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 500 70" width="500" height="70">
+        <rect x="10" y="15" width="50" height="40" rx="6" fill="#e6f4ea" stroke="#188038"/>
+        <text x="18" y="40" fill="#188038" font-size="11">清晰图</text>
+        <text x="68" y="40" fill="#5f6368" font-size="16">→→→</text>
+        <rect x="120" y="15" width="50" height="40" rx="6" fill="#fef7e0" stroke="#e37400"/>
+        <text x="130" y="40" fill="#e37400" font-size="11">加噪中</text>
+        <text x="178" y="40" fill="#5f6368" font-size="16">→→→</text>
+        <rect x="230" y="15" width="50" height="40" rx="6" fill="#f1f3f4" stroke="#5f6368"/>
+        <text x="240" y="40" fill="#5f6368" font-size="11">纯噪声</text>
+        <text x="290" y="40" fill="#1a73e8" font-size="14">生成时反向</text>
+        <text x="400" y="40" fill="#5f6368" font-size="16">←←←</text>
+      </svg>
+      <div class="cap">前向加噪（重参数化）· 反向多步去噪采样 · 训练用蒙特卡洛</div>
+    </div>
+
+    <!-- 13 -->
+    <h2 id="s13">13. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">CDF</span> P(X≤x) = PDF 左侧面积</li>
+        <li><span class="tag">逆 CDF</span> x = F⁻¹(U)</li>
+        <li><span class="tag">拒绝</span> 包络下扔点，按 p/(M q) 接受</li>
+        <li><span class="tag">重要性</span> 从 q 抽，权重 p/q 估 E_p</li>
+        <li><span class="tag">蒙特卡洛</span> 平均≈期望，误差 ~ 1/√N</li>
+        <li><span class="tag">MH</span> 随机走 + 密度比接受</li>
+        <li><span class="tag">Gibbs</span> 按条件分布逐维更新</li>
+        <li><span class="tag">Temperature</span> 拉尖/拉平</li>
+        <li><span class="tag">Top-k / Top-p</span> 截长尾；p 自适应核大小</li>
+        <li><span class="tag">重参数化</span> z = μ + σ·ε，可反传</li>
+        <li><span class="tag">Gumbel-Softmax</span> 离散可导近似</li>
+        <li><span class="tag">分层</span> 每层都抽，降方差</li>
+        <li><span class="tag">扩散</span> 多步去噪 = 采样思想综合</li>
+      </ul>
+    </div>
+
+    <div class="one-liner">
+      <strong>口诀：</strong>简单随机数 → 变换 / 拒绝 / 加权 / 乱走 → 复杂样本或期望；要训练则随机在外、参数在可导式子里。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · 16-sampling-methods<br>
+      场景引入 + SVG 示意图 · 公式均为纯文本
+    </footer>
+  </div>
+</body>
+</html>
