@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>列视角 3D · 平面列空间 · 最小二乘</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.65rem 1.1rem;
+      margin-top: 0.5rem; font-size: 0.84rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      align-items: center; margin-bottom: 0.75rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.38rem 0.8rem; font-size: 0.84rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    input[type="range"] { width: 100px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+      cursor: grab;
+    }
+    canvas:active { cursor: grabbing; }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.12rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem; color: #fff;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.45rem 0 0.2rem;
+    }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>列视角 3D · 列空间是平面</h1>
+    <p class="subtitle">两列张成平面 · b 在平面外 · 投影 = 垂足 · 拖动画布旋转</p>
+
+    <div class="intro">
+      <strong>3D 才能看清：</strong>两个线性无关的列向量 a₁、a₂ 张成一个<strong>平面</strong>（不是整个空间）。
+      橙色 b 在平面外时，绿色 Ax* 是垂足，红色残差垂直于平面。
+      <div class="legend">
+        <span><i class="swatch" style="background:#8ab4f8"></i> a₁</span>
+        <span><i class="swatch" style="background:#fdd663"></i> a₂</span>
+        <span><i class="swatch" style="background:#3949ab"></i> 列空间平面</span>
+        <span><i class="swatch" style="background:#c58af9"></i> 当前 Ax</span>
+        <span><i class="swatch" style="background:#ff6d00"></i> b</span>
+        <span><i class="swatch" style="background:#81c995"></i> 投影 Ax*</span>
+        <span><i class="swatch" style="background:#f28b82"></i> 残差</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>x₁</span>
+          <input type="range" id="x1" min="-1.5" max="2.5" step="0.05" value="0.8">
+          <span id="x1L">0.80</span>
+        </div>
+        <div class="slider-row">
+          <span>x₂</span>
+          <input type="range" id="x2" min="-1.5" max="2.5" step="0.05" value="0.6">
+          <span id="x2L">0.60</span>
+        </div>
+        <div class="slider-row">
+          <span>b 高度</span>
+          <input type="range" id="bz" min="0" max="2.5" step="0.05" value="1.4">
+          <span id="bzL">1.40</span>
+        </div>
+        <button class="primary" id="btnLS">跳到投影</button>
+        <button id="btnAnim">动画移向投影</button>
+        <button id="btnSpin">自动旋转</button>
+      </div>
+      <canvas id="cv" width="920" height="480"></canvas>
+      <div class="info">
+        <div class="info-card"><h3>b</h3><div class="val" id="bVal">—</div></div>
+        <div class="info-card"><h3>Ax（紫）</h3><div class="val" id="axVal">—</div></div>
+        <div class="info-card"><h3>Ax* 投影</h3><div class="val" id="projVal">—</div></div>
+        <div class="info-card"><h3>‖残差‖</h3><div class="val" id="resVal">—</div></div>
+        <div class="info-card"><h3>状态</h3><div class="val" id="stVal">—</div></div>
+      </div>
+      <div class="explain">
+        <strong>操作：</strong>按住拖动画布旋转视角；调「b 高度」把目标抬出平面；调 x₁、x₂ 在平面内移动紫点；动画会把 (x₁,x₂) 插值到最小二乘解。
+        <h3>正规方程</h3>
+        AᵀA x = Aᵀb → 投影到 col(A)。残差与 a₁、a₂ 都正交（垂直于平面）。
+      </div>
+    </div>
+    <footer>3D column space plane · least squares · 17-linear-systems</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Columns in R3 spanning xy-ish plane with slight tilt
+    const a1 = { x: 1.5, y: 0.2, z: 0.15 };
+    const a2 = { x: 0.3, y: 1.4, z: 0.1 };
+
+    let x1 = 0.8, x2 = 0.6;
+    let b = { x: 1.0, y: 1.0, z: 1.4 };
+    let rotY = 0.6, rotX = 0.45;
+    let dragging = false, lastMx = 0, lastMy = 0;
+    let spin = false, animId = null, spinId = null;
+
+    const C_A1 = '#8ab4f8', C_A2 = '#fdd663', C_AX = '#c58af9';
+    const C_B = '#ff6d00', C_PROJ = '#81c995', C_RES = '#f28b82';
+
+    function add(u, v) { return { x: u.x + v.x, y: u.y + v.y, z: u.z + v.z }; }
+    function sub(u, v) { return { x: u.x - v.x, y: u.y - v.y, z: u.z - v.z }; }
+    function mul(u, s) { return { x: u.x * s, y: u.y * s, z: u.z * s }; }
+    function dot(u, v) { return u.x * v.x + u.y * v.y + u.z * v.z; }
+    function cross(u, v) {
+      return {
+        x: u.y * v.z - u.z * v.y,
+        y: u.z * v.x - u.x * v.z,
+        z: u.x * v.y - u.y * v.x
+      };
+    }
+    function norm(u) { return Math.sqrt(dot(u, u)); }
+    function normalize(u) {
+      const n = norm(u) || 1;
+      return mul(u, 1 / n);
+    }
+
+    function leastSquares(bv) {
+      const ATA00 = dot(a1, a1), ATA01 = dot(a1, a2), ATA11 = dot(a2, a2);
+      const ATb0 = dot(a1, bv), ATb1 = dot(a2, bv);
+      const det = ATA00 * ATA11 - ATA01 * ATA01;
+      const xs = (ATA11 * ATb0 - ATA01 * ATb1) / det;
+      const ys = (ATA00 * ATb1 - ATA01 * ATb0) / det;
+      return { x1: xs, x2: ys, proj: add(mul(a1, xs), mul(a2, ys)) };
+    }
+
+    function rotate(p) {
+      // rotX then rotY
+      let y = p.y * Math.cos(rotX) - p.z * Math.sin(rotX);
+      let z = p.y * Math.sin(rotX) + p.z * Math.cos(rotX);
+      let x = p.x * Math.cos(rotY) + z * Math.sin(rotY);
+      z = -p.x * Math.sin(rotY) + z * Math.cos(rotY);
+      return { x, y, z };
+    }
+
+    function project2d(p) {
+      const r = rotate(p);
+      const fov = 280;
+      const sc = fov / (fov + r.z * 40 + 120);
+      return {
+        x: W * 0.5 + r.x * 95 * sc,
+        y: H * 0.55 - r.y * 95 * sc,
+        d: r.z
+      };
+    }
+
+    function drawLine3(a, b, color, lw, dash) {
+      const pa = project2d(a), pb = project2d(b);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw || 2;
+      if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawArrow3(from, to, color, label) {
+      drawLine3(from, to, color, 2.8);
+      const pe = project2d(to);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pe.x, pe.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      if (label) {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(label, pe.x + 8, pe.y - 6);
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      // axes
+      drawLine3({ x: 0, y: 0, z: 0 }, { x: 2.8, y: 0, z: 0 }, '#3c4048', 1.5);
+      drawLine3({ x: 0, y: 0, z: 0 }, { x: 0, y: 2.5, z: 0 }, '#3c4048', 1.5);
+      drawLine3({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 2.2 }, '#3c4048', 1.5);
+      const ox = project2d({ x: 2.8, y: 0, z: 0 });
+      const oy = project2d({ x: 0, y: 2.5, z: 0 });
+      const oz = project2d({ x: 0, y: 0, z: 2.2 });
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('x', ox.x + 4, ox.y);
+      ctx.fillText('y', oy.x + 4, oy.y);
+      ctx.fillText('z', oz.x + 4, oz.y);
+
+      // plane parallelogram grid
+      const corners = [];
+      for (let i = -1; i <= 2; i++) {
+        for (let j = -1; j <= 2; j++) {
+          corners.push(add(mul(a1, i * 0.7), mul(a2, j * 0.7)));
+        }
+      }
+      // fill plane quad
+      const q = [
+        add(mul(a1, -0.5), mul(a2, -0.5)),
+        add(mul(a1, 2.0), mul(a2, -0.5)),
+        add(mul(a1, 2.0), mul(a2, 2.0)),
+        add(mul(a1, -0.5), mul(a2, 2.0))
+      ];
+      ctx.beginPath();
+      q.forEach((p, i) => {
+        const s = project2d(p);
+        if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(57, 73, 171, 0.22)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(92, 107, 192, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // plane grid lines
+      for (let i = 0; i <= 4; i++) {
+        const t = -0.5 + i * (2.5 / 4);
+        drawLine3(
+          add(mul(a1, t), mul(a2, -0.5)),
+          add(mul(a1, t), mul(a2, 2.0)),
+          'rgba(92,107,192,0.35)', 1
+        );
+        drawLine3(
+          add(mul(a1, -0.5), mul(a2, t)),
+          add(mul(a1, 2.0), mul(a2, t)),
+          'rgba(92,107,192,0.35)', 1
+        );
+      }
+
+      drawArrow3({ x: 0, y: 0, z: 0 }, a1, C_A1, 'a₁');
+      drawArrow3({ x: 0, y: 0, z: 0 }, a2, C_A2, 'a₂');
+
+      const Ax = add(mul(a1, x1), mul(a2, x2));
+      const ls = leastSquares(b);
+      const proj = ls.proj;
+
+      // residual
+      drawLine3(proj, b, C_RES, 2.5, [6, 4]);
+
+      // points
+      function dot3(p, color, r, label, offy) {
+        const s = project2d(p);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        if (label) {
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillText(label, s.x + 10, s.y + (offy || -8));
+        }
+      }
+      dot3(Ax, C_AX, 8, 'Ax', -8);
+      dot3(proj, C_PROJ, 9, 'Ax* 投影', 14);
+      dot3(b, C_B, 10, 'b', -10);
+
+      // normal hint (residual direction)
+      const n = normalize(cross(a1, a2));
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('拖动画布旋转 · 蓝平面 = 列空间 · 红线 ⊥ 平面', 16, 22);
+
+      const resN = norm(sub(b, proj));
+      document.getElementById('bVal').textContent =
+        '(' + b.x.toFixed(1) + ',' + b.y.toFixed(1) + ',' + b.z.toFixed(1) + ')';
+      document.getElementById('axVal').textContent =
+        '(' + Ax.x.toFixed(2) + ',' + Ax.y.toFixed(2) + ',' + Ax.z.toFixed(2) + ')';
+      document.getElementById('projVal').textContent =
+        '(' + proj.x.toFixed(2) + ',' + proj.y.toFixed(2) + ',' + proj.z.toFixed(2) + ')';
+      document.getElementById('resVal').textContent = resN.toFixed(3);
+      document.getElementById('stVal').textContent =
+        resN < 0.08 ? 'b 近似在平面上' : 'b 在平面外';
+      document.getElementById('stVal').style.color = resN < 0.08 ? '#81c995' : '#ff6d00';
+    }
+
+    function animLS() {
+      if (animId) cancelAnimationFrame(animId);
+      const ls = leastSquares(b);
+      const s1 = x1, s2 = x2;
+      let f = 0;
+      const total = 50;
+      const loop = () => {
+        f++;
+        const t = Math.min(1, f / total);
+        const e = 1 - Math.pow(1 - t, 3);
+        x1 = s1 + (ls.x1 - s1) * e;
+        x2 = s2 + (ls.x2 - s2) * e;
+        document.getElementById('x1').value = x1;
+        document.getElementById('x2').value = x2;
+        document.getElementById('x1L').textContent = x1.toFixed(2);
+        document.getElementById('x2L').textContent = x2.toFixed(2);
+        draw();
+        if (t < 1) animId = requestAnimationFrame(loop);
+      };
+      animId = requestAnimationFrame(loop);
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      dragging = true;
+      lastMx = e.clientX;
+      lastMy = e.clientY;
+    });
+    window.addEventListener('mouseup', () => { dragging = false; });
+    canvas.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      rotY += (e.clientX - lastMx) * 0.01;
+      rotX += (e.clientY - lastMy) * 0.01;
+      rotX = Math.max(-1.2, Math.min(1.2, rotX));
+      lastMx = e.clientX;
+      lastMy = e.clientY;
+      draw();
+    });
+
+    document.getElementById('x1').oninput = e => {
+      x1 = parseFloat(e.target.value);
+      document.getElementById('x1L').textContent = x1.toFixed(2);
+      draw();
+    };
+    document.getElementById('x2').oninput = e => {
+      x2 = parseFloat(e.target.value);
+      document.getElementById('x2L').textContent = x2.toFixed(2);
+      draw();
+    };
+    document.getElementById('bz').oninput = e => {
+      b.z = parseFloat(e.target.value);
+      document.getElementById('bzL').textContent = b.z.toFixed(2);
+      draw();
+    };
+    document.getElementById('btnLS').onclick = () => {
+      const ls = leastSquares(b);
+      x1 = ls.x1; x2 = ls.x2;
+      document.getElementById('x1').value = x1;
+      document.getElementById('x2').value = x2;
+      document.getElementById('x1L').textContent = x1.toFixed(2);
+      document.getElementById('x2L').textContent = x2.toFixed(2);
+      draw();
+    };
+    document.getElementById('btnAnim').onclick = animLS;
+    document.getElementById('btnSpin').onclick = () => {
+      spin = !spin;
+      if (spin) {
+        const tick = () => {
+          if (!spin) return;
+          rotY += 0.012;
+          draw();
+          spinId = requestAnimationFrame(tick);
+        };
+        spinId = requestAnimationFrame(tick);
+      }
+    };
+
+    draw();
+  </script>
+</body>
+</html>
