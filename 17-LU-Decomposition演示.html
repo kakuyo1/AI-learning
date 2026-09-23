@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LU Decomposition 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .step-bar {
+      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      margin-bottom: 0.8rem;
+    }
+    .step {
+      padding: 0.25rem 0.6rem;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      background: #12141c;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .step.on { background: rgba(26,115,232,0.25); color: var(--blue); border-color: #1a73e8; }
+    .step.done { background: rgba(129,201,149,0.12); color: var(--green); border-color: #188038; }
+    .mats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.8rem;
+      align-items: start;
+    }
+    .mat-box h3 {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+      text-align: center;
+    }
+    table.mat {
+      border-collapse: collapse;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem;
+      margin: 0 auto;
+    }
+    table.mat td {
+      width: 52px; height: 42px;
+      text-align: center;
+      border: 1px solid #2a2e3a;
+      background: #12141c;
+    }
+    table.mat td.hl-l { background: rgba(129,201,149,0.2); color: #81c995; }
+    table.mat td.hl-u { background: rgba(138,180,248,0.2); color: #8ab4f8; }
+    table.mat td.hl-m { background: rgba(253,214,99,0.25); color: #fdd663; }
+    .log {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 0.8rem;
+      min-height: 2.8em;
+      line-height: 1.6;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.88rem;
+      color: var(--blue);
+      margin-top: 0.6rem;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LU Decomposition 动画</h1>
+    <p class="subtitle">A = L U · 消元倍数进 L · 上三角结果是 U</p>
+
+    <div class="intro">
+      <strong>想法：</strong>高斯消元其实在做分解。下三角 <span style="color:#81c995">L</span> 记下每一步的倍数，上三角 <span style="color:#8ab4f8">U</span> 是消元后的矩阵。
+      之后解 Ax=b 变成：先解 Ly=b（前代），再解 Ux=y（回代），同一 A、多个 b 时很省。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary" id="btnNext">下一步</button>
+        <button id="btnAuto">自动播放</button>
+        <button id="btnReset">重置</button>
+      </div>
+      <div class="step-bar" id="steps"></div>
+
+      <div class="mats">
+        <div class="mat-box"><h3>A（工作矩阵→U）</h3><table class="mat" id="matA"></table></div>
+        <div class="mat-box"><h3>L（倍数 + 对角 1）</h3><table class="mat" id="matL"></table></div>
+        <div class="mat-box"><h3>U（上三角）</h3><table class="mat" id="matU"></table></div>
+      </div>
+
+      <div class="log" id="log">点「下一步」：把消元过程同时写入 L 和 U</div>
+      <div class="formula" id="formula">A = L × U</div>
+    </div>
+
+    <footer>LU decomposition · 17-linear-systems</footer>
+  </div>
+
+  <script>
+    // Same example as course
+    // A = [[2,1,1],[4,3,3],[2,3,1]]
+    // L = [[1,0,0],[2,1,0],[1,2,1]]
+    // U = [[2,1,1],[0,1,1],[0,0,-2]]
+
+    const A0 = [
+      [2, 1, 1],
+      [4, 3, 3],
+      [2, 3, 1]
+    ];
+
+    let A = A0.map(r => r.slice());
+    let L = [
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1]
+    ];
+    let phase = 0;
+    let autoTimer = null;
+    let hlA = [], hlL = [], hlU = [];
+
+    const names = [
+      '初始 A；L=I',
+      '消 R1：倍数 4/2=2 → L[1][0]=2',
+      '消 R2：倍数 2/2=1 → L[2][0]=1',
+      '消 R2 用 R1：倍数 2/1=2 → L[2][1]=2',
+      '完成：A 变成 U；核对 A=LU'
+    ];
+
+    function renderSteps() {
+      document.getElementById('steps').innerHTML = names.map((n, i) => {
+        let c = 'step';
+        if (i < phase) c += ' done';
+        if (i === phase) c += ' on';
+        return '<span class="' + c + '">' + (i + 1) + '. ' + n + '</span>';
+      }).join('');
+    }
+
+    function fmt(v) {
+      if (Math.abs(v) < 1e-9) return '0';
+      if (Number.isInteger(v)) return String(v);
+      return v.toFixed(1);
+    }
+
+    function drawMat(id, M, hl, mode) {
+      let html = '';
+      for (let i = 0; i < 3; i++) {
+        html += '<tr>';
+        for (let j = 0; j < 3; j++) {
+          let cls = '';
+          if (hl.some(p => p[0] === i && p[1] === j)) {
+            if (mode === 'L') cls = 'hl-l';
+            else if (mode === 'U') cls = 'hl-u';
+            else cls = 'hl-m';
+          }
+          html += '<td class="' + cls + '">' + fmt(M[i][j]) + '</td>';
+        }
+        html += '</tr>';
+      }
+      document.getElementById(id).innerHTML = html;
+    }
+
+    function currentU() {
+      // U is upper part of working A after eliminations; during process show A as working
+      const U = [
+        [0, 0, 0],
+        [0, 0, 0],
+        [0, 0, 0]
+      ];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (j >= i) U[i][j] = A[i][j];
+          else U[i][j] = 0;
+        }
+      }
+      return U;
+    }
+
+    function render() {
+      const U = currentU();
+      drawMat('matA', A, hlA, 'A');
+      drawMat('matL', L, hlL, 'L');
+      drawMat('matU', U, hlU, 'U');
+      renderSteps();
+    }
+
+    function next() {
+      if (phase >= names.length - 1) return;
+
+      if (phase === 0) {
+        // eliminate row1 col0
+        const m = A[1][0] / A[0][0];
+        L[1][0] = m;
+        for (let j = 0; j < 3; j++) A[1][j] -= m * A[0][j];
+        hlA = [[1, 0], [1, 1], [1, 2]];
+        hlL = [[1, 0]];
+        hlU = [[0, 0], [0, 1], [0, 2]];
+        document.getElementById('log').innerHTML =
+          'R1 ← R1 − 2·R0。倍数 <strong>2</strong> 存入 L[1][0]。工作矩阵第 1 行更新。';
+        phase = 1;
+      } else if (phase === 1) {
+        const m = A[2][0] / A[0][0];
+        L[2][0] = m;
+        for (let j = 0; j < 3; j++) A[2][j] -= m * A[0][j];
+        hlA = [[2, 0], [2, 1], [2, 2]];
+        hlL = [[2, 0]];
+        hlU = [[0, 0]];
+        document.getElementById('log').innerHTML =
+          'R2 ← R2 − 1·R0。倍数 <strong>1</strong> 存入 L[2][0]。';
+        phase = 2;
+      } else if (phase === 2) {
+        const m = A[2][1] / A[1][1];
+        L[2][1] = m;
+        for (let j = 0; j < 3; j++) A[2][j] -= m * A[1][j];
+        hlA = [[2, 1], [2, 2]];
+        hlL = [[2, 1]];
+        hlU = [[1, 1], [1, 2]];
+        document.getElementById('log').innerHTML =
+          'R2 ← R2 − 2·R1。倍数 <strong>2</strong> 存入 L[2][1]。下三角倍数已齐。';
+        phase = 3;
+      } else if (phase === 3) {
+        hlA = [];
+        hlL = [[0,0],[1,0],[1,1],[2,0],[2,1],[2,2]];
+        hlU = [[0,0],[0,1],[0,2],[1,1],[1,2],[2,2]];
+        document.getElementById('log').innerHTML =
+          '完成。<strong>L</strong> 含倍数与对角 1；工作矩阵上三角部分即 <strong>U</strong>。<br>' +
+          '验证：L@U 应回到原 A = [[2,1,1],[4,3,3],[2,3,1]]。';
+        document.getElementById('formula').textContent =
+          'A = L U = [[1,0,0],[2,1,0],[1,2,1]] × [[2,1,1],[0,1,1],[0,0,-2]]';
+        phase = 4;
+      }
+      render();
+    }
+
+    function reset() {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      A = A0.map(r => r.slice());
+      L = [[1,0,0],[0,1,0],[0,0,1]];
+      phase = 0;
+      hlA = hlL = hlU = [];
+      document.getElementById('log').textContent = '点「下一步」开始';
+      document.getElementById('formula').textContent = 'A = L × U';
+      render();
+    }
+
+    document.getElementById('btnNext').onclick = next;
+    document.getElementById('btnAuto').onclick = () => {
+      if (autoTimer) return;
+      autoTimer = setInterval(() => {
+        if (phase >= names.length - 1) {
+          clearInterval(autoTimer);
+          autoTimer = null;
+          return;
+        }
+        next();
+      }, 1500);
+    };
+    document.getElementById('btnReset').onclick = reset;
+
+    reset();
+  </script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cholesky Decomposition 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .step-bar {
+      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      margin-bottom: 0.8rem;
+    }
+    .step {
+      padding: 0.25rem 0.6rem;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      background: #12141c;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .step.on { background: rgba(26,115,232,0.25); color: var(--blue); border-color: #1a73e8; }
+    .step.done { background: rgba(129,201,149,0.12); color: var(--green); border-color: #188038; }
+    .mats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.8rem;
+    }
+    .mat-box h3 {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 0.35rem;
+    }
+    table.mat {
+      border-collapse: collapse;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem;
+      margin: 0 auto;
+    }
+    table.mat td {
+      width: 56px; height: 44px;
+      text-align: center;
+      border: 1px solid #2a2e3a;
+      background: #12141c;
+      transition: background 0.2s;
+    }
+    table.mat td.hl {
+      background: rgba(253, 214, 99, 0.3);
+      color: #fdd663;
+      font-weight: bold;
+    }
+    table.mat td.done {
+      background: rgba(129, 201, 149, 0.15);
+      color: #81c995;
+    }
+    table.mat td.sym {
+      color: #5f6368;
+      font-size: 0.8rem;
+    }
+    .log {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 0.8rem;
+      min-height: 3em;
+      line-height: 1.6;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.85rem;
+      color: var(--blue);
+      margin-top: 0.55rem;
+      line-height: 1.6;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cholesky Decomposition 动画</h1>
+    <p class="subtitle">对称正定 A = L Lᵀ · 只算一半 · 比 LU 更快</p>
+
+    <div class="intro">
+      <strong>适用：</strong>A 对称且正定（如协方差、岭回归里的 XᵀX+λI）。<br>
+      <strong>结果：</strong>A = L × Lᵀ，L 为下三角。不必像 LU 那样存两份一般三角阵，大约快一倍、省一半存储。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary" id="btnNext">下一步</button>
+        <button id="btnAuto">自动播放</button>
+        <button id="btnReset">重置</button>
+      </div>
+      <div class="step-bar" id="steps"></div>
+
+      <div class="mats">
+        <div class="mat-box"><h3>A（对称正定）</h3><table class="mat" id="matA"></table></div>
+        <div class="mat-box"><h3>L（下三角，逐步填）</h3><table class="mat" id="matL"></table></div>
+        <div class="mat-box"><h3>Lᵀ</h3><table class="mat" id="matLT"></table></div>
+      </div>
+
+      <div class="log" id="log">点「下一步」按公式填 L</div>
+      <div class="formula" id="formula">
+        L[i][i] = sqrt( A[i][i] − Σₖ L[i][k]² )<br>
+        L[i][j] = ( A[i][j] − Σₖ L[i][k]L[j][k] ) / L[j][j]　(i&gt;j)
+      </div>
+    </div>
+    <footer>Cholesky · 17-linear-systems</footer>
+  </div>
+
+  <script>
+    // Course example: A = [[4,2],[2,5]] = L L^T with L=[[2,0],[1,2]]
+    // Use 3x3 SPD for richer steps:
+    // A = [[4, 2, 2],[2, 5, 3],[2, 3, 6]]
+    const A = [
+      [4, 2, 2],
+      [2, 5, 3],
+      [2, 3, 6]
+    ];
+
+    let L = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0]
+    ];
+    let phase = 0;
+    let hl = [];
+    let autoTimer = null;
+
+    // Fill order: L00, L10, L20, L11, L21, L22
+    const order = [
+      { i: 0, j: 0, name: 'L[0][0] 对角' },
+      { i: 1, j: 0, name: 'L[1][0] 下三角' },
+      { i: 2, j: 0, name: 'L[2][0] 下三角' },
+      { i: 1, j: 1, name: 'L[1][1] 对角' },
+      { i: 2, j: 1, name: 'L[2][1] 下三角' },
+      { i: 2, j: 2, name: 'L[2][2] 对角' },
+      { i: -1, j: -1, name: '完成 · 验证 A=LLᵀ' }
+    ];
+
+    function fmt(v) {
+      if (Math.abs(v) < 1e-9) return '0';
+      if (Number.isInteger(v)) return String(v);
+      return (Math.round(v * 100) / 100).toFixed(2);
+    }
+
+    function renderSteps() {
+      document.getElementById('steps').innerHTML = order.map((o, i) => {
+        let c = 'step';
+        if (i < phase) c += ' done';
+        if (i === phase) c += ' on';
+        return '<span class="' + c + '">' + (i + 1) + '. ' + o.name + '</span>';
+      }).join('');
+    }
+
+    function drawMat(id, M, isL) {
+      let html = '';
+      for (let i = 0; i < 3; i++) {
+        html += '<tr>';
+        for (let j = 0; j < 3; j++) {
+          let cls = '';
+          const isHL = hl.some(p => p[0] === i && p[1] === j);
+          if (isHL) cls = 'hl';
+          else if (isL && j > i) cls = 'sym'; // upper part of L is 0
+          else if (isL && L[i][j] !== 0 && !(hl.length && hl[0][0] === i && hl[0][1] === j)) cls = 'done';
+
+          let val;
+          if (isL && j > i) val = '0';
+          else val = fmt(M[i][j]);
+          html += '<td class="' + cls + '">' + val + '</td>';
+        }
+        html += '</tr>';
+      }
+      document.getElementById(id).innerHTML = html;
+    }
+
+    function LT() {
+      return [
+        [L[0][0], L[1][0], L[2][0]],
+        [L[0][1], L[1][1], L[2][1]],
+        [L[0][2], L[1][2], L[2][2]]
+      ];
+    }
+
+    function render() {
+      drawMat('matA', A, false);
+      drawMat('matL', L, true);
+      drawMat('matLT', LT(), false);
+      renderSteps();
+    }
+
+    function computeEntry(i, j) {
+      if (i === j) {
+        let s = 0;
+        for (let k = 0; k < j; k++) s += L[i][k] * L[i][k];
+        return Math.sqrt(A[i][i] - s);
+      } else {
+        let s = 0;
+        for (let k = 0; k < j; k++) s += L[i][k] * L[j][k];
+        return (A[i][j] - s) / L[j][j];
+      }
+    }
+
+    function next() {
+      if (phase >= order.length - 1) return;
+
+      if (phase < 6) {
+        const { i, j } = order[phase];
+        const val = computeEntry(i, j);
+        L[i][j] = val;
+        hl = [[i, j]];
+
+        if (i === j) {
+          let s = 0;
+          for (let k = 0; k < j; k++) s += L[i][k] * L[i][k];
+          document.getElementById('log').innerHTML =
+            '对角：L[' + i + '][' + i + '] = √(A[' + i + '][' + i + '] − Σ L[' + i + '][k]²)<br>' +
+            '= √(' + A[i][i] + ' − ' + s.toFixed(2) + ') = <strong>' + fmt(val) + '</strong>';
+        } else {
+          let s = 0;
+          for (let k = 0; k < j; k++) s += L[i][k] * L[j][k];
+          document.getElementById('log').innerHTML =
+            '下三角：L[' + i + '][' + j + '] = (A[' + i + '][' + j + '] − Σ L[' + i + '][k]L[' + j + '][k]) / L[' + j + '][' + j + ']<br>' +
+            '= (' + A[i][j] + ' − ' + s.toFixed(2) + ') / ' + fmt(L[j][j]) + ' = <strong>' + fmt(val) + '</strong>';
+        }
+        phase++;
+      } else {
+        hl = [];
+        document.getElementById('log').innerHTML =
+          '完成。L 已填满下三角；A = L Lᵀ。<br>' +
+          '解 Ax=b：先解 Ly=b（前代），再解 Lᵀx=y（回代）。';
+        document.getElementById('formula').textContent =
+          'A = L Lᵀ · 协方差 / 岭回归 (XᵀX+λI) 常用 Cholesky';
+        phase++;
+      }
+      render();
+    }
+
+    function reset() {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      L = [[0,0,0],[0,0,0],[0,0,0]];
+      phase = 0;
+      hl = [];
+      document.getElementById('log').textContent = '点「下一步」按公式填 L';
+      document.getElementById('formula').innerHTML =
+        'L[i][i] = sqrt( A[i][i] − Σₖ L[i][k]² )<br>L[i][j] = ( A[i][j] − Σₖ L[i][k]L[j][k] ) / L[j][j]　(i&gt;j)';
+      render();
+    }
+
+    document.getElementById('btnNext').onclick = next;
+    document.getElementById('btnAuto').onclick = () => {
+      if (autoTimer) return;
+      autoTimer = setInterval(() => {
+        if (phase >= order.length - 1) {
+          clearInterval(autoTimer);
+          autoTimer = null;
+          return;
+        }
+        next();
+      }, 1400);
+    };
+    document.getElementById('btnReset').onclick = reset;
+
+    reset();
+  </script>
+</body>
+</html>

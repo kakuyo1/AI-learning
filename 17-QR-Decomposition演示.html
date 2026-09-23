@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR · Gram-Schmidt 逐步演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .step-bar {
+      display: flex; flex-wrap: wrap; gap: 0.35rem;
+      margin-bottom: 0.7rem;
+    }
+    .step {
+      padding: 0.28rem 0.6rem;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      background: #12141c;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .step.on { background: rgba(26,115,232,0.3); color: var(--blue); border-color: #1a73e8; }
+    .step.done { background: rgba(129,201,149,0.12); color: var(--green); border-color: #188038; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .gs-formula {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.7rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.88rem;
+      color: var(--blue);
+      line-height: 1.7;
+      min-height: 4.5em;
+    }
+    .mats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.6rem;
+      margin-top: 0.7rem;
+    }
+    .mat-box h3 {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 0.3rem;
+    }
+    table.mat {
+      border-collapse: collapse;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.85rem;
+      margin: 0 auto;
+    }
+    table.mat td {
+      width: 52px; height: 38px;
+      text-align: center;
+      border: 1px solid #2a2e3a;
+      background: #161822;
+    }
+    table.mat td.fill { background: rgba(138,180,248,0.15); color: #8ab4f8; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.75rem 1rem;
+      font-size: 0.82rem;
+      margin-bottom: 0.4rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.3rem; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gram-Schmidt → QR 逐步演示</h1>
+    <p class="subtitle">单位化 → 投影 → 相减得残差 → 再单位化 · 系数写入 R</p>
+
+    <div class="intro">
+      <strong>Gram-Schmidt 在干什么：</strong>
+      第 1 列直接拉成单位向量 q₁；第 2 列先<strong>减去</strong>在 q₁ 方向上的投影，剩下与 q₁ 垂直的残差，再拉成单位向量 q₂。
+      投影长度记入 R，于是 A = QR。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary" id="btnNext">下一步</button>
+        <button id="btnAuto">自动播放</button>
+        <button id="btnReset">重置</button>
+      </div>
+      <div class="step-bar" id="steps"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:#f28b82"></i> a₁, a₂（原始列）</span>
+        <span><i class="dot" style="background:#fdd663"></i> 投影分量</span>
+        <span><i class="dot" style="background:#c58af9"></i> 残差 v₂</span>
+        <span><i class="dot" style="background:#81c995"></i> q₁, q₂（正交单位向量）</span>
+      </div>
+      <canvas id="cv" width="920" height="360"></canvas>
+      <div class="gs-formula" id="formula">准备：A 的列 a₁=(3,1), a₂=(1,2)</div>
+      <div class="mats">
+        <div class="mat-box"><h3>Q 的列</h3><table class="mat" id="matQ"></table></div>
+        <div class="mat-box"><h3>R</h3><table class="mat" id="matR"></table></div>
+        <div class="mat-box"><h3>当前计算</h3><table class="mat" id="matCalc"></table></div>
+      </div>
+    </div>
+    <footer>Gram-Schmidt process · QR · 17-linear-systems</footer>
+  </div>
+
+  <script>
+    const a1 = { x: 3, y: 1 };
+    const a2 = { x: 1, y: 2 };
+
+    let phase = 0;
+    let q1 = null, q2 = null, v2 = null, proj = null;
+    let r11 = 0, r12 = 0, r22 = 0;
+    let autoTimer = null;
+    // show flags for animation layers
+    let show = { a: true, q1: false, proj: false, v2: false, q2: false };
+
+    const names = [
+      '① 原始列 a₁, a₂',
+      '② 单位化 a₁ → q₁',
+      '③ 算投影 (a₂·q₁)q₁',
+      '④ 残差 v₂ = a₂ − 投影',
+      '⑤ 单位化 v₂ → q₂',
+      '⑥ 完成 A = QR'
+    ];
+
+    function dot(u, v) { return u.x * v.x + u.y * v.y; }
+    function add(u, v) { return { x: u.x + v.x, y: u.y + v.y }; }
+    function sub(u, v) { return { x: u.x - v.x, y: u.y - v.y }; }
+    function mul(u, s) { return { x: u.x * s, y: u.y * s }; }
+    function norm(u) { return Math.sqrt(dot(u, u)); }
+
+    function renderSteps() {
+      document.getElementById('steps').innerHTML = names.map((n, i) => {
+        let c = 'step';
+        if (i < phase) c += ' done';
+        if (i === phase) c += ' on';
+        return '<span class="' + c + '">' + n + '</span>';
+      }).join('');
+    }
+
+    function fmt(v) {
+      if (v === null || v === undefined || Number.isNaN(v)) return '—';
+      if (Math.abs(v) < 1e-9) return '0';
+      return (Math.round(v * 100) / 100).toFixed(2);
+    }
+
+    function updateMats() {
+      document.getElementById('matQ').innerHTML =
+        '<tr><td class="' + (q1 ? 'fill' : '') + '">' + fmt(q1 && q1.x) + '</td><td class="' + (q2 ? 'fill' : '') + '">' + fmt(q2 && q2.x) + '</td></tr>' +
+        '<tr><td class="' + (q1 ? 'fill' : '') + '">' + fmt(q1 && q1.y) + '</td><td class="' + (q2 ? 'fill' : '') + '">' + fmt(q2 && q2.y) + '</td></tr>';
+
+      document.getElementById('matR').innerHTML =
+        '<tr><td class="' + (phase >= 1 ? 'fill' : '') + '">' + fmt(phase >= 1 ? r11 : null) + '</td><td class="' + (phase >= 2 ? 'fill' : '') + '">' + fmt(phase >= 2 ? r12 : null) + '</td></tr>' +
+        '<tr><td>0</td><td class="' + (phase >= 4 ? 'fill' : '') + '">' + fmt(phase >= 4 ? r22 : null) + '</td></tr>';
+
+      let calc = '—';
+      if (phase === 1) calc = 'R11=‖a1‖';
+      if (phase === 2) calc = 'R12=a2·q1';
+      if (phase === 3) calc = 'v2=a2-proj';
+      if (phase >= 4) calc = 'R22=‖v2‖';
+      document.getElementById('matCalc').innerHTML =
+        '<tr><td colspan="2">' + calc + '</td></tr>' +
+        '<tr><td>R11 ' + fmt(phase >= 1 ? r11 : null) + '</td><td>R12 ' + fmt(phase >= 2 ? r12 : null) + '</td></tr>';
+    }
+
+    function draw() {
+      const canvas = document.getElementById('cv');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const O = { x: 130, y: H - 55 };
+      const sc = 58;
+      const S = p => ({ x: O.x + p.x * sc, y: O.y - p.y * sc });
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, O.y); ctx.lineTo(W - 30, O.y);
+      ctx.moveTo(O.x, 25); ctx.lineTo(O.x, H - 25);
+      ctx.stroke();
+
+      function arrow(to, color, label, lw, from) {
+        from = from || { x: 0, y: 0 };
+        const s = S(from), e = S(to);
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lw || 2.5;
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(e.x, e.y);
+        ctx.stroke();
+        const ang = Math.atan2(e.y - s.y, e.x - s.x);
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y);
+        ctx.lineTo(e.x - 10 * Math.cos(ang - 0.35), e.y - 10 * Math.sin(ang - 0.35));
+        ctx.lineTo(e.x - 10 * Math.cos(ang + 0.35), e.y - 10 * Math.sin(ang + 0.35));
+        ctx.closePath();
+        ctx.fill();
+        if (label) {
+          ctx.font = 'bold 13px sans-serif';
+          ctx.fillText(label, e.x + 8, e.y - 4);
+        }
+      }
+
+      // parallelogram hint for a1, a2
+      if (show.a) {
+        arrow(a1, '#f28b82', 'a₁', 2.2);
+        arrow(a2, '#f28b82', 'a₂', 2.2);
+      }
+
+      if (show.q1 && q1) {
+        // also show r11*q1 = a1 in yellow outline
+        arrow(mul(q1, r11), 'rgba(253,214,99,0.5)', '', 1.5);
+        arrow(q1, '#81c995', 'q₁', 3);
+      }
+
+      if (show.proj && proj) {
+        arrow(proj, '#fdd663', '投影 (a₂·q₁)q₁', 2.8);
+        // dashed a2 for reference
+        ctx.setLineDash([4, 4]);
+        arrow(a2, 'rgba(242,139,130,0.4)', '', 1.5);
+        ctx.setLineDash([]);
+      }
+
+      if (show.v2 && v2 && proj) {
+        // residual as vector from tip of proj to a2
+        const from = proj;
+        const to = add(proj, v2);
+        arrow(to, '#c58af9', 'v₂ 残差', 2.8, from);
+        // small right angle
+        ctx.strokeStyle = 'rgba(197,138,249,0.7)';
+        ctx.lineWidth = 1.5;
+        const pe = S(proj);
+        ctx.beginPath();
+        ctx.arc(pe.x, pe.y, 8, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (show.q2 && q2) {
+        arrow(q2, '#81c995', 'q₂', 3);
+      }
+
+      renderSteps();
+      updateMats();
+    }
+
+    function next() {
+      if (phase >= names.length - 1) return;
+
+      if (phase === 0) {
+        // normalize a1
+        r11 = norm(a1);
+        q1 = mul(a1, 1 / r11);
+        show = { a: true, q1: true, proj: false, v2: false, q2: false };
+        document.getElementById('formula').innerHTML =
+          '② q₁ = a₁ / ‖a₁‖<br>' +
+          ' ‖a₁‖ = R₁₁ = ' + r11.toFixed(3) + '<br>' +
+          ' q₁ = (' + q1.x.toFixed(3) + ', ' + q1.y.toFixed(3) + ')　（单位向量，方向同 a₁）';
+        phase = 1;
+      } else if (phase === 1) {
+        r12 = dot(a2, q1);
+        proj = mul(q1, r12);
+        show = { a: true, q1: true, proj: true, v2: false, q2: false };
+        document.getElementById('formula').innerHTML =
+          '③ 投影 = (a₂ · q₁) · q₁<br>' +
+          ' a₂ · q₁ = R₁₂ = ' + r12.toFixed(3) + '<br>' +
+          ' 投影向量 = (' + proj.x.toFixed(3) + ', ' + proj.y.toFixed(3) + ')　← 平行于 q₁';
+        phase = 2;
+      } else if (phase === 2) {
+        v2 = sub(a2, proj);
+        show = { a: true, q1: true, proj: true, v2: true, q2: false };
+        document.getElementById('formula').innerHTML =
+          '④ v₂ = a₂ − 投影　（Gram-Schmidt 核心：去掉已有方向上的分量）<br>' +
+          ' v₂ = (' + v2.x.toFixed(3) + ', ' + v2.y.toFixed(3) + ')<br>' +
+          ' 此时 v₂ ⊥ q₁（点积 ≈ 0）';
+        phase = 3;
+      } else if (phase === 3) {
+        r22 = norm(v2);
+        q2 = mul(v2, 1 / r22);
+        show = { a: true, q1: true, proj: true, v2: true, q2: true };
+        document.getElementById('formula').innerHTML =
+          '⑤ q₂ = v₂ / ‖v₂‖<br>' +
+          ' R₂₂ = ‖v₂‖ = ' + r22.toFixed(3) + '<br>' +
+          ' q₂ = (' + q2.x.toFixed(3) + ', ' + q2.y.toFixed(3) + ')　且 q₁ · q₂ = 0';
+        phase = 4;
+      } else if (phase === 4) {
+        show = { a: true, q1: true, proj: false, v2: false, q2: true };
+        document.getElementById('formula').innerHTML =
+          '⑥ 完成 Gram-Schmidt → QR<br>' +
+          ' a₁ = R₁₁ q₁<br>' +
+          ' a₂ = R₁₂ q₁ + R₂₂ q₂<br>' +
+          ' A = QR；解 Ax=b 时用 Rx = Qᵀb 再回代';
+        phase = 5;
+      }
+      draw();
+    }
+
+    function reset() {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      phase = 0;
+      q1 = q2 = v2 = proj = null;
+      r11 = r12 = r22 = 0;
+      show = { a: true, q1: false, proj: false, v2: false, q2: false };
+      document.getElementById('formula').textContent = '准备：A 的列 a₁=(3,1), a₂=(1,2)。点「下一步」开始 Gram-Schmidt。';
+      draw();
+    }
+
+    document.getElementById('btnNext').onclick = next;
+    document.getElementById('btnAuto').onclick = () => {
+      if (autoTimer) return;
+      autoTimer = setInterval(() => {
+        if (phase >= names.length - 1) {
+          clearInterval(autoTimer);
+          autoTimer = null;
+          return;
+        }
+        next();
+      }, 1800);
+    };
+    document.getElementById('btnReset').onclick = reset;
+
+    reset();
+  </script>
+</body>
+</html>
