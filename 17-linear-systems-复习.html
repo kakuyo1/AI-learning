@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>17 Linear Systems · 详尽复习</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --lb: #e8f0fe;
+      --lg: #e6f4ea;
+      --lo: #fef7e0;
+      --lr: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      padding: 2rem 1rem 4rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.6rem; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.5rem 0 0.9rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.05rem; margin: 1.3rem 0 0.45rem; }
+    p, li { margin-bottom: 0.5rem; }
+    ul, ol { padding-left: 1.35rem; margin-bottom: 0.85rem; }
+    .scene {
+      background: var(--lo);
+      border-left: 4px solid var(--orange);
+      padding: 0.9rem 1.15rem;
+      margin: 0.95rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.97rem;
+    }
+    .scene::before {
+      content: "场景引入";
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--orange);
+      margin-bottom: 0.3rem;
+    }
+    .one {
+      background: var(--lb);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note {
+      background: var(--lg);
+      border-left: 4px solid var(--green);
+      padding: 0.8rem 1.05rem;
+      margin: 0.85rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .warn {
+      background: var(--lr);
+      border-left: 4px solid var(--red);
+      padding: 0.8rem 1.05rem;
+      margin: 0.85rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.25rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--lb); color: #174ea6; }
+    tr:nth-child(even) { background: #fafafa; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem;
+      margin: 0.8rem 0;
+      line-height: 1.7;
+      color: #174ea6;
+    }
+    .diagram {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .diagram .cap {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.45rem;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--lb);
+      color: var(--blue);
+      font-size: 0.76rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-right: 0.2rem;
+      font-weight: 500;
+    }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.3rem;
+      margin-bottom: 1.8rem;
+    }
+    .toc a { color: var(--blue); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    footer {
+      margin-top: 2.8rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>17 Linear Systems · 详尽复习</h1>
+    <p class="subtitle">Ax = b · 场景引入 + 示意图 + 你问过的难点（列空间、正规方程、伪逆、条件数…）</p>
+
+    <div class="one">
+      <strong>整章一句话：</strong>神经网络、线性回归、高斯过程里到处都在解（或近似解）Ax = b。本章讲怎么解、解不精确时怎么办、解可不可信。
+    </div>
+
+    <div class="toc">
+      <strong>目录</strong>
+      <ol>
+        <li><a href="#s1">Ax=b 几何与列视角</a></li>
+        <li><a href="#s2">高斯消元与主元</a></li>
+        <li><a href="#s3">LU / QR / Cholesky</a></li>
+        <li><a href="#s4">最小二乘与正规方程</a></li>
+        <li><a href="#s5">伪逆</a></li>
+        <li><a href="#s6">条件数</a></li>
+        <li><a href="#s7">共轭梯度</a></li>
+        <li><a href="#s8">方法怎么选 · ML 联系</a></li>
+        <li><a href="#s9">速查</a></li>
+      </ol>
+    </div>
+
+    <!-- 1 -->
+    <h2 id="s1">1. Ax = b 几何与列视角</h2>
+    <div class="scene">
+      每个方程是一张平面（二维里是直线）。解 = 所有平面交在一起的地方：一个交点 / 平行无交 / 重合无穷多。
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 520 130" width="520" height="130">
+        <line x1="30" y1="40" x2="150" y2="100" stroke="#1a73e8" stroke-width="2"/>
+        <line x1="40" y1="110" x2="160" y2="30" stroke="#188038" stroke-width="2"/>
+        <circle cx="95" cy="70" r="5" fill="#e37400"/>
+        <text x="50" y="20" fill="#5f6368" font-size="12">唯一交点</text>
+        <line x1="220" y1="35" x2="320" y2="95" stroke="#1a73e8" stroke-width="2"/>
+        <line x1="230" y1="50" x2="330" y2="110" stroke="#188038" stroke-width="2"/>
+        <text x="240" y="20" fill="#5f6368" font-size="12">平行无解</text>
+        <line x1="400" y1="40" x2="500" y2="100" stroke="#1a73e8" stroke-width="3"/>
+        <line x1="400" y1="40" x2="500" y2="100" stroke="#188038" stroke-width="1.5" stroke-dasharray="4"/>
+        <text x="410" y="20" fill="#5f6368" font-size="12">重合无穷解</text>
+      </svg>
+      <div class="cap">行视角：平面相交情况</div>
+    </div>
+
+    <h3>列视角（更基本）</h3>
+    <div class="scene">
+      把 A 的每一列看成一根积木。Ax = b 在问：能不能用这些积木（按 x 的系数）拼出 b？
+    </div>
+    <ul>
+      <li>拼得出 → b 在<strong>列空间</strong>里 → 有解</li>
+      <li>拼不出 → 在列空间里找<strong>离 b 最近</strong>的点 → 最小二乘</li>
+    </ul>
+    <div class="diagram">
+      <svg viewBox="0 0 420 150" width="420" height="150">
+        <line x1="40" y1="130" x2="280" y2="40" stroke="#5c6bc0" stroke-width="8" opacity="0.35"/>
+        <line x1="40" y1="130" x2="160" y2="70" stroke="#1a73e8" stroke-width="3"/>
+        <polygon points="160,70 152,78 168,78" fill="#1a73e8"/>
+        <text x="165" y="68" fill="#1a73e8" font-size="12">a（列）</text>
+        <line x1="160" y1="70" x2="200" y2="30" stroke="#d93025" stroke-width="2" stroke-dasharray="4"/>
+        <circle cx="200" cy="30" r="7" fill="#e37400"/>
+        <text x="210" y="28" fill="#e37400" font-size="12">b 在线外</text>
+        <circle cx="160" cy="70" r="6" fill="#188038"/>
+        <text x="100" y="100" fill="#188038" font-size="12">投影 Ax*</text>
+        <text x="40" y="20" fill="#5f6368" font-size="12">列空间=线时，垂足=最小二乘</text>
+      </svg>
+      <div class="cap">列空间外的 b → 投影（注意：两无关平面向量会张成整个平面，演示「在外」需列空间是真子空间）</div>
+    </div>
+
+    <!-- 2 -->
+    <h2 id="s2">2. 高斯消元与部分主元</h2>
+    <div class="scene">
+      解方程组像整理式子：用一行减另一行的倍数，消掉下面的未知数，变成「楼梯形」上三角，再从最底下的未知数往回解。
+    </div>
+    <div class="formula">
+      对每列 k：选主元（下方最大）→ 换行 → 用倍数把下方消成 0<br>
+      得到 Ux = c 后回代
+    </div>
+    <div class="warn">
+      主元太小会放大浮点误差。部分主元：每次选列中最大元当主元。
+    </div>
+
+    <!-- 3 -->
+    <h2 id="s3">3. LU · QR · Cholesky</h2>
+
+    <h3>LU：A = LU</h3>
+    <div class="scene">
+      消元时的「倍数」存进 L，消完的上三角是 U。同一 A、很多个 b 时：分解一次 O(n³)，之后每个 b 只需 O(n²) 前代+回代。
+    </div>
+    <div class="formula">Ly = b（前代）→ Ux = y（回代）</div>
+
+    <h3>QR：A = QR</h3>
+    <div class="scene">
+      用 Gram-Schmidt 把列变成互相垂直的单位向量（Q），投影长度放进 R。
+    </div>
+    <div class="formula">
+      q₁ = a₁/‖a₁‖<br>
+      v₂ = a₂ − (a₂·q₁)q₁ → q₂ = v₂/‖v₂‖<br>
+      解：Rx = Qᵀb 再回代（最小二乘常更稳）
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 360 120" width="360" height="120">
+        <line x1="40" y1="100" x2="140" y2="40" stroke="#d93025" stroke-width="2"/>
+        <text x="145" y="38" fill="#d93025" font-size="12">a₂</text>
+        <line x1="40" y1="100" x2="200" y2="100" stroke="#188038" stroke-width="2.5"/>
+        <text x="205" y="104" fill="#188038" font-size="12">q₁</text>
+        <line x1="40" y1="100" x2="100" y2="100" stroke="#e37400" stroke-width="3"/>
+        <text x="70" y="92" fill="#e37400" font-size="11">投影</text>
+        <line x1="100" y1="100" x2="140" y2="40" stroke="#9334e6" stroke-width="2" stroke-dasharray="4"/>
+        <text x="145" y="70" fill="#9334e6" font-size="11">残差→q₂</text>
+      </svg>
+      <div class="cap">Gram-Schmidt：减投影 → 残差方向单位化</div>
+    </div>
+
+    <h3>Cholesky：A = LLᵀ</h3>
+    <div class="scene">
+      A 对称正定（协方差、XᵀX+λI）时可用。只算一半，大约比 LU 快一倍。
+    </div>
+    <div class="formula">
+      Lᵢᵢ = √(Aᵢᵢ − Σ Lᵢₖ²)<br>
+      Lᵢⱼ = (Aᵢⱼ − Σ Lᵢₖ Lⱼₖ) / Lⱼⱼ
+    </div>
+
+    <!-- 4 -->
+    <h2 id="s4">4. 最小二乘与正规方程</h2>
+    <div class="scene">
+      数据点比参数多：没有一条直线穿过所有点。改为：找让「竖直误差平方和」最小的直线。
+    </div>
+    <div class="one">
+      <strong>正规方程不是新算法，而是「损失最低」的条件：</strong><br>
+      拧截距、斜率两个旋钮，平方误差 L 到谷底时，对两个旋钮的变化率都是 0 → 整理成 AᵀA w = Aᵀb。
+    </div>
+    <div class="formula">
+      最小化 ‖Aw − b‖²<br>
+      ⇒ Aᵀ A w = Aᵀ b<br>
+      回归：XᵀX w = Xᵀy　（同一件事）
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 400 130" width="400" height="130">
+        <circle cx="60" cy="90" r="5" fill="#e37400"/>
+        <circle cx="120" cy="70" r="5" fill="#e37400"/>
+        <circle cx="180" cy="75" r="5" fill="#e37400"/>
+        <circle cx="240" cy="45" r="5" fill="#e37400"/>
+        <circle cx="300" cy="40" r="5" fill="#e37400"/>
+        <line x1="40" y1="100" x2="340" y2="25" stroke="#188038" stroke-width="2"/>
+        <line x1="120" y1="70" x2="120" y2="82" stroke="#d93025" stroke-width="2"/>
+        <line x1="180" y1="75" x2="180" y2="68" stroke="#d93025" stroke-width="2"/>
+        <text x="40" y="20" fill="#5f6368" font-size="12">绿=最优直线 · 红=残差 · 损失=红段平方和</text>
+      </svg>
+      <div class="cap">线性回归 = 正规方程的几何图像</div>
+    </div>
+    <div class="note">岭回归：(XᵀX + λI)w = Xᵀy，λ&gt;0 时可用 Cholesky，并改善条件数。</div>
+
+    <!-- 5 -->
+    <h2 id="s5">5. 伪逆 A⁺（Moore-Penrose）</h2>
+    <div class="scene">
+      普通逆只服务「方阵且可逆」。伪逆是备用方案：三种尴尬局面各给一个「最合理」答案。
+    </div>
+    <table>
+      <tr><th>局面</th><th>伪逆给出</th></tr>
+      <tr><td>无精确解（超定）</td><td>最小二乘解（残差最短）</td></tr>
+      <tr><td>无穷多解（欠定）</td><td>其中 ‖x‖ 最小的</td></tr>
+      <tr><td>唯一解</td><td>与 A⁻¹b 相同</td></tr>
+    </table>
+    <div class="formula">A = UΣVᵀ → A⁺ = V Σ⁺ Uᵀ（非零奇异值取倒数）</div>
+    <div class="diagram">
+      <svg viewBox="0 0 500 100" width="500" height="100">
+        <text x="20" y="30" fill="#174ea6" font-size="13">① 够不着 → 走到垂足</text>
+        <text x="20" y="55" fill="#174ea6" font-size="13">② 答案一堆 → 挑最短</text>
+        <text x="20" y="80" fill="#174ea6" font-size="13">③ 刚好一把钥匙 → 普通逆</text>
+        <text x="280" y="50" fill="#188038" font-size="14">统一写法：x = A⁺ b</text>
+      </svg>
+      <div class="cap">三幕剧记忆法</div>
+    </div>
+
+    <!-- 6 -->
+    <h2 id="s6">6. 条件数 κ</h2>
+    <div class="scene">
+      软尺子：手抖一下读数大变；硬尺子：几乎不变。条件数描述「从 b 反推 x」有多娇气。
+    </div>
+    <div class="formula">κ(A) = σ_max / σ_min</div>
+    <ul>
+      <li>κ ~ 1–100：较安全</li>
+      <li>κ ~ 10ᵏ：大约丢 k 位有效数字</li>
+      <li>κ ~ 10¹⁶：解基本没意义</li>
+    </ul>
+    <div class="warn">特征共线、尺度混乱 → κ 变大。正则化、标准化、改用 QR/SVD 可缓解。</div>
+
+    <!-- 7 -->
+    <h2 id="s7">7. 共轭梯度（CG）</h2>
+    <div class="scene">
+      百万维稀疏系统：LU/Cholesky 分解不动。改为从一个猜测出发，一步步走，只反复做「稀疏矩阵×向量」。
+    </div>
+    <p>要求 A <strong>对称正定</strong>。精确算术下最多 n 步；条件数小则通常更快。用于大规模牛顿法、PDE、大核矩阵等。</p>
+
+    <!-- 8 -->
+    <h2 id="s8">8. 方法怎么选 · ML 联系</h2>
+    <table>
+      <tr><th>方法</th><th>何时用</th></tr>
+      <tr><td>高斯消元</td><td>中小方阵，解一次</td></tr>
+      <tr><td>LU</td><td>同一 A、多个 b</td></tr>
+      <tr><td>QR</td><td>最小二乘，要稳</td></tr>
+      <tr><td>Cholesky</td><td>对称正定（协方差、岭回归）</td></tr>
+      <tr><td>正规方程</td><td>回归闭式，n 不大</td></tr>
+      <tr><td>SVD/伪逆</td><td>秩亏、统一最小二乘/最小范数</td></tr>
+      <tr><td>CG</td><td>大稀疏对称正定</td></tr>
+    </table>
+    <div class="card">
+      <ul>
+        <li>线性/岭回归 → 正规方程或 QR/Cholesky</li>
+        <li>高斯过程 → Cholesky 解 Kα=y，并算 log det</li>
+        <li>正交初始化 → QR</li>
+        <li>特征共线 → 看条件数，丢特征或加 λ</li>
+      </ul>
+    </div>
+
+    <!-- 9 -->
+    <h2 id="s9">9. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">列视角</span> b 能否由列拼成；否则投影</li>
+        <li><span class="tag">消元</span> 变上三角 + 回代；要主元</li>
+        <li><span class="tag">LU</span> 倍数→L，结果→U；多次求解</li>
+        <li><span class="tag">QR</span> 列正交化；最小二乘稳</li>
+        <li><span class="tag">Cholesky</span> A=LLᵀ；对称正定</li>
+        <li><span class="tag">正规方程</span> 损失谷底 = AᵀAw=Aᵀb = 线性回归</li>
+        <li><span class="tag">伪逆</span> 无解→LS；多解→最短；可逆→普通逆</li>
+        <li><span class="tag">条件数</span> 解对噪声有多敏感</li>
+        <li><span class="tag">CG</span> 大稀疏 SPD 迭代解</li>
+      </ul>
+    </div>
+
+    <div class="one">
+      <strong>复习口诀：</strong>先问有没有精确解（列空间）→ 没有就投影/最小二乘 → 用分解或伪逆算出来 → 用条件数判断信不信 → 矩阵太大就迭代。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · 17-linear-systems<br>
+      结合问答：列空间、正规方程直觉、伪逆三幕、条件数、CG 等
+    </footer>
+  </div>
+</body>
+</html>
