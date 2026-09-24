@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正规方程 · 通俗演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.95rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.92rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .intro ol { margin: 0.4rem 0 0 1.2rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.75rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 130px; }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.1rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .hint {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+      line-height: 1.7;
+    }
+    .hint strong { color: #fff; }
+    .valley {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+    }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>正规方程 · 通俗演示</h1>
+    <p class="subtitle">拧旋钮降低「总平方误差」· 谷底就是正规方程的解</p>
+
+    <div class="intro">
+      <strong>只需记住：</strong>
+      <ol>
+        <li>红竖线 = 预测与真实的差距；损失 = 所有差距的<strong>平方和</strong></li>
+        <li>左右拧「截距 / 斜率」两个旋钮，损失会变</li>
+        <li>损失最低时，再拧旋钮也降不了 → 对两个参数的「变化率」都是 0 → 写成式子就是 <strong>AᵀA w = Aᵀb</strong></li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>截距 w₀</span>
+          <input type="range" id="w0" min="-0.5" max="3.5" step="0.05" value="2.5">
+          <span id="w0L">2.50</span>
+        </div>
+        <div class="slider-row">
+          <span>斜率 w₁</span>
+          <input type="range" id="w1" min="-0.5" max="2.5" step="0.05" value="0.2">
+          <span id="w1L">0.20</span>
+        </div>
+        <button class="primary" id="btnLS">一键到谷底（解正规方程）</button>
+        <button id="btnAnim">动画滚到谷底</button>
+        <button id="btnBad">故意拧歪</button>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <canvas id="cvFit" width="560" height="340"></canvas>
+          <div class="valley">左图：橙点=数据 · 紫线=当前直线 · 绿线=最优 · 红线=残差</div>
+        </div>
+        <div>
+          <canvas id="cvLoss" width="360" height="340"></canvas>
+          <div class="valley">右图：损失随 w₁ 的变化（固定当前 w₀）· 绿点=谷底</div>
+        </div>
+      </div>
+
+      <div class="info">
+        <div class="info-card"><h3>当前总平方误差 L</h3><div class="val" id="lossVal">—</div></div>
+        <div class="info-card"><h3>谷底最小 L*</h3><div class="val" id="lsLoss" style="color:#81c995">—</div></div>
+        <div class="info-card"><h3>当前 (w₀, w₁)</h3><div class="val" id="wCur">—</div></div>
+        <div class="info-card"><h3>最优 w*（正规方程）</h3><div class="val" id="wStar" style="color:#81c995">—</div></div>
+      </div>
+
+      <div class="hint">
+        <strong>建议操作：</strong>先点「故意拧歪」，看红残差很大、L 很大；再慢慢拖滑块，看 L 下降；
+        或点「动画滚到谷底」。右图会显示：在最优斜率处，损失曲线到最低点——那就是「导数为 0」的位置，也就是正规方程给出的解。
+      </div>
+    </div>
+    <footer>Normal equations intuition · 17-linear-systems</footer>
+  </div>
+
+  <script>
+    const pts = [
+      { x: 0.5, y: 1.1 },
+      { x: 1.3, y: 1.9 },
+      { x: 2.0, y: 2.4 },
+      { x: 2.7, y: 3.2 },
+      { x: 3.5, y: 3.6 },
+      { x: 4.3, y: 4.8 }
+    ];
+
+    let w0 = 2.5, w1 = 0.2;
+    let animId = null;
+
+    function normalEq() {
+      let s0 = 0, s1 = 0, s00 = 0, s01 = 0, s11 = 0;
+      // A^T A and A^T b for design [1, x]
+      pts.forEach(p => {
+        s00 += 1;
+        s01 += p.x;
+        s11 += p.x * p.x;
+        s0 += p.y;
+        s1 += p.x * p.y;
+      });
+      const det = s00 * s11 - s01 * s01;
+      return {
+        w0: (s11 * s0 - s01 * s1) / det,
+        w1: (s00 * s1 - s01 * s0) / det
+      };
+    }
+
+    function loss(a, b) {
+      let s = 0;
+      pts.forEach(p => {
+        const r = p.y - (a + b * p.x);
+        s += r * r;
+      });
+      return s;
+    }
+
+    function drawFit() {
+      const canvas = document.getElementById('cvFit');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 40, padR = 15, padT = 20, padB = 30;
+      const xMin = 0, xMax = 5, yMin = 0, yMax = 6;
+      const sx = x => padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      const sy = y => padT + (1 - (y - yMin) / (yMax - yMin)) * (H - padT - padB);
+
+      ctx.strokeStyle = '#1e2230';
+      for (let i = 0; i <= 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(sx(i), padT); ctx.lineTo(sx(i), H - padB); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(padL, sy(i)); ctx.lineTo(W - padR, sy(i)); ctx.stroke();
+      }
+
+      const ls = normalEq();
+
+      // residuals
+      pts.forEach(p => {
+        const pred = w0 + w1 * p.x;
+        ctx.strokeStyle = 'rgba(242,139,130,0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(sx(p.x), sy(p.y));
+        ctx.lineTo(sx(p.x), sy(pred));
+        ctx.stroke();
+      });
+
+      // optimal line
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sx(0), sy(ls.w0));
+      ctx.lineTo(sx(5), sy(ls.w0 + 5 * ls.w1));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // current line
+      ctx.strokeStyle = '#c58af9';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.moveTo(sx(0), sy(w0));
+      ctx.lineTo(sx(5), sy(w0 + 5 * w1));
+      ctx.stroke();
+
+      pts.forEach(p => {
+        ctx.fillStyle = '#ff6d00';
+        ctx.beginPath();
+        ctx.arc(sx(p.x), sy(p.y), 7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('拟合图', padL, 14);
+    }
+
+    function drawLoss() {
+      const canvas = document.getElementById('cvLoss');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 42, padR = 12, padT = 20, padB = 32;
+      // loss vs w1, fix current w0
+      const w1Min = -0.5, w1Max = 2.5;
+      let Lmin = Infinity, Lmax = 0;
+      const samples = [];
+      for (let i = 0; i <= 60; i++) {
+        const ww = w1Min + (i / 60) * (w1Max - w1Min);
+        const L = loss(w0, ww);
+        samples.push({ ww, L });
+        Lmin = Math.min(Lmin, L);
+        Lmax = Math.max(Lmax, L);
+      }
+      Lmax = Math.max(Lmax, Lmin + 0.5);
+
+      const sx = w => padL + ((w - w1Min) / (w1Max - w1Min)) * (W - padL - padR);
+      const sy = L => padT + (1 - (L - Lmin) / (Lmax - Lmin)) * (H - padT - padB);
+
+      // curve
+      ctx.beginPath();
+      samples.forEach((s, i) => {
+        const x = sx(s.ww), y = sy(s.L);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // optimal for this fixed w0 (approx min on curve) and true LS
+      const ls = normalEq();
+      // true global optimum marker at ls.w1 but loss computed with ls.w0 - show star at ls
+      const Lstar = loss(ls.w0, ls.w1);
+      // current point
+      const Lc = loss(w0, w1);
+      ctx.fillStyle = '#c58af9';
+      ctx.beginPath();
+      ctx.arc(sx(w1), sy(Math.min(Lmax, Math.max(Lmin, Lc))), 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // green = where derivative wrt w1 is ~0 for best (use ls)
+      ctx.fillStyle = '#81c995';
+      ctx.beginPath();
+      ctx.arc(sx(ls.w1), sy(Math.min(Lmax, Math.max(Lmin, loss(w0, ls.w1)))), 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // axis
+      ctx.strokeStyle = '#3c4048';
+      ctx.beginPath();
+      ctx.moveTo(padL, H - padB);
+      ctx.lineTo(W - padR, H - padB);
+      ctx.stroke();
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('w₁ →', W - 40, H - 12);
+      ctx.fillText('损失 L', 8, 14);
+      ctx.fillText('紫=当前 绿≈谷底方向', padL, H - 10);
+    }
+
+    function update() {
+      const ls = normalEq();
+      document.getElementById('lossVal').textContent = loss(w0, w1).toFixed(3);
+      document.getElementById('lsLoss').textContent = loss(ls.w0, ls.w1).toFixed(3);
+      document.getElementById('wCur').textContent = '(' + w0.toFixed(2) + ', ' + w1.toFixed(2) + ')';
+      document.getElementById('wStar').textContent = '(' + ls.w0.toFixed(2) + ', ' + ls.w1.toFixed(2) + ')';
+      drawFit();
+      drawLoss();
+    }
+
+    function animToLS() {
+      if (animId) cancelAnimationFrame(animId);
+      const ls = normalEq();
+      const s0 = w0, s1 = w1;
+      let f = 0;
+      const total = 50;
+      const loop = () => {
+        f++;
+        const t = Math.min(1, f / total);
+        const e = 1 - Math.pow(1 - t, 3);
+        w0 = s0 + (ls.w0 - s0) * e;
+        w1 = s1 + (ls.w1 - s1) * e;
+        document.getElementById('w0').value = w0;
+        document.getElementById('w1').value = w1;
+        document.getElementById('w0L').textContent = w0.toFixed(2);
+        document.getElementById('w1L').textContent = w1.toFixed(2);
+        update();
+        if (t < 1) animId = requestAnimationFrame(loop);
+      };
+      animId = requestAnimationFrame(loop);
+    }
+
+    document.getElementById('w0').oninput = e => {
+      w0 = parseFloat(e.target.value);
+      document.getElementById('w0L').textContent = w0.toFixed(2);
+      update();
+    };
+    document.getElementById('w1').oninput = e => {
+      w1 = parseFloat(e.target.value);
+      document.getElementById('w1L').textContent = w1.toFixed(2);
+      update();
+    };
+    document.getElementById('btnLS').onclick = () => {
+      const ls = normalEq();
+      w0 = ls.w0; w1 = ls.w1;
+      document.getElementById('w0').value = w0;
+      document.getElementById('w1').value = w1;
+      document.getElementById('w0L').textContent = w0.toFixed(2);
+      document.getElementById('w1L').textContent = w1.toFixed(2);
+      update();
+    };
+    document.getElementById('btnAnim').onclick = animToLS;
+    document.getElementById('btnBad').onclick = () => {
+      w0 = 3.2; w1 = -0.2;
+      document.getElementById('w0').value = w0;
+      document.getElementById('w1').value = w1;
+      document.getElementById('w0L').textContent = w0.toFixed(2);
+      document.getElementById('w1L').textContent = w1.toFixed(2);
+      update();
+    };
+
+    update();
+  </script>
+</body>
+</html>
