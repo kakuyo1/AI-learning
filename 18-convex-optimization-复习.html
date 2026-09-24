@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>18 Convex Optimization · 详尽复习</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --lb: #e8f0fe;
+      --lg: #e6f4ea;
+      --lo: #fef7e0;
+      --lr: #fce8e6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      padding: 2rem 1rem 4rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.4rem 0 0.9rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.05rem; margin: 1.25rem 0 0.45rem; }
+    p, li { margin-bottom: 0.5rem; }
+    ul, ol { padding-left: 1.35rem; margin-bottom: 0.85rem; }
+    .scene {
+      background: var(--lo);
+      border-left: 4px solid var(--orange);
+      padding: 0.9rem 1.15rem;
+      margin: 0.95rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.97rem;
+    }
+    .scene::before {
+      content: "场景引入";
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--orange);
+      margin-bottom: 0.3rem;
+    }
+    .one {
+      background: var(--lb);
+      border-left: 4px solid var(--blue);
+      padding: 0.9rem 1.15rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note {
+      background: var(--lg);
+      border-left: 4px solid var(--green);
+      padding: 0.8rem 1.05rem;
+      margin: 0.85rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .warn {
+      background: var(--lr);
+      border-left: 4px solid var(--red);
+      padding: 0.8rem 1.05rem;
+      margin: 0.85rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.25rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.9rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--lb); color: #174ea6; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem;
+      margin: 0.8rem 0;
+      line-height: 1.7;
+      color: #174ea6;
+    }
+    .diagram {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .diagram .cap {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.45rem;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--lb);
+      color: var(--blue);
+      font-size: 0.76rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-right: 0.2rem;
+      font-weight: 500;
+    }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.3rem;
+      margin-bottom: 1.8rem;
+    }
+    .toc a { color: var(--blue); text-decoration: none; }
+    footer {
+      margin-top: 2.8rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>18 Convex Optimization · 详尽复习</h1>
+    <p class="subtitle">一个碗 vs 群山 · 牛顿法 · 约束与 KKT · 正则 · 对偶 · 深度网络为何还能训</p>
+
+    <div class="one">
+      <strong>整章一句话：</strong>凸问题只有一个谷底，下山必到最优；深度网络非凸，但高维 + SGD 噪声仍常能找到够好的解。
+    </div>
+
+    <div class="toc">
+      <strong>目录</strong>
+      <ol>
+        <li><a href="#s1">凸集与凸函数</a></li>
+        <li><a href="#s2">为何凸重要 · ML 里谁凸</a></li>
+        <li><a href="#s3">Hessian 与牛顿法</a></li>
+        <li><a href="#s4">约束优化 · 拉格朗日 · KKT</a></li>
+        <li><a href="#s5">正则化 = 约束优化（L1/L2）</a></li>
+        <li><a href="#s6">对偶 Duality</a></li>
+        <li><a href="#s7">非凸深度网络为何还能工作</a></li>
+        <li><a href="#s8">实践中的二阶方法</a></li>
+        <li><a href="#s9">速查</a></li>
+      </ol>
+    </div>
+
+    <!-- 1 -->
+    <h2 id="s1">1. 凸集与凸函数</h2>
+    <div class="scene">
+      凸集：任意两点的连线都还在集合里（圆盘、矩形行；月牙、甜甜圈不行）。
+      凸函数：任意两点的弦在图像上方——形状像一只朝上的碗。
+    </div>
+    <div class="formula">
+      f(tx+(1−t)y) ≤ t·f(x)+(1−t)·f(y)　∀ t∈[0,1]
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 480 130" width="480" height="130">
+        <path d="M40,100 Q120,20 200,100" fill="none" stroke="#188038" stroke-width="2.5"/>
+        <line x1="70" y1="70" x2="170" y2="70" stroke="#e37400" stroke-width="2"/>
+        <text x="90" y="20" fill="#188038" font-size="12">凸：弦在上</text>
+        <path d="M280,50 Q320,110 360,40 Q400,20 440,80" fill="none" stroke="#d93025" stroke-width="2.5"/>
+        <line x1="300" y1="70" x2="400" y2="50" stroke="#e37400" stroke-width="2"/>
+        <text x="320" y="20" fill="#d93025" font-size="12">非凸：弦穿下</text>
+      </svg>
+      <div class="cap">弦测试：凸 vs 非凸</div>
+    </div>
+    <p><strong>检验：</strong>一维 \(f''\ge0\)；多维 Hessian 半正定（特征值 ≥0）。</p>
+    <p>常见凸函数：\(x^2\)、\(|x|\)、\(e^x\)、\(-\log x\)、线性函数、ReLU（分段线性凸）。</p>
+
+    <!-- 2 -->
+    <h2 id="s2">2. 为何凸重要 · ML 里谁凸</h2>
+    <div class="one">
+      <strong>中心定理：</strong>凸函数的任意局部最小 = 全局最小。梯度下降不会掉进「假谷底」。
+    </div>
+    <table>
+      <tr><th>问题</th><th>凸？</th></tr>
+      <tr><td>线性/逻辑回归、SVM、岭回归、LASSO</td><td>是</td></tr>
+      <tr><td>深度网络、k-means、矩阵分解</td><td>否</td></tr>
+    </table>
+    <div class="note">线性模型 + 凸损失 → 凸；一加非线性隐层，凸性通常就破了。</div>
+
+    <!-- 3 -->
+    <h2 id="s3">3. Hessian 与牛顿法</h2>
+    <div class="scene">
+      梯度只告诉「往哪下坡」；Hessian 告诉「坡弯得有多急」。牛顿法在当前点贴一个局部抛物面，一步跳到抛物面最低点。
+    </div>
+    <div class="formula">
+      梯度下降：x ← x − η ∇f<br>
+      牛顿法：　x ← x − H⁻¹ ∇f
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 400 110" width="400" height="110">
+        <path d="M30,90 Q100,10 200,90 Q280,40 370,85" fill="none" stroke="#5f6368" stroke-width="2"/>
+        <path d="M150,70 Q200,20 250,70" fill="none" stroke="#1a73e8" stroke-width="2" stroke-dasharray="4"/>
+        <circle cx="200" cy="55" r="5" fill="#e37400"/>
+        <circle cx="200" cy="20" r="5" fill="#188038"/>
+        <text x="40" y="20" fill="#5f6368" font-size="12">虚线=局部二次近似 · 绿点=牛顿一步目标</text>
+      </svg>
+      <div class="cap">牛顿：跳到局部碗底（二次时一步精确）</div>
+    </div>
+    <ul>
+      <li>优点：近最优二次收敛；少调学习率</li>
+      <li>缺点：H 内存 O(n²)、求逆 O(n³) → 大网络不可用</li>
+    </ul>
+
+    <!-- 4 -->
+    <h2 id="s4">4. 约束优化 · 拉格朗日 · KKT</h2>
+    <div class="scene">
+      无约束：满世界找最低。有约束：只能在「允许区域」里找——预算、范数上限、概率约束等。
+    </div>
+
+    <h3>拉格朗日（等式约束）</h3>
+    <div class="formula">
+      L = f(x) + λ g(x)<br>
+      ∇f + λ ∇g = 0，且 g=0　→　梯度平行，等高线与约束相切
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 320 120" width="320" height="120">
+        <circle cx="100" cy="80" r="25" fill="none" stroke="#188038" stroke-width="1.5"/>
+        <circle cx="100" cy="80" r="45" fill="none" stroke="#188038" stroke-width="1.5"/>
+        <circle cx="100" cy="80" r="65" fill="none" stroke="#188038" stroke-width="1.5"/>
+        <line x1="40" y1="30" x2="220" y2="120" stroke="#1a73e8" stroke-width="2.5"/>
+        <circle cx="130" cy="70" r="6" fill="#e37400"/>
+        <text x="140" y="68" fill="#e37400" font-size="12">切点=最优</text>
+      </svg>
+      <div class="cap">圆=目标等高线 · 直线=约束 · 相切处 ∇f∥∇g</div>
+    </div>
+
+    <h3>KKT（不等式约束）</h3>
+    <table>
+      <tr><th>条件</th><th>含义</th></tr>
+      <tr><td>平稳性</td><td>∇f 被有效约束的法向组合顶住</td></tr>
+      <tr><td>原可行</td><td>gᵢ(x)≤0</td></tr>
+      <tr><td>对偶可行</td><td>λᵢ≥0</td></tr>
+      <tr><td>互补松弛</td><td>λᵢ·gᵢ=0：要么贴边，要么 λ=0</td></tr>
+    </table>
+    <div class="note">SVM 支持向量 = λ&gt;0 的样本，正是互补松弛。</div>
+
+    <!-- 5 -->
+    <h2 id="s5">5. 正则化 = 约束优化</h2>
+    <div class="scene">
+      「权重要小」写成 ‖w‖≤t，再变成损失里的惩罚项。不是玄学加项，是约束优化的等价形式。
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 440 130" width="440" height="130">
+        <circle cx="100" cy="70" r="45" fill="rgba(26,115,232,0.12)" stroke="#1a73e8" stroke-width="2"/>
+        <circle cx="130" cy="55" r="5" fill="#1a73e8"/>
+        <text x="40" y="20" fill="#1a73e8" font-size="12">L2 圆：切点任意→收缩</text>
+        <polygon points="300,70 340,30 380,70 340,110" fill="rgba(227,116,0,0.12)" stroke="#e37400" stroke-width="2"/>
+        <circle cx="340" cy="30" r="5" fill="#e37400"/>
+        <text x="280" y="20" fill="#e37400" font-size="12">L1 菱形：易碰角→稀疏</text>
+      </svg>
+      <div class="cap">等高线第一次碰到约束边界 = 正则化最优</div>
+    </div>
+    <ul>
+      <li><strong>L2 / 岭回归：</strong>球约束 → 权重变小，很少精确为 0</li>
+      <li><strong>L1 / LASSO：</strong>菱形约束 → 易在角上 → 特征选择</li>
+    </ul>
+
+    <!-- 6 -->
+    <h2 id="s6">6. 对偶 Duality</h2>
+    <div class="scene">
+      每个约束问题（原问题）可配一个乘子上的最大化问题（对偶）。凸时两边最优值常相等（强对偶）。
+    </div>
+    <div class="formula">
+      原：min f  s.t. g≤0<br>
+      L = f + λg　→　d(λ)=min_x L　→　对偶：max d(λ)  λ≥0
+    </div>
+    <ul>
+      <li>对偶最优 ≤ 原最优（弱对偶，总成立）→ 下界</li>
+      <li>凸 + 合适条件 → 相等（强对偶）</li>
+      <li><strong>SVM：</strong>对偶只依赖 xᵢ·xⱼ → 换成核 K(xᵢ,xⱼ) 即核技巧</li>
+    </ul>
+
+    <!-- 7 -->
+    <h2 id="s7">7. 非凸深度网络为何还能工作</h2>
+    <div class="scene">
+      按经典理论非凸应很难训，但 SGD 经常能找到好解。课里几个关键点：
+    </div>
+    <ul>
+      <li><strong>坏局部最小很少：</strong>高维里临界点几乎都是鞍点，真局部最小损失往往也不差</li>
+      <li><strong>鞍点才是障碍：</strong>SGD 噪声有助于逃离</li>
+      <li><strong>过参数化：</strong>参数多于样本时，损失面更连通、更光滑</li>
+      <li><strong>随机噪声 ≈ 隐式正则：</strong>小 batch 的梯度抖动偏向宽而平的区域，抑制又尖又过拟合的解</li>
+    </ul>
+    <div class="warn">不要幻想找到「全局最小」；够好的局部解 + 验证集，才是深度学习的日常。</div>
+
+    <!-- 8 -->
+    <h2 id="s8">8. 实践中的二阶方法</h2>
+    <div class="scene">
+      完整牛顿要存 H、解线性系，大模型做不到。实践用近似：
+    </div>
+    <table>
+      <tr><th>方法</th><th>思路</th><th>适用</th></tr>
+      <tr><td>L-BFGS</td><td>用最近 m 步梯度差近似 H⁻¹</td><td>中小凸问题</td></tr>
+      <tr><td>Hessian-free</td><td>只算 Hv，CG 解牛顿方程</td><td>较大规模</td></tr>
+      <tr><td>K-FAC</td><td>Fisher 的 Kronecker 近似</td><td>研究 / 大 batch</td></tr>
+      <tr><td>Adam 等</td><td>对角二阶矩（很粗的曲率）</td><td>深度学习默认</td></tr>
+    </table>
+
+    <!-- 9 -->
+    <h2 id="s9">9. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">凸函数</span> 弦在上；局部最小=全局最小</li>
+        <li><span class="tag">Hessian</span> 曲率；半正定 → 凸</li>
+        <li><span class="tag">牛顿</span> x−H⁻¹∇f；小凸问题快，大网络贵</li>
+        <li><span class="tag">拉格朗日</span> 等式约束；∇f∥∇g</li>
+        <li><span class="tag">KKT</span> 不等式；互补松弛 → SVM 支持向量</li>
+        <li><span class="tag">L2/L1</span> 球→收缩；菱形→稀疏</li>
+        <li><span class="tag">对偶</span> 乘子上的 max；SVM 核技巧</li>
+        <li><span class="tag">SGD 噪声</span> 隐式正则，偏平坦解</li>
+        <li><span class="tag">L-BFGS</span> 实用二阶近似，非深度默认</li>
+      </ul>
+    </div>
+
+    <div class="one">
+      <strong>复习口诀：</strong>先问凸不凸 → 凸则有保证、可用牛顿/L-BFGS → 有约束用拉格朗日/KKT → 正则是范数约束 → 对偶给 SVM 核技巧 → 深度非凸靠过参数化与 SGD 噪声。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · 18-convex-optimization<br>
+      结合问答：凸函数弦测试、牛顿、拉格朗日/KKT、L1/L2、对偶、隐式正则、二阶实践
+    </footer>
+  </div>
+</body>
+</html>

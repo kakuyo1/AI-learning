@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convex Functions 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.85rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 120px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.45rem;
+      margin-top: 0.7rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.86rem;
+    }
+    .info-card h3 {
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.15rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.95rem; color: #fff;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.7rem 0.95rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.88rem;
+      color: var(--blue);
+      margin-top: 0.65rem;
+      line-height: 1.65;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.75rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.45rem 0 0.2rem;
+    }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Convex Functions 动画</h1>
+    <p class="subtitle">弦在曲线上方 → 凸 · 弦钻到曲线下方 → 非凸</p>
+
+    <div class="intro">
+      <strong>判定：</strong>任取两点 x、y，连接图像上的弦。若弦<strong>始终在曲线上方或贴着曲线</strong>，则凸；若有一段弦穿到曲线<strong>下方</strong>，则非凸。
+      拖动两点或切换函数，观察橙色弦与曲线的关系。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <button class="primary active" data-fn="x2">x²（凸）</button>
+        <button data-fn="abs">|x|（凸）</button>
+        <button data-fn="exp">eˣ（凸）</button>
+        <button data-fn="x3">x³（非凸）</button>
+        <button data-fn="wavy">多峰（非凸）</button>
+        <div class="slider-row">
+          <span>参数 t（弦上的点）</span>
+          <input type="range" id="tSlider" min="0" max="1" step="0.01" value="0.35">
+          <span id="tLabel">0.35</span>
+        </div>
+        <button id="btnAnim">动画扫 t</button>
+      </div>
+      <canvas id="cv" width="900" height="380"></canvas>
+      <div class="info">
+        <div class="info-card"><h3>函数</h3><div class="val" id="fnName">x²</div></div>
+        <div class="info-card"><h3>是否凸</h3><div class="val" id="isConv">是</div></div>
+        <div class="info-card"><h3>弦上 f 加权平均</h3><div class="val" id="chordVal">—</div></div>
+        <div class="info-card"><h3>曲线上 f(中点混合)</h3><div class="val" id="curveVal">—</div></div>
+        <div class="info-card"><h3>差值（弦−曲线）</h3><div class="val" id="diffVal">—</div></div>
+      </div>
+      <div class="formula" id="formula">
+        凸 ⇔ f(tx+(1−t)y) ≤ t·f(x)+(1−t)·f(y)　对所有 x,y 与 t∈[0,1]
+      </div>
+      <div class="explain">
+        <strong>读图</strong>
+        <h3>绿曲线</h3>函数图像 · <strong>橙弦</strong>连接两点 · <strong>紫点</strong>弦上 t 处 · <strong>青点</strong>曲线上同一横坐标处
+        <h3>凸时</h3>紫点不低于青点（弦在上）· 差值 ≥ 0
+        <h3>非凸时</h3>可能出现青点在紫点上方（弦穿到曲线下方）
+      </div>
+    </div>
+    <footer>Convex functions · 18-convex-optimization</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let fnKey = 'x2';
+    let t = 0.35;
+    let xA = -1.5, xB = 1.8;
+    let dragging = null; // 'A' | 'B'
+    let animId = null;
+
+    const fns = {
+      x2: {
+        name: 'x²',
+        convex: true,
+        f: x => x * x,
+        domain: [-2.5, 2.5],
+        yRange: [0, 6.5]
+      },
+      abs: {
+        name: '|x|',
+        convex: true,
+        f: x => Math.abs(x),
+        domain: [-2.5, 2.5],
+        yRange: [0, 3]
+      },
+      exp: {
+        name: 'eˣ',
+        convex: true,
+        f: x => Math.exp(x),
+        domain: [-2, 1.8],
+        yRange: [0, 7]
+      },
+      x3: {
+        name: 'x³',
+        convex: false,
+        f: x => x * x * x,
+        domain: [-2, 2],
+        yRange: [-8, 8]
+      },
+      wavy: {
+        name: '0.3x⁴ − x² + 0.2x',
+        convex: false,
+        f: x => 0.3 * x * x * x * x - x * x + 0.2 * x,
+        domain: [-2.2, 2.2],
+        yRange: [-1.5, 3]
+      }
+    };
+
+    function draw() {
+      const meta = fns[fnKey];
+      const f = meta.f;
+      const [xMin, xMax] = meta.domain;
+      const [yMin, yMax] = meta.yRange;
+
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const padL = 50, padR = 20, padT = 30, padB = 40;
+      const sx = x => padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      const sy = y => padT + (1 - (y - yMin) / (yMax - yMin)) * (H - padT - padB);
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, sy(0));
+      ctx.lineTo(W - padR, sy(0));
+      ctx.moveTo(sx(0), padT);
+      ctx.lineTo(sx(0), H - padB);
+      ctx.stroke();
+
+      // curve
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const x = xMin + (i / 200) * (xMax - xMin);
+        const y = f(x);
+        const px = sx(x), py = sy(y);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // clamp endpoints
+      xA = Math.max(xMin + 0.05, Math.min(xMax - 0.05, xA));
+      xB = Math.max(xMin + 0.05, Math.min(xMax - 0.05, xB));
+
+      const yA = f(xA), yB = f(xB);
+      const xt = t * xA + (1 - t) * xB;
+      const yChord = t * yA + (1 - t) * yB;
+      const yCurve = f(xt);
+      const diff = yChord - yCurve;
+
+      // chord
+      ctx.strokeStyle = '#fdd663';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(sx(xA), sy(yA));
+      ctx.lineTo(sx(xB), sy(yB));
+      ctx.stroke();
+
+      // vertical guide at xt
+      ctx.strokeStyle = 'rgba(197,138,249,0.35)';
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(sx(xt), sy(Math.min(yChord, yCurve)));
+      ctx.lineTo(sx(xt), sy(Math.max(yChord, yCurve)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // points on curve at A, B
+      ctx.fillStyle = '#8ab4f8';
+      ctx.beginPath();
+      ctx.arc(sx(xA), sy(yA), 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(sx(xB), sy(yB), 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('x', sx(xA) + 10, sy(yA) - 6);
+      ctx.fillText('y', sx(xB) + 10, sy(yB) - 6);
+
+      // chord point (purple)
+      ctx.fillStyle = '#c58af9';
+      ctx.beginPath();
+      ctx.arc(sx(xt), sy(yChord), 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText('弦', sx(xt) + 10, sy(yChord) - 8);
+
+      // curve point (cyan)
+      ctx.fillStyle = '#80deea';
+      ctx.beginPath();
+      ctx.arc(sx(xt), sy(yCurve), 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText('曲线', sx(xt) + 10, sy(yCurve) + 16);
+
+      // status banner
+      ctx.fillStyle = meta.convex ? 'rgba(129,201,149,0.15)' : 'rgba(242,139,130,0.12)';
+      ctx.fillRect(padL, 8, 220, 22);
+      ctx.fillStyle = meta.convex ? '#81c995' : '#f28b82';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(meta.convex ? '凸：弦应在曲线上方' : '非凸：弦可能穿到下方', padL + 8, 24);
+
+      document.getElementById('fnName').textContent = meta.name;
+      document.getElementById('isConv').textContent = meta.convex ? '是 ✓' : '否 ✗';
+      document.getElementById('isConv').style.color = meta.convex ? '#81c995' : '#f28b82';
+      document.getElementById('chordVal').textContent = yChord.toFixed(3);
+      document.getElementById('curveVal').textContent = yCurve.toFixed(3);
+      document.getElementById('diffVal').textContent = diff.toFixed(3);
+      document.getElementById('diffVal').style.color = diff >= -1e-6 ? '#81c995' : '#f28b82';
+      document.getElementById('formula').textContent =
+        'f(t·x+(1−t)·y)=' + yCurve.toFixed(3) +
+        '  vs  t·f(x)+(1−t)·f(y)=' + yChord.toFixed(3) +
+        '  → 差值 ' + (diff >= 0 ? '≥' : '<') + ' 0';
+    }
+
+    function hitTest(mx, my) {
+      const meta = fns[fnKey];
+      const [xMin, xMax] = meta.domain;
+      const [yMin, yMax] = meta.yRange;
+      const padL = 50, padR = 20, padT = 30, padB = 40;
+      const sx = x => padL + ((x - xMin) / (xMax - xMin)) * (W - padL - padR);
+      const sy = y => padT + (1 - (y - yMin) / (yMax - yMin)) * (H - padT - padB);
+      const dA = (mx - sx(xA)) ** 2 + (my - sy(meta.f(xA))) ** 2;
+      const dB = (mx - sx(xB)) ** 2 + (my - sy(meta.f(xB))) ** 2;
+      if (dA < 16 * 16) return 'A';
+      if (dB < 16 * 16) return 'B';
+      return null;
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+      dragging = hitTest(mx, my);
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const meta = fns[fnKey];
+      const [xMin, xMax] = meta.domain;
+      const [yMin, yMax] = meta.yRange;
+      const padL = 50, padR = 20;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const x = xMin + ((mx - padL) / (W - padL - padR)) * (xMax - xMin);
+      if (dragging === 'A') xA = x;
+      else xB = x;
+      draw();
+    });
+    window.addEventListener('mouseup', () => { dragging = null; });
+
+    document.querySelectorAll('[data-fn]').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('[data-fn]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        fnKey = btn.dataset.fn;
+        const d = fns[fnKey].domain;
+        xA = d[0] + 0.25 * (d[1] - d[0]);
+        xB = d[0] + 0.75 * (d[1] - d[0]);
+        draw();
+      };
+    });
+    document.getElementById('tSlider').oninput = e => {
+      t = parseFloat(e.target.value);
+      document.getElementById('tLabel').textContent = t.toFixed(2);
+      draw();
+    };
+    document.getElementById('btnAnim').onclick = () => {
+      if (animId) cancelAnimationFrame(animId);
+      let dir = 1;
+      const loop = () => {
+        t += dir * 0.012;
+        if (t >= 1) { t = 1; dir = -1; }
+        if (t <= 0) { t = 0; dir = 1; }
+        document.getElementById('tSlider').value = t;
+        document.getElementById('tLabel').textContent = t.toFixed(2);
+        draw();
+        animId = requestAnimationFrame(loop);
+      };
+      animId = requestAnimationFrame(loop);
+      setTimeout(() => { cancelAnimationFrame(animId); animId = null; }, 6000);
+    };
+
+    draw();
+  </script>
+</body>
+</html>

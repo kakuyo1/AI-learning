@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KKT条件 · 动画演示</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #f7f9fc 0%, #e9eef5 100%);
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 2.5rem;
+            padding: 2rem 2rem 1.8rem 2rem;
+            box-shadow: 0 30px 50px -20px rgba(0, 20, 40, 0.4), inset 0 1px 3px rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        h1 {
+            margin: 0 0 0.25rem 0;
+            font-weight: 600;
+            font-size: 2.3rem;
+            letter-spacing: -0.02em;
+            color: #0b1e33;
+        }
+
+        .subhead {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: #2b4b6f;
+            border-bottom: 1px solid rgba(43, 75, 111, 0.15);
+            padding-bottom: 0.75rem;
+        }
+
+        .subhead p {
+            margin: 0;
+            font-size: 1.05rem;
+            opacity: 0.85;
+            font-weight: 400;
+            background: #e3eaf1;
+            padding: 0.2rem 0.9rem;
+            border-radius: 30px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            border-radius: 2rem;
+            background: #fbfdff;
+            box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.02), 0 10px 20px -8px rgba(0, 25, 45, 0.2);
+            padding: 10px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 1.5rem;
+            background: #ffffff;
+            cursor: default;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin: 1.2rem 0 0.2rem 0;
+            padding: 0.8rem 1.5rem;
+            background: #eef3f9;
+            border-radius: 60px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #1d3557;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+        }
+
+        .badge {
+            background: #1d3557;
+            color: white;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            margin: 1.5rem 0 0.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #e9f0f7;
+            padding: 0.4rem 1.2rem 0.4rem 1.2rem;
+            border-radius: 50px;
+            box-shadow: inset 0 1px 4px rgba(0,0,0,0.05);
+        }
+
+        .slider-container label {
+            font-weight: 600;
+            color: #142b44;
+            font-size: 0.95rem;
+        }
+
+        input[type=range] {
+            width: 260px;
+            height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #3b6ea5, #90b8e0);
+            border-radius: 10px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0, 30, 60, 0.3);
+            border: 2px solid #1d4e7c;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .value-display {
+            background: #1d3557;
+            color: white;
+            min-width: 70px;
+            text-align: center;
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+        }
+
+        .btn {
+            background: #ffffff;
+            border: 1.5px solid #2b4b6f;
+            color: #1d3557;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.15s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        }
+
+        .btn:hover {
+            background: #1d3557;
+            color: white;
+            border-color: #1d3557;
+            box-shadow: 0 10px 18px -8px #1d355780;
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .kkt-explanation {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+            margin-top: 1.2rem;
+            font-size: 0.9rem;
+            color: #1e3145;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 1.2rem 1.5rem;
+            border-radius: 1.8rem;
+            backdrop-filter: blur(4px);
+        }
+
+        .kkt-card {
+            background: #ffffffd9;
+            border-radius: 1.2rem;
+            padding: 0.9rem 1.2rem;
+            border-left: 4px solid #2b6c9e;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+        }
+
+        .kkt-card h3 {
+            margin: 0 0 0.4rem 0;
+            font-size: 1.1rem;
+            color: #10344e;
+        }
+
+        .kkt-card p {
+            margin: 0.2rem 0;
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: #e6edf6;
+            padding: 0.1rem 0.5rem;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #0c2b44;
+            display: inline-block;
+        }
+
+        .problem-statement {
+            background: #eef3f9;
+            border-radius: 1.2rem;
+            padding: 0.9rem 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            color: #10344e;
+            border-left: 5px solid #2b6c9e;
+        }
+
+        .problem-statement strong {
+            font-weight: 700;
+            color: #0b1e33;
+        }
+
+        @media (max-width: 700px) {
+            .container { padding: 1.2rem; }
+            h1 { font-size: 1.8rem; }
+            .kkt-explanation { grid-template-columns: 1fr; }
+            .slider-container { flex-wrap: wrap; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>KKT条件 · 可视化动画演示</h1>
+    <div class="subhead">
+        <p>梯度条件 · 互补松弛 · 对偶可行 · 原始可行</p>
+    </div>
+
+    <!-- 具体问题描述 -->
+    <div class="problem-statement">
+        <strong>具体优化问题：</strong> 最小化 f(x, y) = (x - 2.2)² + (y - 2.2)² + 0.5 &nbsp;&nbsp; 约束 g(x, y) = x + y - 3.5 ≤ 0
+        <br>
+        <span style="opacity:0.8;">无约束最小点在 (2.2, 2.2)，但 x + y = 4.4 > 3.5 不可行，因此最优解位于约束边界上。</span>
+    </div>
+
+    <div class="canvas-wrapper">
+        <canvas id="kktCanvas" width="1000" height="500"></canvas>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="color-dot" style="background:#2b6c9e;"></span> 目标函数 f(x) 等高线</div>
+        <div class="legend-item"><span class="color-dot" style="background:#d95f4b;"></span> 约束 g(x) ≤ 0 (不可行域)</div>
+        <div class="legend-item"><span class="color-dot" style="background:#1d3557;"></span> 最优点 x* (KKT点)</div>
+        <div class="legend-item"><span class="badge">μ 乘子</span> 互补松弛</div>
+    </div>
+
+    <div class="controls">
+        <div class="slider-container">
+            <label>μ (拉格朗日乘子)</label>
+            <input type="range" id="muSlider" min="0" max="2.5" step="0.01" value="0.9">
+            <span class="value-display" id="muValue">0.90</span>
+        </div>
+        <button class="btn" id="resetBtn">重置最优</button>
+    </div>
+
+    <!-- KKT 文字说明 -->
+    <div class="kkt-explanation">
+        <div class="kkt-card">
+            <h3>原始可行 & 对偶可行</h3>
+            <p><span class="formula">g(x) ≤ 0</span>  — 在可行域内 (浅蓝区域)</p>
+            <p><span class="formula">μ ≥ 0</span>  — 乘子非负 (滑块控制)</p>
+        </div>
+        <div class="kkt-card">
+            <h3>互补松弛 & 梯度条件</h3>
+            <p><span class="formula">μ · g(x) = 0</span> — 边界处 μ>0，内部 μ=0</p>
+            <p><span class="formula">∇f + μ ∇g = 0</span> — 梯度共线</p>
+        </div>
+    </div>
+</div>
+<script>
+    (function(){
+        const canvas = document.getElementById('kktCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = 1000, height = 500;
+
+        // 坐标映射：世界坐标 x ∈ [0, 5], y ∈ [0, 5]
+        const pad = { left: 60, right: 60, top: 50, bottom: 50 };
+        const worldW = 5.0, worldH = 5.0;
+        const scaleX = (width - pad.left - pad.right) / worldW;
+        const scaleY = (height - pad.top - pad.bottom) / worldH;
+
+        function toScreenX(wx) { return pad.left + wx * scaleX; }
+        function toScreenY(wy) { return height - pad.bottom - wy * scaleY; }
+
+        // 问题定义
+        // f(x,y) = (x-2.2)^2 + (y-2.2)^2 + 0.5
+        // g(x,y) = x + y - 3.5 <= 0
+        // 无约束最小 (2.2, 2.2)
+        // KKT 点: 由对称性 x = y, 边界 x+y=3.5 => x=y=1.75
+        // ∇f = (2(x-2.2), 2(y-2.2)), 在 (1.75,1.75) 处 ∇f = (-0.9, -0.9)
+        // ∇g = (1,1), 要求 ∇f + μ∇g = 0 => μ = 0.9
+
+        const muTarget = 0.9;
+        const kktPoint = { x: 1.75, y: 1.75 };
+
+        // 参数
+        let mu = muTarget;
+
+        const muSlider = document.getElementById('muSlider');
+        const muValue = document.getElementById('muValue');
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            muSlider.value = muTarget;
+            mu = muTarget;
+            muValue.textContent = mu.toFixed(2);
+            draw();
+        });
+
+        muSlider.addEventListener('input', (e) => {
+            mu = parseFloat(e.target.value);
+            muValue.textContent = mu.toFixed(2);
+            draw();
+        });
+
+        // 根据 mu 计算候选点
+        // 由 ∇f + μ∇g = 0 => 2(x-2.2) + μ = 0 => x = 2.2 - μ/2
+        // 同理 y = 2.2 - μ/2
+        function getCandidatePoint(mu) {
+            const val = 2.2 - mu / 2;
+            return { x: val, y: val };
+        }
+
+        // 绘制主函数
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+            drawConstraint();
+            drawContours();
+            drawGradientVectors();
+            drawCandidatePoint();
+            drawLabels();
+        }
+
+        // 网格和坐标轴
+        function drawGrid() {
+            ctx.save();
+            ctx.strokeStyle = "#d9e2ec";
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i += 0.5) {
+                const sx = toScreenX(i);
+                ctx.beginPath();
+                ctx.moveTo(sx, toScreenY(0));
+                ctx.lineTo(sx, toScreenY(5));
+                ctx.strokeStyle = i % 1 === 0 ? "#cbd5e1" : "#e9eef5";
+                ctx.stroke();
+            }
+            for (let i = 0; i <= 5; i += 0.5) {
+                const sy = toScreenY(i);
+                ctx.beginPath();
+                ctx.moveTo(toScreenX(0), sy);
+                ctx.lineTo(toScreenX(5), sy);
+                ctx.strokeStyle = i % 1 === 0 ? "#cbd5e1" : "#e9eef5";
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 1.5;
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(5), toScreenY(0));
+            ctx.moveTo(toScreenX(0), toScreenY(0));
+            ctx.lineTo(toScreenX(0), toScreenY(5));
+            ctx.stroke();
+
+            ctx.fillStyle = "#475569";
+            ctx.font = "12px 'Segoe UI', monospace";
+            ctx.textAlign = "center";
+            for (let i = 0; i <= 5; i++) {
+                ctx.fillText(i, toScreenX(i), toScreenY(0) + 18);
+            }
+            ctx.textAlign = "right";
+            for (let i = 0; i <= 5; i++) {
+                ctx.fillText(i, toScreenX(0) - 8, toScreenY(i) + 4);
+            }
+            ctx.restore();
+        }
+
+        // 约束 g(x,y) <= 0 : x + y <= 3.5
+        function drawConstraint() {
+            ctx.save();
+            // 边界线
+            ctx.beginPath();
+            const x1 = 0, y1 = 3.5;
+            const x2 = 3.5, y2 = 0;
+            ctx.moveTo(toScreenX(x1), toScreenY(y1));
+            ctx.lineTo(toScreenX(x2), toScreenY(y2));
+            ctx.strokeStyle = "#d95f4b";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 不可行域 (右上部分)
+            ctx.beginPath();
+            ctx.moveTo(toScreenX(0), toScreenY(3.5));
+            ctx.lineTo(toScreenX(0), toScreenY(5));
+            ctx.lineTo(toScreenX(5), toScreenY(5));
+            ctx.lineTo(toScreenX(5), toScreenY(0));
+            ctx.lineTo(toScreenX(3.5), toScreenY(0));
+            ctx.closePath();
+            ctx.fillStyle = "rgba(217, 95, 75, 0.12)";
+            ctx.fill();
+
+            ctx.fillStyle = "#1e4b6e";
+            ctx.font = "bold 15px 'Segoe UI'";
+            ctx.fillText("可行域 g ≤ 0", toScreenX(0.8), toScreenY(0.8));
+            ctx.fillStyle = "#d95f4b";
+            ctx.fillText("不可行域", toScreenX(3.8), toScreenY(4.3));
+            ctx.restore();
+        }
+
+        // 目标函数等高线
+        function drawContours() {
+            const centerX = 2.2, centerY = 2.2;
+            const radii = [0.4, 0.8, 1.2, 1.6, 2.0, 2.4];
+            ctx.save();
+            ctx.strokeStyle = "#2b6c9e";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 6]);
+            for (let r of radii) {
+                ctx.beginPath();
+                ctx.arc(toScreenX(centerX), toScreenY(centerY), r * scaleX, 0, 2 * Math.PI);
+                ctx.strokeStyle = "rgba(43, 108, 158, 0.4)";
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(toScreenX(centerX), toScreenY(centerY), 6, 0, 2 * Math.PI);
+            ctx.fillStyle = "#2b6c9e";
+            ctx.shadowColor = "#2b6c9e";
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#1d3557";
+            ctx.font = "bold 14px 'Segoe UI'";
+            ctx.fillText("无约束最小 (2.2, 2.2)", toScreenX(2.4), toScreenY(2.6));
+            ctx.restore();
+        }
+
+        // 梯度向量
+        function drawGradientVectors() {
+            const P = getCandidatePoint(mu);
+            const px = P.x, py = P.y;
+
+            const gradFx = 2 * (px - 2.2);
+            const gradFy = 2 * (py - 2.2);
+            const gradGx = 1, gradGy = 1;
+
+            const scaleVec = 60;
+            const maxLen = 100;
+
+            let fLen = Math.hypot(gradFx, gradFy) * scaleVec;
+            let fScale = fLen > maxLen ? maxLen / fLen : 1;
+            drawArrow(
+                toScreenX(px), toScreenY(py),
+                toScreenX(px) + gradFx * scaleVec * fScale,
+                toScreenY(py) - gradFy * scaleVec * fScale,
+                "#2b6c9e", 3
+            );
+
+            let gVecX = mu * gradGx;
+            let gVecY = mu * gradGy;
+            let gLen = Math.hypot(gVecX, gVecY) * scaleVec;
+            let gScale = gLen > maxLen ? maxLen / gLen : 1;
+            drawArrow(
+                toScreenX(px), toScreenY(py),
+                toScreenX(px) + gVecX * scaleVec * gScale,
+                toScreenY(py) - gVecY * scaleVec * gScale,
+                "#e68a2e", 3
+            );
+
+            ctx.save();
+            ctx.font = "bold 13px 'Segoe UI'";
+            ctx.fillStyle = "#2b6c9e";
+            ctx.fillText("∇f", toScreenX(px) + 15, toScreenY(py) - 15);
+            ctx.fillStyle = "#e68a2e";
+            ctx.fillText("μ∇g", toScreenX(px) - 45, toScreenY(py) - 25);
+            ctx.restore();
+        }
+
+        // 候选点和KKT点
+        function drawCandidatePoint() {
+            const P = getCandidatePoint(mu);
+            const px = P.x, py = P.y;
+
+            // 当前候选点
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(toScreenX(px), toScreenY(py), 8, 0, 2 * Math.PI);
+            ctx.fillStyle = Math.abs(mu - muTarget) < 0.02 ? "#1d3557" : "#f0b34b";
+            ctx.shadowColor = "#1d3557";
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            if (Math.abs(mu - muTarget) < 0.02) {
+                ctx.beginPath();
+                ctx.arc(toScreenX(px), toScreenY(py), 16, 0, 2 * Math.PI);
+                ctx.strokeStyle = "#1d3557";
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            ctx.restore();
+
+            // KKT参考点
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(toScreenX(kktPoint.x), toScreenY(kktPoint.y), 6, 0, 2 * Math.PI);
+            ctx.fillStyle = "#1d3557";
+            ctx.shadowColor = "#1d3557";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "#0b1e33";
+            ctx.font = "bold 14px 'Segoe UI'";
+            ctx.fillText("KKT点 x* (1.75, 1.75)", toScreenX(1.0), toScreenY(1.2));
+            ctx.restore();
+
+            const gVal = px + py - 3.5;
+            ctx.save();
+            ctx.font = "bold 14px 'Segoe UI'";
+            ctx.fillStyle = gVal > 0 ? "#d95f4b" : (gVal < -0.01 ? "#2f9e5a" : "#1d3557");
+            ctx.fillText(`g = ${gVal.toFixed(2)}`, toScreenX(px) + 20, toScreenY(py) - 10);
+            ctx.restore();
+        }
+
+        function drawArrow(fromX, fromY, toX, toY, color, lineWidth) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = lineWidth;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            const headLen = 12;
+            ctx.beginPath();
+            ctx.moveTo(toX, toY);
+            ctx.lineTo(toX - headLen * Math.cos(angle - 0.5), toY - headLen * Math.sin(angle - 0.5));
+            ctx.lineTo(toX - headLen * Math.cos(angle + 0.5), toY - headLen * Math.sin(angle + 0.5));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawLabels() {
+            ctx.save();
+            ctx.font = "bold 15px 'Segoe UI'";
+            ctx.fillStyle = "#1d3557";
+            const P = getCandidatePoint(mu);
+            const gVal = P.x + P.y - 3.5;
+            const compSlack = mu * gVal;
+            ctx.fillText(`μ = ${mu.toFixed(2)}`, toScreenX(0.2), toScreenY(4.7));
+            ctx.fillStyle = Math.abs(compSlack) < 0.05 ? "#2f9e5a" : "#d95f4b";
+            ctx.fillText(`互补松弛 μ·g = ${compSlack.toFixed(2)}`, toScreenX(0.2), toScreenY(4.4));
+            if (Math.abs(mu - muTarget) < 0.02) {
+                ctx.fillStyle = "#1d3557";
+                ctx.font = "bold 16px 'Segoe UI'";
+                ctx.fillText("KKT条件满足", toScreenX(0.2), toScreenY(4.0));
+            } else {
+                ctx.fillStyle = "#b34e3a";
+                ctx.font = "bold 16px 'Segoe UI'";
+                ctx.fillText("未满足全部KKT条件", toScreenX(0.2), toScreenY(4.0));
+            }
+            ctx.restore();
+        }
+
+        draw();
+    })();
+</script>
+</body>
+</html>

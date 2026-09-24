@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>为什么需要正则化 · L1 vs L2</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin-bottom: 0.85rem;
+    }
+    .tab {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.45rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+    }
+    .tab.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.7rem;
+    }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 120px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.1rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.92rem; color: #fff;
+    }
+    .msg {
+      font-size: 0.9rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+      line-height: 1.65;
+      min-height: 3.2em;
+    }
+    .msg strong { color: #fff; }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>为什么需要正则化 · L1 vs L2</h1>
+    <p class="subtitle">过拟合 → 约束权重大小 · 圆形收缩 · 菱形稀疏</p>
+
+    <div class="intro">
+      <strong>三幕：</strong>
+      ① 无正则：损失最低点可能权重很大、对噪声过敏；
+      ② L2：权重关在「圆」里 → 整体变小；
+      ③ L1：权重关在「菱形」里 → 易碰到角 → 某些维精确为 0。
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-mode="none">① 无正则（易过拟合）</button>
+      <button class="tab" data-mode="l2">② L2 球约束 / 岭回归</button>
+      <button class="tab" data-mode="l1">③ L1 菱形 / LASSO</button>
+      <button class="tab" data-mode="compare">④ 同屏对比</button>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>约束半径 t</span>
+          <input type="range" id="tSlider" min="0.4" max="2.2" step="0.05" value="1.1">
+          <span id="tLabel">1.10</span>
+        </div>
+        <div class="slider-row">
+          <span>损失中心（模拟数据变化）</span>
+          <input type="range" id="cxSlider" min="-0.3" max="1.8" step="0.05" value="1.4">
+          <span id="cxLabel">1.40</span>
+        </div>
+      </div>
+      <canvas id="cv" width="940" height="440"></canvas>
+      <div class="info">
+        <div class="info-card"><h3>无约束最优</h3><div class="val" id="uncVal">—</div></div>
+        <div class="info-card"><h3>当前解</h3><div class="val" id="solVal">—</div></div>
+        <div class="info-card"><h3>‖w‖₂</h3><div class="val" id="n2Val">—</div></div>
+        <div class="info-card"><h3>‖w‖₁</h3><div class="val" id="n1Val">—</div></div>
+        <div class="info-card"><h3>是否稀疏</h3><div class="val" id="spVal">—</div></div>
+      </div>
+      <div class="msg" id="msg"></div>
+    </div>
+    <footer>Regularization as constrained optimization · 18-convex-optimization</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let mode = 'none';
+    let t = 1.1;
+    let cx = 1.4, cy = 1.15; // unconstrained minimum of quadratic loss
+
+    // Loss contours: ellipses centered at (cx,cy)
+    // f(w) = (w1-cx)^2 + 0.6(w2-cy)^2  (slightly elongated)
+
+    function loss(w1, w2) {
+      return (w1 - cx) * (w1 - cx) + 0.55 * (w2 - cy) * (w2 - cy);
+    }
+
+    function projectL2(w1, w2, radius) {
+      const n = Math.sqrt(w1 * w1 + w2 * w2);
+      if (n <= radius) return { w1, w2 };
+      return { w1: w1 * radius / n, w2: w2 * radius / n };
+    }
+
+    function projectL1(w1, w2, budget) {
+      // Project unconstrained min onto L1 ball using soft geometry:
+      // if already inside, keep; else find touch point of ellipse family with diamond
+      // For teaching: analytical for diamond |w1|+|w2|<=budget
+      const u1 = cx, u2 = cy;
+      if (Math.abs(u1) + Math.abs(u2) <= budget) return { w1: u1, w2: u2 };
+
+      // Loss gradients prefer moving toward (cx,cy). Touch point of level curve with diamond:
+      // For isotropic approx, touch is often at axis if center is in a cone.
+      // Better: minimize (w-c)^2 s.t |w1|+|w2|=budget (boundary)
+      // Use simple search on diamond edges
+      let best = null, bestL = Infinity;
+      const edges = [
+        // w1>=0,w2>=0: w1+w2=budget
+        (s) => ({ w1: s, w2: budget - s }),
+        (s) => ({ w1: s, w2: -(budget - s) }),
+        (s) => ({ w1: -s, w2: budget - s }),
+        (s) => ({ w1: -s, w2: -(budget - s) })
+      ];
+      for (const edge of edges) {
+        for (let i = 0; i <= 40; i++) {
+          const s = (i / 40) * budget;
+          const p = edge(s);
+          const L = loss(p.w1, p.w2);
+          if (L < bestL) { bestL = L; best = p; }
+        }
+      }
+      return best;
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const ox = W * 0.5, oy = H * 0.52;
+      const sc = 95;
+
+      function S(x, y) {
+        return { x: ox + x * sc, y: oy - y * sc };
+      }
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(40, oy); ctx.lineTo(W - 40, oy);
+      ctx.moveTo(ox, 30); ctx.lineTo(ox, H - 30);
+      ctx.stroke();
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('w₁', W - 35, oy + 14);
+      ctx.fillText('w₂', ox + 8, 28);
+
+      // loss contours
+      for (let k = 1; k <= 6; k++) {
+        const r = 0.25 * k;
+        ctx.beginPath();
+        for (let a = 0; a <= Math.PI * 2 + 0.05; a += 0.05) {
+          const w1 = cx + r * Math.cos(a);
+          const w2 = cy + r * Math.sin(a) / Math.sqrt(0.55);
+          const p = S(w1, w2);
+          if (a === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        }
+        ctx.strokeStyle = 'rgba(129,201,149,0.28)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // unconstrained min
+      const uc = S(cx, cy);
+      ctx.fillStyle = '#fdd663';
+      ctx.beginPath();
+      ctx.arc(uc.x, uc.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '12px sans-serif';
+      ctx.fillText('无约束最优', uc.x + 10, uc.y - 6);
+
+      let sol = { w1: cx, w2: cy };
+      let msg = '';
+
+      if (mode === 'none' || mode === 'compare') {
+        if (mode === 'none') {
+          sol = { w1: cx, w2: cy };
+          msg = '<strong>无正则：</strong>解可以落在很远的地方。数据稍微一变，最优可能跳很远 → 过拟合、对噪声敏感。约束半径 t 此时不起作用。';
+        }
+      }
+
+      if (mode === 'l2' || mode === 'compare') {
+        // L2 ball
+        ctx.beginPath();
+        ctx.arc(ox, oy, t * sc, 0, Math.PI * 2);
+        ctx.strokeStyle = mode === 'compare' ? 'rgba(138,180,248,0.7)' : '#8ab4f8';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(138,180,248,0.08)';
+        ctx.fill();
+
+        const s2 = projectL2(cx, cy, t);
+        if (mode === 'l2') sol = s2;
+
+        const p2 = S(s2.w1, s2.w2);
+        ctx.fillStyle = '#8ab4f8';
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '12px sans-serif';
+        ctx.fillText('L2 解', p2.x + 10, p2.y + 4);
+
+        if (mode === 'l2') {
+          msg = '<strong>L2（圆）：</strong>等高线与圆周相切。权重两个分量通常都非零，只是整体缩短 → <strong>收缩</strong>，不产生精确稀疏。';
+        }
+      }
+
+      if (mode === 'l1' || mode === 'compare') {
+        // diamond
+        const d = [
+          S(t, 0), S(0, t), S(-t, 0), S(0, -t)
+        ];
+        ctx.beginPath();
+        ctx.moveTo(d[0].x, d[0].y);
+        for (let i = 1; i < 4; i++) ctx.lineTo(d[i].x, d[i].y);
+        ctx.closePath();
+        ctx.strokeStyle = mode === 'compare' ? 'rgba(245,158,11,0.85)' : '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(245,158,11,0.08)';
+        ctx.fill();
+
+        const s1 = projectL1(cx, cy, t);
+        if (mode === 'l1') sol = s1;
+
+        const p1 = S(s1.w1, s1.w2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillText('L1 解', p1.x + 10, p1.y - 6);
+
+        if (mode === 'l1') {
+          const sparse = Math.abs(s1.w1) < 0.04 || Math.abs(s1.w2) < 0.04;
+          msg = sparse
+            ? '<strong>L1（菱形）：</strong>等高线碰到了<strong>角</strong>（轴上）→ 有一个权重 ≈ 0 → <strong>特征选择 / 稀疏</strong>。'
+            : '<strong>L1（菱形）：</strong>当前切在边上（两维都非零）。拖大「损失中心」或缩小 t，更容易碰到角。';
+        }
+      }
+
+      if (mode === 'compare') {
+        msg = '<strong>对比：</strong>蓝点=L2（圆上，两维都在）；橙点=L1（常在角上，一维为 0）。同一 t 下两者解不同。';
+        sol = projectL2(cx, cy, t); // show L2 in cards as primary
+      }
+
+      if (mode === 'none') {
+        // no constraint shape
+        ctx.fillStyle = '#9aa0a6';
+        ctx.font = '13px sans-serif';
+        ctx.fillText('可行域 = 整个平面（权重可任意大）', 24, H - 18);
+      }
+
+      const n2 = Math.sqrt(sol.w1 * sol.w1 + sol.w2 * sol.w2);
+      const n1 = Math.abs(sol.w1) + Math.abs(sol.w2);
+      const sparse = Math.abs(sol.w1) < 0.05 || Math.abs(sol.w2) < 0.05;
+
+      document.getElementById('uncVal').textContent =
+        '(' + cx.toFixed(2) + ', ' + cy.toFixed(2) + ')';
+      document.getElementById('solVal').textContent =
+        '(' + sol.w1.toFixed(2) + ', ' + sol.w2.toFixed(2) + ')';
+      document.getElementById('n2Val').textContent = n2.toFixed(3);
+      document.getElementById('n1Val').textContent = n1.toFixed(3);
+      document.getElementById('spVal').textContent = sparse ? '是（有维≈0）' : '否';
+      document.getElementById('spVal').style.color = sparse ? '#81c995' : '#fdd663';
+      document.getElementById('msg').innerHTML = msg;
+    }
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        mode = tab.dataset.mode;
+        draw();
+      };
+    });
+    document.getElementById('tSlider').oninput = e => {
+      t = parseFloat(e.target.value);
+      document.getElementById('tLabel').textContent = t.toFixed(2);
+      draw();
+    };
+    document.getElementById('cxSlider').oninput = e => {
+      cx = parseFloat(e.target.value);
+      cy = 0.7 + cx * 0.3;
+      document.getElementById('cxLabel').textContent = cx.toFixed(2);
+      draw();
+    };
+
+    draw();
+  </script>
+</body>
+</html>

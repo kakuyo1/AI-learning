@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lagrange Multipliers 演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.75rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 130px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.1rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.92rem; color: #fff;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.7rem 0.95rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.86rem;
+      color: var(--blue);
+      margin-top: 0.6rem;
+      line-height: 1.65;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    .explain h3 {
+      color: #fff; font-size: 0.92rem;
+      margin: 0.4rem 0 0.15rem;
+    }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Lagrange Multipliers 动画</h1>
+    <p class="subtitle">min x²+y²  s.t. x+y = c · 等高线切约束线 · ∇f ∥ ∇g</p>
+
+    <div class="intro">
+      <strong>经典例子：</strong>最小化到原点的距离平方 f=x²+y²，但必须停在直线 x+y=c 上。
+      最优解是原点到该直线的垂足。此时 f 的等高线（圆）与约束直线<strong>相切</strong>，两梯度平行。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>约束 c（x+y=c）</span>
+          <input type="range" id="cSlider" min="0.6" max="3.5" step="0.05" value="1.5">
+          <span id="cLabel">1.50</span>
+        </div>
+        <div class="slider-row">
+          <span>试探点沿约束</span>
+          <input type="range" id="sSlider" min="-1.2" max="1.2" step="0.02" value="0.7">
+          <span id="sLabel">0.70</span>
+        </div>
+        <button class="primary" id="btnOpt">跳到最优点</button>
+        <button id="btnAnim">动画移向最优</button>
+      </div>
+      <canvas id="cv" width="920" height="420"></canvas>
+      <div class="info">
+        <div class="info-card"><h3>约束</h3><div class="val" id="gVal">x+y=1.5</div></div>
+        <div class="info-card"><h3>最优点</h3><div class="val" id="optVal">—</div></div>
+        <div class="info-card"><h3>当前试探点</h3><div class="val" id="ptVal">—</div></div>
+        <div class="info-card"><h3>当前 f</h3><div class="val" id="fVal">—</div></div>
+        <div class="info-card"><h3>λ</h3><div class="val" id="lamVal">—</div></div>
+      </div>
+      <div class="formula" id="formula">
+        L = x²+y² + λ(x+y−c) · 最优时 ∇f = −λ ∇g
+      </div>
+      <div class="explain">
+        <strong>读图</strong>
+        <h3>绿圆</h3>f 的等高线（距离平方为常数）
+        <h3>蓝线</h3>约束 x+y=c（只能在这线上选点）
+        <h3>绿点</h3>最优点（圆与直线相切）
+        <h3>紫点</h3>你在约束上的试探点；红/青箭头 = ∇f 与 ∇g 方向
+        <h3>相切时</h3>两箭头共线 → 满足拉格朗日条件
+      </div>
+    </div>
+    <footer>Lagrange multipliers · 18-convex-optimization</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let c = 1.5;
+    let s = 0.7; // parameter along constraint: x = c/2+s, y=c/2-s
+    let animId = null;
+
+    function optPoint() {
+      // min x^2+y^2 s.t x+y=c → (c/2, c/2), lambda = -c
+      return { x: c / 2, y: c / 2, lam: -c };
+    }
+
+    function trialPoint() {
+      return { x: c / 2 + s, y: c / 2 - s };
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const ox = W * 0.35, oy = H * 0.65;
+      const sc = 90;
+      const S = (x, y) => ({ x: ox + x * sc, y: oy - y * sc });
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, oy); ctx.lineTo(W - 30, oy);
+      ctx.moveTo(ox, 20); ctx.lineTo(ox, H - 25);
+      ctx.stroke();
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('x', W - 25, oy + 14);
+      ctx.fillText('y', ox + 8, 24);
+
+      // level curves of f = x^2+y^2 (circles)
+      const opt = optPoint();
+      const rOpt = Math.sqrt(opt.x * opt.x + opt.y * opt.y);
+      for (let k = 1; k <= 5; k++) {
+        const r = rOpt * (0.45 + k * 0.35);
+        ctx.beginPath();
+        ctx.arc(ox, oy, r * sc, 0, Math.PI * 2);
+        ctx.strokeStyle = k === 3 ? 'rgba(129,201,149,0.55)' : 'rgba(129,201,149,0.2)';
+        ctx.lineWidth = k === 3 ? 2 : 1;
+        ctx.stroke();
+      }
+      // exact optimal circle
+      ctx.beginPath();
+      ctx.arc(ox, oy, rOpt * sc, 0, Math.PI * 2);
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // constraint line x+y=c
+      ctx.strokeStyle = '#8ab4f8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const p1 = S(c + 2, -2), p2 = S(-2, c + 2);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      ctx.fillStyle = '#8ab4f8';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('约束 x+y=' + c.toFixed(2), 24, 28);
+
+      // optimal point
+      const so = S(opt.x, opt.y);
+      ctx.fillStyle = '#81c995';
+      ctx.beginPath();
+      ctx.arc(so.x, so.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('最优', so.x + 12, so.y + 4);
+
+      // gradient arrows at optimum: ∇f = (2x,2y), ∇g = (1,1)
+      function arrowAt(px, py, vx, vy, color, label, scale) {
+        scale = scale || 28;
+        const n = Math.sqrt(vx * vx + vy * vy) || 1;
+        const ex = px + (vx / n) * scale;
+        const ey = py - (vy / n) * scale; // screen y flipped for direction in data? 
+        // Actually S already flipped y; gradients in data coords:
+        // screen direction: dx_screen = vx*sc_factor, dy_screen = -vy*sc_factor
+        const ex2 = px + (vx / n) * scale;
+        const ey2 = py + (-vy / n) * scale;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(ex2, ey2);
+        ctx.stroke();
+        const ang = Math.atan2(ey2 - py, ex2 - px);
+        ctx.beginPath();
+        ctx.moveTo(ex2, ey2);
+        ctx.lineTo(ex2 - 8 * Math.cos(ang - 0.4), ey2 - 8 * Math.sin(ang - 0.4));
+        ctx.lineTo(ex2 - 8 * Math.cos(ang + 0.4), ey2 - 8 * Math.sin(ang + 0.4));
+        ctx.closePath();
+        ctx.fill();
+        if (label) {
+          ctx.font = '11px sans-serif';
+          ctx.fillText(label, ex2 + 4, ey2 - 2);
+        }
+      }
+
+      // at optimum
+      arrowAt(so.x, so.y, 2 * opt.x, 2 * opt.y, '#81c995', '∇f', 40);
+      arrowAt(so.x, so.y, 1, 1, '#8ab4f8', '∇g', 36);
+
+      // trial point
+      const tr = trialPoint();
+      const st = S(tr.x, tr.y);
+      ctx.fillStyle = '#c58af9';
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('试探', st.x + 11, st.y - 6);
+
+      // gradients at trial
+      arrowAt(st.x, st.y, 2 * tr.x, 2 * tr.y, '#f28b82', '∇f', 36);
+      arrowAt(st.x, st.y, 1, 1, '#fdd663', '∇g', 32);
+
+      // f value contour through trial (dashed circle)
+      const rT = Math.sqrt(tr.x * tr.x + tr.y * tr.y);
+      ctx.beginPath();
+      ctx.arc(ox, oy, rT * sc, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(197,138,249,0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const ftr = tr.x * tr.x + tr.y * tr.y;
+      const fopt = opt.x * opt.x + opt.y * opt.y;
+      document.getElementById('gVal').textContent = 'x+y=' + c.toFixed(2);
+      document.getElementById('optVal').textContent =
+        '(' + opt.x.toFixed(2) + ', ' + opt.y.toFixed(2) + ')';
+      document.getElementById('ptVal').textContent =
+        '(' + tr.x.toFixed(2) + ', ' + tr.y.toFixed(2) + ')';
+      document.getElementById('fVal').textContent =
+        ftr.toFixed(3) + (Math.abs(s) < 0.03 ? ' ≈ 最优' : ' > 最优 ' + fopt.toFixed(3));
+      document.getElementById('lamVal').textContent = opt.lam.toFixed(2);
+      document.getElementById('formula').textContent =
+        'L=x²+y²+λ(x+y−c) · 最优 (x,y)=(' + opt.x.toFixed(2) + ',' + opt.y.toFixed(2) +
+        ') λ=' + opt.lam.toFixed(2) + ' · ∇f∥∇g';
+    }
+
+    function animToOpt() {
+      if (animId) cancelAnimationFrame(animId);
+      const start = s;
+      let f = 0;
+      const total = 40;
+      const loop = () => {
+        f++;
+        const t = Math.min(1, f / total);
+        const e = 1 - Math.pow(1 - t, 3);
+        s = start * (1 - e);
+        document.getElementById('sSlider').value = s;
+        document.getElementById('sLabel').textContent = s.toFixed(2);
+        draw();
+        if (t < 1) animId = requestAnimationFrame(loop);
+      };
+      animId = requestAnimationFrame(loop);
+    }
+
+    document.getElementById('cSlider').oninput = e => {
+      c = parseFloat(e.target.value);
+      document.getElementById('cLabel').textContent = c.toFixed(2);
+      draw();
+    };
+    document.getElementById('sSlider').oninput = e => {
+      s = parseFloat(e.target.value);
+      document.getElementById('sLabel').textContent = s.toFixed(2);
+      draw();
+    };
+    document.getElementById('btnOpt').onclick = () => {
+      s = 0;
+      document.getElementById('sSlider').value = 0;
+      document.getElementById('sLabel').textContent = '0.00';
+      draw();
+    };
+    document.getElementById('btnAnim').onclick = animToOpt;
+
+    draw();
+  </script>
+</body>
+</html>
