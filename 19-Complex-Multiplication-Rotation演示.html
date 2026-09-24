@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复数乘法 = 旋转 + 缩放</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.75rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 140px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.1rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem; color: #fff;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.7rem 0.95rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.86rem;
+      color: var(--blue);
+      margin-top: 0.6rem;
+      line-height: 1.65;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>为什么「乘一个复数」= 旋转？</h1>
+    <p class="subtitle">长度相乘 · 角度相加 · |w|=1 时是纯旋转</p>
+
+    <div class="intro">
+      <strong>关键：</strong>把复数写成极坐标 r∠θ。两个复数相乘 = <strong>半径相乘、角度相加</strong>。
+      若乘数的长度为 1（在单位圆上），半径不变，只转过它的角度 → 纯旋转。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>乘数角度 θ</span>
+          <input type="range" id="theta" min="0" max="360" step="1" value="60">
+          <span id="thetaL">60°</span>
+        </div>
+        <div class="slider-row">
+          <span>乘数长度 r</span>
+          <input type="range" id="rmag" min="0.4" max="1.8" step="0.05" value="1">
+          <span id="rmagL">1.00</span>
+        </div>
+        <button class="primary" id="btnAnim">动画：逐步旋转</button>
+        <button id="btnI">乘 i（转 90°）</button>
+        <button id="btnReset">重置</button>
+      </div>
+      <canvas id="cv" width="900" height="420"></canvas>
+      <div class="info">
+        <div class="info-card"><h3>原向量 z</h3><div class="val" id="zVal">—</div></div>
+        <div class="info-card"><h3>乘数 w</h3><div class="val" id="wVal">—</div></div>
+        <div class="info-card"><h3>结果 z·w</h3><div class="val" id="zwVal">—</div></div>
+        <div class="info-card"><h3>角度变化</h3><div class="val" id="dAng">—</div></div>
+        <div class="info-card"><h3>长度变化</h3><div class="val" id="dMag">—</div></div>
+      </div>
+      <div class="formula" id="formula">
+        z · w = |z|·|w| · e^{i(∠z+∠w)}　→　角度相加、长度相乘
+      </div>
+      <div class="explain">
+        <strong>蓝箭头</strong> = 原向量 z（可拖终点）·
+        <strong>橙箭头</strong> = 乘数 w（单位圆上时 |w|=1）·
+        <strong>绿箭头</strong> = 乘积 z·w ·
+        灰弧 = 转过的角。把 r 调成 1，只剩旋转；调成别的值会同时缩放。
+      </div>
+    </div>
+    <footer>Complex multiplication = rotation + scale · 19-complex-numbers</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let zx = 1.8, zy = 0.9;
+    let thetaDeg = 60, rMag = 1;
+    let animId = null;
+    let dragging = false;
+
+    function mag(x, y) { return Math.sqrt(x * x + y * y); }
+    function ang(x, y) { return Math.atan2(y, x); }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const ox = W * 0.42, oy = H * 0.55;
+      const sc = 100;
+
+      function S(x, y) {
+        return { x: ox + x * sc, y: oy - y * sc };
+      }
+
+      // unit circle
+      ctx.beginPath();
+      ctx.arc(ox, oy, sc, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(95,99,104,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.beginPath();
+      ctx.moveTo(40, oy); ctx.lineTo(W - 30, oy);
+      ctx.moveTo(ox, 20); ctx.lineTo(ox, H - 25);
+      ctx.stroke();
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Re', W - 28, oy + 14);
+      ctx.fillText('Im', ox + 8, 24);
+
+      const theta = thetaDeg * Math.PI / 180;
+      const wx = rMag * Math.cos(theta);
+      const wy = rMag * Math.sin(theta);
+
+      // product
+      const px = zx * wx - zy * wy;
+      const py = zx * wy + zy * wx;
+
+      const az = ang(zx, zy);
+      const aw = ang(wx, wy);
+      const ap = ang(px, py);
+
+      // arc for rotation of z
+      ctx.beginPath();
+      ctx.arc(ox, oy, mag(zx, zy) * sc * 0.55, -az, -ap, ap < az);
+      ctx.strokeStyle = 'rgba(253,214,99,0.7)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      function arrow(x, y, color, label, lw) {
+        const p = S(x, y);
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = lw || 2.8;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        const a = Math.atan2(p.y - oy, p.x - ox);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - 12 * Math.cos(a - 0.4), p.y - 12 * Math.sin(a - 0.4));
+        ctx.lineTo(p.x - 12 * Math.cos(a + 0.4), p.y - 12 * Math.sin(a + 0.4));
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(label, p.x + 10, p.y - 4);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      arrow(zx, zy, '#8ab4f8', 'z', 3);
+      arrow(wx, wy, '#fdd663', 'w', 2.5);
+      arrow(px, py, '#81c995', 'z·w', 3);
+
+      // show i direction hint
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('单位圆 |w|=1 时纯旋转', 20, 28);
+      if (Math.abs(rMag - 1) < 0.03) {
+        ctx.fillStyle = '#81c995';
+        ctx.fillText('当前 |w|≈1 → 长度几乎不变，只旋转', 20, 48);
+      } else {
+        ctx.fillStyle = '#f28b82';
+        ctx.fillText('|w|≠1 → 同时缩放', 20, 48);
+      }
+
+      document.getElementById('zVal').textContent =
+        zx.toFixed(2) + ' + ' + zy.toFixed(2) + 'i';
+      document.getElementById('wVal').textContent =
+        wx.toFixed(2) + ' + ' + wy.toFixed(2) + 'i';
+      document.getElementById('zwVal').textContent =
+        px.toFixed(2) + ' + ' + py.toFixed(2) + 'i';
+      document.getElementById('dAng').textContent =
+        (thetaDeg).toFixed(0) + '°（w 的角）';
+      document.getElementById('dMag').textContent =
+        '× ' + rMag.toFixed(2);
+      document.getElementById('formula').textContent =
+        '|z·w| = |z|·|w| = ' + (mag(zx,zy)*rMag).toFixed(3) +
+        '　∠(z·w) = ∠z + ∠w = ' + ((az + aw) * 180 / Math.PI).toFixed(1) + '°';
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+      const ox = W * 0.42, oy = H * 0.55, sc = 100;
+      const sx = ox + zx * sc, sy = oy - zy * sc;
+      if ((mx - sx) ** 2 + (my - sy) ** 2 < 20 * 20) dragging = true;
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (W / rect.width);
+      const my = (e.clientY - rect.top) * (H / rect.height);
+      const ox = W * 0.42, oy = H * 0.55, sc = 100;
+      zx = (mx - ox) / sc;
+      zy = (oy - my) / sc;
+      draw();
+    });
+    window.addEventListener('mouseup', () => { dragging = false; });
+
+    document.getElementById('theta').oninput = e => {
+      thetaDeg = parseFloat(e.target.value);
+      document.getElementById('thetaL').textContent = thetaDeg + '°';
+      draw();
+    };
+    document.getElementById('rmag').oninput = e => {
+      rMag = parseFloat(e.target.value);
+      document.getElementById('rmagL').textContent = rMag.toFixed(2);
+      draw();
+    };
+    document.getElementById('btnI').onclick = () => {
+      thetaDeg = 90;
+      rMag = 1;
+      document.getElementById('theta').value = 90;
+      document.getElementById('rmag').value = 1;
+      document.getElementById('thetaL').textContent = '90°';
+      document.getElementById('rmagL').textContent = '1.00';
+      draw();
+    };
+    document.getElementById('btnReset').onclick = () => {
+      zx = 1.8; zy = 0.9;
+      thetaDeg = 60; rMag = 1;
+      document.getElementById('theta').value = 60;
+      document.getElementById('rmag').value = 1;
+      document.getElementById('thetaL').textContent = '60°';
+      document.getElementById('rmagL').textContent = '1.00';
+      draw();
+    };
+    document.getElementById('btnAnim').onclick = () => {
+      if (animId) cancelAnimationFrame(animId);
+      const start = 0;
+      const target = thetaDeg;
+      let f = 0;
+      const total = 50;
+      const saved = thetaDeg;
+      const loop = () => {
+        f++;
+        const t = Math.min(1, f / total);
+        const e = 1 - Math.pow(1 - t, 2);
+        thetaDeg = start + (saved - start) * e;
+        document.getElementById('theta').value = thetaDeg;
+        document.getElementById('thetaL').textContent = Math.round(thetaDeg) + '°';
+        draw();
+        if (t < 1) animId = requestAnimationFrame(loop);
+        else thetaDeg = saved;
+      };
+      animId = requestAnimationFrame(loop);
+    };
+
+    draw();
+  </script>
+</body>
+</html>

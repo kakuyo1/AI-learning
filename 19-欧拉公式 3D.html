@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 动画：e^(iθ) = cosθ + i·sinθ（动态螺旋）</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 20, 40, 0.8);
+            color: #e0f0ff;
+            padding: 16px 24px;
+            border-radius: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 180, 255, 0.4);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            pointer-events: none;
+            z-index: 100;
+        }
+        #info h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: #aad0ff;
+        }
+        #info .formula {
+            font-size: 1.8rem;
+            font-weight: 300;
+            margin: 5px 0 0 0;
+            color: #ffffff;
+            text-shadow: 0 0 20px #3b7fff;
+        }
+        #info .formula i {
+            font-style: italic;
+            color: #ffd966;
+        }
+        #theta-display {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 12px 36px;
+            border-radius: 60px;
+            font-size: 1.6rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 215, 100, 0.5);
+            box-shadow: 0 0 40px rgba(255, 200, 0, 0.2);
+            z-index: 100;
+        }
+        #theta-display span {
+            color: #ffd966;
+            font-weight: 600;
+        }
+        #coords {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #a0d0ff;
+            padding: 16px 28px;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            backdrop-filter: blur(8px);
+            border-left: 4px solid #3b7fff;
+            line-height: 1.8;
+            z-index: 100;
+            font-family: 'Courier New', monospace;
+        }
+        #coords .real { color: #ff8a8a; }
+        #coords .imag { color: #8affa0; }
+        .note {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 30, 50, 0.7);
+            color: #b0c8e0;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>欧拉公式 · 动态螺旋</h1>
+        <div class="formula">e<sup>iθ</sup> = cos θ + i·sin θ</div>
+    </div>
+    <div id="theta-display">θ = <span id="theta-value">0.00</span> rad</div>
+    <div id="coords">
+        <div>实部 cos θ = <span class="real" id="cos-val">1.00</span></div>
+        <div>虚部 sin θ = <span class="imag" id="sin-val">0.00</span></div>
+    </div>
+    <div class="note">动态螺旋 · 单位圆 · 复指数</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- 初始化场景、相机、渲染器 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0e1a);
+        scene.fog = new THREE.FogExp2(0x0a0e1a, 0.012);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 5, 10);
+        camera.lookAt(0, 1.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // --- 控制器 ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.target.set(0, 1.5, 0);
+        controls.maxPolarAngle = Math.PI / 1.8;
+
+        // --- 灯光 ---
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1);
+        mainLight.position.set(2, 5, 5);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        
+        const backLight = new THREE.PointLight(0x4466ff, 0.5);
+        backLight.position.set(-3, 2, -4);
+        scene.add(backLight);
+        
+        const rightLight = new THREE.PointLight(0xffaa55, 0.4);
+        rightLight.position.set(4, 3, 2);
+        scene.add(rightLight);
+        
+        const bottomLight = new THREE.PointLight(0x3355aa, 0.3);
+        bottomLight.position.set(0, -3, 2);
+        scene.add(bottomLight);
+
+        // --- 辅助网格和轴线 ---
+        const gridHelper = new THREE.GridHelper(12, 24, 0x6688aa, 0x334466);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+
+        const axisLength = 6.5;
+        const arrowHeadLength = 0.3;
+        const arrowHeadWidth = 0.15;
+        
+        const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), axisLength, 0xff5555, arrowHeadLength, arrowHeadWidth);
+        scene.add(arrowX);
+        
+        const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), axisLength, 0x55ff55, arrowHeadLength, arrowHeadWidth);
+        scene.add(arrowY);
+        
+        const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), axisLength, 0x5588ff, arrowHeadLength, arrowHeadWidth);
+        scene.add(arrowZ);
+
+        function createAxisLabel(text, position, color = '#ffffff') {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = color;
+            div.style.fontSize = '18px';
+            div.style.fontWeight = 'bold';
+            div.style.textShadow = '0 0 10px currentColor';
+            const label = new CSS2DObject(div);
+            label.position.copy(position);
+            scene.add(label);
+            return label;
+        }
+
+        createAxisLabel('Re (cos θ)', new THREE.Vector3(6.8, 0.2, 0), '#ff8a8a');
+        createAxisLabel('Im (sin θ)', new THREE.Vector3(0.2, 6.8, 0), '#8affa0');
+        createAxisLabel('θ 轴', new THREE.Vector3(0, 0.3, 6.8), '#8ab8ff');
+
+        // --- 单位圆 ---
+        const circlePoints = [];
+        const segments = 128;
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            circlePoints.push(new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0));
+        }
+        const circleGeometry = new THREE.BufferGeometry().setFromPoints(circlePoints);
+        const circleMaterial = new THREE.LineBasicMaterial({ color: 0x88aaff });
+        const unitCircle = new THREE.LineLoop(circleGeometry, circleMaterial);
+        scene.add(unitCircle);
+
+        const ringGeometry = new THREE.RingGeometry(0.98, 1.02, 64);
+        const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x4488ff, side: THREE.DoubleSide, transparent: true, opacity: 0.15 });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.position.z = 0;
+        scene.add(ring);
+
+        // --- 动态螺旋线参数 ---
+        const spiralScale = 0.7;       // 1 rad 对应 0.7 单位 Z 长度
+        const maxTheta = 6 * Math.PI;  // 三圈
+        const spiralSteps = 800;
+
+        // 预计算螺旋线所有点
+        const allSpiralPoints = [];
+        for (let i = 0; i <= spiralSteps; i++) {
+            const t = (i / spiralSteps) * maxTheta;
+            allSpiralPoints.push(new THREE.Vector3(Math.cos(t), Math.sin(t), t * spiralScale));
+        }
+
+        // 螺旋线对象（初始为空，动态更新）
+        const spiralGeometry = new THREE.BufferGeometry();
+        const spiralMaterial = new THREE.LineBasicMaterial({ color: 0xffaa33, linewidth: 2 });
+        const spiralLine = new THREE.Line(spiralGeometry, spiralMaterial);
+        scene.add(spiralLine);
+
+        // 螺旋线前方的发光点（表示当前生成位置）
+        const tipGeometry = new THREE.SphereGeometry(0.12, 16, 16);
+        const tipMaterial = new THREE.MeshStandardMaterial({ color: 0xffdd88, emissive: 0xff6600 });
+        const spiralTip = new THREE.Mesh(tipGeometry, tipMaterial);
+        scene.add(spiralTip);
+
+        // 螺旋线上的粒子（动态）
+        const maxParticles = 500;
+        const particlePositions = new Float32Array(maxParticles * 3);
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMaterial = new THREE.PointsMaterial({ 
+            color: 0xffcc66, size: 0.08, transparent: true, 
+            blending: THREE.AdditiveBlending, opacity: 0.6 
+        });
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // --- 复平面上的动态点（单位圆上）---
+        const pointCGeo = new THREE.SphereGeometry(0.14, 32, 32);
+        const pointCMat = new THREE.MeshStandardMaterial({ color: 0x44ddff, emissive: 0x006688 });
+        const pointC = new THREE.Mesh(pointCGeo, pointCMat);
+        scene.add(pointC);
+
+        // 从原点到 pointC 的向量
+        const arrowC = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), 1, 0x44ddff, 0.25, 0.15);
+        scene.add(arrowC);
+
+        // 实部与虚部投影虚线
+        const projRealGeo = new THREE.BufferGeometry();
+        const projImagGeo = new THREE.BufferGeometry();
+        const projRealLine = new THREE.Line(projRealGeo, new THREE.LineBasicMaterial({ color: 0xff5555, transparent: true, opacity: 0.5 }));
+        const projImagLine = new THREE.Line(projImagGeo, new THREE.LineBasicMaterial({ color: 0x55ff55, transparent: true, opacity: 0.5 }));
+        scene.add(projRealLine);
+        scene.add(projImagLine);
+
+        // 角度弧线
+        const arcGeometry = new THREE.BufferGeometry();
+        const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffaa00, linewidth: 1.5 });
+        const arcLine = new THREE.Line(arcGeometry, arcMaterial);
+        scene.add(arcLine);
+
+        // θ 标签
+        const thetaLabelDiv = document.createElement('div');
+        thetaLabelDiv.textContent = 'θ';
+        thetaLabelDiv.style.color = '#ffaa00';
+        thetaLabelDiv.style.fontSize = '22px';
+        thetaLabelDiv.style.fontWeight = 'bold';
+        thetaLabelDiv.style.textShadow = '0 0 15px #ffaa00';
+        const thetaLabel = new CSS2DObject(thetaLabelDiv);
+        scene.add(thetaLabel);
+
+        // --- 动画状态 ---
+        let theta = 0;
+        const speed = 0.8; // 弧度每秒
+        const clock = new THREE.Clock();
+
+        // 用于粒子动画的计数器
+        let particleHead = 0;
+
+        // --- UI 元素 ---
+        const thetaSpan = document.getElementById('theta-value');
+        const cosSpan = document.getElementById('cos-val');
+        const sinSpan = document.getElementById('sin-val');
+
+        // --- 辅助函数：更新线段几何体 ---
+        function updateLine(line, points) {
+            line.geometry.dispose();
+            line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+        }
+
+        // --- 动画循环 ---
+        function animate() {
+            const delta = Math.min(clock.getDelta(), 0.05); // 限制最大步长
+            
+            // 更新 theta
+            theta += speed * delta;
+            if (theta > maxTheta) {
+                theta = 0;
+                // 重置粒子头，避免粒子残留
+                particleHead = 0;
+            }
+
+            // 计算当前点
+            const cosVal = Math.cos(theta);
+            const sinVal = Math.sin(theta);
+            const zVal = theta * spiralScale;
+
+            // --- 1. 动态绘制螺旋线（从 0 到 theta）---
+            const currentSteps = Math.floor((theta / maxTheta) * spiralSteps);
+            const spiralPoints = allSpiralPoints.slice(0, Math.min(currentSteps + 1, allSpiralPoints.length));
+            
+            // 如果螺旋线太短（少于2个点），添加当前点
+            if (spiralPoints.length < 2) {
+                spiralPoints.push(new THREE.Vector3(cosVal, sinVal, zVal));
+            }
+            
+            spiralGeometry.dispose();
+            spiralGeometry.setFromPoints(spiralPoints);
+
+            // 更新螺旋尖端位置
+            spiralTip.position.set(cosVal, sinVal, zVal);
+
+            // --- 2. 动态粒子：沿着螺旋线分布 ---
+            // 粒子从尾部到头部逐渐增多，形成一个拖尾效果
+            const particleCount = Math.min(maxParticles, Math.floor(theta / maxTheta * maxParticles));
+            const positions = [];
+            for (let i = 0; i < particleCount; i++) {
+                const t = (i / particleCount) * theta;
+                positions.push(Math.cos(t), Math.sin(t), t * spiralScale);
+            }
+            // 用当前点补足
+            if (positions.length < maxParticles * 3) {
+                for (let i = positions.length / 3; i < maxParticles; i++) {
+                    // 对于未填充的部分，使用最后一个有效点或当前点
+                    const t = theta;
+                    positions.push(Math.cos(t), Math.sin(t), t * spiralScale);
+                }
+            }
+            
+            // 更新粒子几何体
+            const posArray = new Float32Array(positions);
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(posArray.slice(0, maxParticles * 3), 3));
+
+            // --- 3. 更新复平面上的点 ---
+            pointC.position.set(cosVal, sinVal, 0);
+            
+            // 箭头指向
+            arrowC.position.set(0, 0, 0);
+            arrowC.setDirection(new THREE.Vector3(cosVal, sinVal, 0).normalize());
+            arrowC.setLength(1);
+
+            // 更新实部虚线 (从 (cos,0,0) 到 (cos,sin,0))
+            projRealGeo.dispose();
+            projRealGeo.setFromPoints([
+                new THREE.Vector3(cosVal, 0, 0),
+                new THREE.Vector3(cosVal, sinVal, 0)
+            ]);
+            
+            // 更新虚部虚线 (从 (0,sin,0) 到 (cos,sin,0))
+            projImagGeo.dispose();
+            projImagGeo.setFromPoints([
+                new THREE.Vector3(0, sinVal, 0),
+                new THREE.Vector3(cosVal, sinVal, 0)
+            ]);
+
+            // --- 4. 更新角度弧线 ---
+            const arcPts = [];
+            const arcSteps = 40;
+            for (let i = 0; i <= arcSteps; i++) {
+                const t = (i / arcSteps) * theta;
+                arcPts.push(new THREE.Vector3(Math.cos(t), Math.sin(t), 0));
+            }
+            updateLine(arcLine, arcPts);
+
+            // 更新 θ 标签位置
+            const labelAngle = theta / 2;
+            const labelRadius = 1.3;
+            thetaLabel.position.set(Math.cos(labelAngle) * labelRadius, Math.sin(labelAngle) * labelRadius, 0);
+
+            // --- 5. 更新 UI ---
+            thetaSpan.textContent = theta.toFixed(2);
+            cosSpan.textContent = cosVal.toFixed(3);
+            sinSpan.textContent = sinVal.toFixed(3);
+
+            // 更新控制器
+            controls.update();
+
+            // 渲染
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+
+            requestAnimationFrame(animate);
+        }
+
+        // 启动动画
+        animate();
+
+        // --- 窗口大小自适应 ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 添加星空背景
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsCount = 1500;
+        const starsPositions = new Float32Array(starsCount * 3);
+        for (let i = 0; i < starsCount * 3; i += 3) {
+            starsPositions[i] = (Math.random() - 0.5) * 200;
+            starsPositions[i+1] = (Math.random() - 0.5) * 200;
+            starsPositions[i+2] = (Math.random() - 0.5) * 200;
+        }
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+        const starsMaterial = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.12, transparent: true, blending: THREE.AdditiveBlending });
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+
+    </script>
+</body>
+</html>
