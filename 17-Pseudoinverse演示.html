@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>伪逆 · 直观三幕剧</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #ff6d00;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.3rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.95rem; }
+    .story {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: #c4c7ce;
+    }
+    .story strong { color: #fff; }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      margin-bottom: 0.9rem;
+    }
+    .tab {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.55rem 1rem; font-size: 0.9rem; cursor: pointer;
+    }
+    .tab.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.15rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+    .scene-title {
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+    .scene-desc {
+      font-size: 0.92rem;
+      color: #c4c7ce;
+      margin-bottom: 0.85rem;
+      padding: 0.7rem 0.95rem;
+      background: #12141c;
+      border-radius: 10px;
+      border-left: 3px solid #1a73e8;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.7rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.35rem;
+      font-size: 0.84rem; color: var(--muted);
+    }
+    input[type="range"] { width: 140px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 0.85rem;
+    }
+    @media (max-width: 700px) { .bottom { grid-template-columns: 1fr; } }
+    .card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .card h3 {
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+    }
+    .card .num {
+      font-family: "SF Mono", Consolas, monospace;
+      color: #81c995;
+      font-size: 1.05rem;
+    }
+    .card .bad { color: #f28b82; }
+    .takeaway {
+      margin-top: 0.85rem;
+      padding: 0.85rem 1rem;
+      background: rgba(26,115,232,0.12);
+      border-radius: 10px;
+      border: 1px solid rgba(26,115,232,0.35);
+      font-size: 0.95rem;
+      color: #e8eaed;
+    }
+    .takeaway strong { color: #8ab4f8; }
+    footer {
+      margin-top: 1.4rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>伪逆 A⁺：三幕直观剧</h1>
+    <p class="subtitle">别记公式，先看它在三种尴尬局面里各选什么答案</p>
+
+    <div class="story">
+      <strong>生活类比：</strong>普通逆矩阵像「唯一正确的钥匙」。  
+      伪逆像一个<strong>万能备用方案</strong>：门能开就开；门对不上就选「最接近能开的」；能开的钥匙有很多把，就选「最小那把」。
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-m="1">第一幕：目标够不着</button>
+      <button class="tab" data-m="2">第二幕：答案太多</button>
+      <button class="tab" data-m="3">第三幕：刚好一把钥匙</button>
+    </div>
+
+    <div class="panel">
+      <div class="scene-title" id="title">第一幕：目标够不着（超定 / 无精确解）</div>
+      <div class="scene-desc" id="desc">
+        你只能沿着一条固定的路（列空间）走，但目的地 b 在路旁边。  
+        谁也到不了 b → <strong>没有精确解</strong>。伪逆让你走到路上<strong>离 b 最近的点</strong>（垂足）。
+      </div>
+
+      <div class="controls">
+        <div class="slider-row" id="rowB">
+          <span>把目标 b 拉高（更偏离）</span>
+          <input type="range" id="bOff" min="0" max="2.2" step="0.05" value="1.3">
+          <span id="bOffL">1.30</span>
+        </div>
+        <div class="slider-row" id="rowUnder" style="display:none">
+          <span>约束值 c（x₁+x₂=c）</span>
+          <input type="range" id="cVal" min="0.5" max="4" step="0.1" value="2.4">
+          <span id="cL">2.4</span>
+        </div>
+        <button class="primary" id="btnPlay">播放：走向伪逆解</button>
+      </div>
+
+      <canvas id="cv" width="920" height="400"></canvas>
+
+      <div class="bottom">
+        <div class="card">
+          <h3>伪逆给出的答案</h3>
+          <div id="ans">—</div>
+        </div>
+        <div class="card">
+          <h3>它在优化什么？</h3>
+          <div id="opt">—</div>
+        </div>
+      </div>
+
+      <div class="takeaway" id="take">
+        <strong>本幕要点：</strong>无精确解时，A⁺b = 最小二乘解（残差最短）。
+      </div>
+    </div>
+    <footer>Pseudoinverse intuition · three acts · 17-linear-systems</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let mode = 1;
+    let bOff = 1.3;
+    let cVal = 2.4;
+    let animT = 0; // 0..1 for play
+    let animId = null;
+
+    // Act1: line direction
+    const dir = { x: 1.5, y: 0.6 };
+    function nrm(v) {
+      const n = Math.sqrt(v.x * v.x + v.y * v.y) || 1;
+      return { x: v.x / n, y: v.y / n };
+    }
+    function dot(a, b) { return a.x * b.x + a.y * b.y; }
+    function mul(v, s) { return { x: v.x * s, y: v.y * s }; }
+    function add(a, b) { return { x: a.x + b.x, y: a.y + b.y }; }
+    function sub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
+    function len(v) { return Math.sqrt(dot(v, v)); }
+
+    function drawAxes(ox, oy) {
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, oy); ctx.lineTo(W - 30, oy);
+      ctx.moveTo(ox, 25); ctx.lineTo(ox, H - 25);
+      ctx.stroke();
+    }
+
+    function arrow(ox, oy, sc, from, to, color, label, lw) {
+      const sx = ox + from.x * sc, sy = oy - from.y * sc;
+      const ex = ox + to.x * sc, ey = oy - to.y * sc;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = lw || 2.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      const ang = Math.atan2(ey - sy, ex - sx);
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - 10 * Math.cos(ang - 0.4), ey - 10 * Math.sin(ang - 0.4));
+      ctx.lineTo(ex - 10 * Math.cos(ang + 0.4), ey - 10 * Math.sin(ang + 0.4));
+      ctx.closePath();
+      ctx.fill();
+      if (label) {
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(label, ex + 8, ey - 4);
+      }
+    }
+
+    function drawAct1() {
+      const ox = W * 0.25, oy = H * 0.7, sc = 95;
+      drawAxes(ox, oy);
+
+      // road = column space
+      const d = nrm(dir);
+      ctx.strokeStyle = 'rgba(92,107,192,0.55)';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(ox + d.x * sc * (-2.5), oy - d.y * sc * (-2.5));
+      ctx.lineTo(ox + d.x * sc * 3.5, oy - d.y * sc * 3.5);
+      ctx.stroke();
+      ctx.fillStyle = '#8ab4f8';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('你只能走的路（列空间）', ox + 80, 36);
+
+      // foot of perpendicular from b
+      // b = point on direction * t + perpendicular offset
+      const along = 1.8;
+      const foot = mul(d, along * len(dir) / len(dir) * 1.2);
+      // simpler: foot = proj of b onto dir
+      const b = { x: d.x * 1.6 + (-d.y) * bOff, y: d.y * 1.6 + d.x * bOff };
+      const t = dot(b, d);
+      const proj = mul(d, t);
+
+      // animate walker from origin toward proj
+      const walk = mul(proj, 0.15 + 0.85 * animT);
+
+      // residual
+      ctx.strokeStyle = '#f28b82';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ox + proj.x * sc, oy - proj.y * sc);
+      ctx.lineTo(ox + b.x * sc, oy - b.y * sc);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // right angle mark
+      if (bOff > 0.15) {
+        const px = ox + proj.x * sc, py = oy - proj.y * sc;
+        ctx.strokeStyle = 'rgba(242,139,130,0.8)';
+        ctx.strokeRect(px - 6, py - 6, 12, 12);
+      }
+
+      arrow(ox, oy, sc, { x: 0, y: 0 }, proj, '#81c995', '最近到达点 Ax⁺', 3);
+      // walker
+      ctx.fillStyle = '#c58af9';
+      ctx.beginPath();
+      ctx.arc(ox + walk.x * sc, oy - walk.y * sc, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c58af9';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('你', ox + walk.x * sc + 10, oy - walk.y * sc);
+
+      // b
+      ctx.fillStyle = '#ff6d00';
+      ctx.beginPath();
+      ctx.arc(ox + b.x * sc, oy - b.y * sc, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('目的地 b（够不着）', ox + b.x * sc + 14, oy - b.y * sc - 8);
+
+      const res = len(sub(b, proj));
+      document.getElementById('ans').innerHTML =
+        '走到路上的垂足。<br>残差长度 = <span class="num">' + res.toFixed(2) + '</span>（已是最短可能）';
+      document.getElementById('opt').innerHTML =
+        '最小化 <span class="num">‖Ax − b‖</span><br>也就是「差得最少」。';
+    }
+
+    function drawAct2() {
+      const ox = W * 0.5, oy = H * 0.55, sc = 75;
+      drawAxes(ox, oy);
+
+      // line x1 + x2 = c
+      ctx.strokeStyle = 'rgba(138,180,248,0.7)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      // x2 = c - x1
+      const p1 = { x: cVal + 2.5, y: -2.5 };
+      const p2 = { x: -2.5, y: cVal + 2.5 };
+      ctx.moveTo(ox + p1.x * sc, oy - p1.y * sc);
+      ctx.lineTo(ox + p2.x * sc, oy - p2.y * sc);
+      ctx.stroke();
+      ctx.fillStyle = '#8ab4f8';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('整条线都是「正确答案」', 24, 32);
+
+      // min norm point
+      const star = { x: cVal / 2, y: cVal / 2 };
+      // other solutions
+      const others = [
+        { x: star.x + 1.4, y: star.y - 1.4 },
+        { x: star.x - 1.1, y: star.y + 1.1 },
+        { x: star.x + 2.0, y: star.y - 2.0 }
+      ];
+
+      others.forEach((o, i) => {
+        ctx.fillStyle = 'rgba(197,138,249,0.7)';
+        ctx.beginPath();
+        ctx.arc(ox + o.x * sc, oy - o.y * sc, 7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.fillStyle = '#c58af9';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('也是解，但离原点更远', ox + others[0].x * sc + 10, oy - others[0].y * sc);
+
+      // origin to star
+      const walk = mul(star, 0.1 + 0.9 * animT);
+      ctx.strokeStyle = '#81c995';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(ox + star.x * sc, oy - star.y * sc);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#81c995';
+      ctx.beginPath();
+      ctx.arc(ox + star.x * sc, oy - star.y * sc, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('x⁺ 最短答案', ox + star.x * sc + 12, oy - star.y * sc + 5);
+
+      ctx.fillStyle = '#c58af9';
+      ctx.beginPath();
+      ctx.arc(ox + walk.x * sc, oy - walk.y * sc, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // origin
+      ctx.fillStyle = '#9aa0a6';
+      ctx.beginPath();
+      ctx.arc(ox, oy, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillText('原点', ox + 8, oy + 16);
+
+      const nrmStar = Math.sqrt(star.x * star.x + star.y * star.y);
+      document.getElementById('ans').innerHTML =
+        'x⁺ = (' + star.x.toFixed(2) + ', ' + star.y.toFixed(2) + ')<br>' +
+        '长度 ‖x⁺‖ = <span class="num">' + nrmStar.toFixed(2) + '</span>（线上最短）';
+      document.getElementById('opt').innerHTML =
+        '在所有精确解里，最小化 <span class="num">‖x‖</span><br>「能交差的答案里挑最小的」。';
+    }
+
+    function drawAct3() {
+      const ox = W * 0.3, oy = H * 0.6, sc = 85;
+      drawAxes(ox, oy);
+
+      // unique mapping: show b and x related one-to-one
+      // A = [[2,0],[0,1.5]] simple diagonal for clarity
+      const b = { x: 1.5 + bOff * 0.3, y: 1.2 + bOff * 0.2 };
+      const x = { x: b.x / 2, y: b.y / 1.5 }; // unique inverse
+
+      const walkB = mul(b, 0.2 + 0.8 * animT);
+
+      arrow(ox, oy, sc, { x: 0, y: 0 }, x, '#81c995', '唯一的 x⁺ = A⁻¹b', 3);
+      arrow(ox, oy, sc, { x: 0, y: 0 }, b, '#ff6d00', 'b', 2.5);
+
+      ctx.fillStyle = '#c58af9';
+      ctx.beginPath();
+      ctx.arc(ox + walkB.x * sc, oy - walkB.y * sc, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('一对一：一个 b ↔ 一个 x，残差 = 0', 24, 32);
+
+      document.getElementById('ans').innerHTML =
+        'x⁺ = A⁻¹ b = (' + x.x.toFixed(2) + ', ' + x.y.toFixed(2) + ')<br>' +
+        '残差 <span class="num">0</span>（完美命中）';
+      document.getElementById('opt').innerHTML =
+        '什么都不用「凑合」：<br>伪逆此时就是<strong>普通逆</strong>。';
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+      if (mode === 1) drawAct1();
+      else if (mode === 2) drawAct2();
+      else drawAct3();
+    }
+
+    function setMode(m) {
+      mode = m;
+      animT = 1;
+      document.getElementById('rowB').style.display = (m === 1 || m === 3) ? 'flex' : 'none';
+      document.getElementById('rowUnder').style.display = m === 2 ? 'flex' : 'none';
+
+      if (m === 1) {
+        document.getElementById('title').textContent = '第一幕：目标够不着（超定 / 无精确解）';
+        document.getElementById('desc').innerHTML =
+          '你只能沿着一条固定的路（列空间）走，但目的地 <strong>b</strong> 在路旁边。<br>' +
+          '谁也到不了 b → <strong>没有精确解</strong>。伪逆让你走到路上<strong>离 b 最近的点</strong>（垂足）。';
+        document.getElementById('take').innerHTML =
+          '<strong>本幕要点：</strong>无精确解时，A⁺b = <strong>最小二乘解</strong>（让残差 ‖Ax−b‖ 最短）。';
+      } else if (m === 2) {
+        document.getElementById('title').textContent = '第二幕：答案太多（欠定 / 无穷多解）';
+        document.getElementById('desc').innerHTML =
+          '方程不够，满足条件的 x 有<strong>一整条线</strong>。<br>' +
+          '伪逆在这条线上选<strong>离原点最近</strong>的那一个（最小范数）。';
+        document.getElementById('take').innerHTML =
+          '<strong>本幕要点：</strong>解不唯一时，A⁺b = <strong>最短的精确解</strong>（最小化 ‖x‖）。';
+      } else {
+        document.getElementById('title').textContent = '第三幕：刚好一把钥匙（可逆方阵）';
+        document.getElementById('desc').innerHTML =
+          '方程数 = 未知数，且不矛盾、不冗余 → <strong>恰好一个解</strong>。<br>' +
+          '伪逆与普通逆完全一样，残差为 0。';
+        document.getElementById('take').innerHTML =
+          '<strong>本幕要点：</strong>A 可逆时，A⁺ = A⁻¹，没有歧义。';
+      }
+      draw();
+    }
+
+    function play() {
+      if (animId) cancelAnimationFrame(animId);
+      animT = 0;
+      const start = performance.now();
+      const loop = (now) => {
+        animT = Math.min(1, (now - start) / 900);
+        draw();
+        if (animT < 1) animId = requestAnimationFrame(loop);
+      };
+      animId = requestAnimationFrame(loop);
+    }
+
+    document.querySelectorAll('.tab').forEach(t => {
+      t.onclick = () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        setMode(parseInt(t.dataset.m, 10));
+      };
+    });
+    document.getElementById('bOff').oninput = e => {
+      bOff = parseFloat(e.target.value);
+      document.getElementById('bOffL').textContent = bOff.toFixed(2);
+      animT = 1;
+      draw();
+    };
+    document.getElementById('cVal').oninput = e => {
+      cVal = parseFloat(e.target.value);
+      document.getElementById('cL').textContent = cVal.toFixed(1);
+      animT = 1;
+      draw();
+    };
+    document.getElementById('btnPlay').onclick = play;
+
+    setMode(1);
+  </script>
+</body>
+</html>
