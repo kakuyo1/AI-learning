@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roots of Unity 单位根演示</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #1a1d27;
+      --border: #2a2e3a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --blue: #8ab4f8;
+      --green: #81c995;
+      --orange: #fdd663;
+      --red: #f28b82;
+      --purple: #c58af9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; color: #fff; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; font-size: 0.92rem; }
+    .intro {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.9rem 1.15rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #c4c7ce;
+    }
+    .intro strong { color: #fff; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.1rem 1.3rem;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 0.5rem;
+      align-items: center; margin-bottom: 0.75rem;
+    }
+    button {
+      background: #2a2e3a; color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.85rem; font-size: 0.85rem; cursor: pointer;
+    }
+    button:hover { background: #353a48; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.active { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    .slider-row {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.82rem; color: var(--muted);
+    }
+    input[type="range"] { width: 120px; }
+    canvas {
+      display: block; width: 100%;
+      background: #12141c; border-radius: 10px;
+    }
+    .info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .info-card {
+      background: #12141c;
+      border-radius: 10px;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.84rem;
+    }
+    .info-card h3 {
+      font-size: 0.68rem; color: var(--muted); margin-bottom: 0.1rem;
+    }
+    .info-card .val {
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem; color: #fff;
+    }
+    .formula {
+      background: #12141c;
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.86rem;
+      color: var(--blue);
+      margin-top: 0.6rem;
+      line-height: 1.6;
+    }
+    .explain {
+      font-size: 0.88rem;
+      color: #c4c7ce;
+      margin-top: 0.7rem;
+    }
+    .explain strong { color: #fff; }
+    footer {
+      margin-top: 1.3rem; text-align: center;
+      color: var(--muted); font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Roots of Unity · 单位根</h1>
+    <p class="subtitle">单位圆上 N 等分 · ωᵏ · 乘一次跳一格 · DFT 的频率时钟</p>
+
+    <div class="intro">
+      <strong>定义：</strong>满足 zᴺ = 1 的 N 个复数，等间距排在单位圆上：
+      ωₖ = e^(2πi·k/N)。点「逐步乘 ω₁」看箭头一格一格跳；换 N 看点数变化。
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <div class="slider-row">
+          <span>N（根的个数）</span>
+          <input type="range" id="nSlider" min="2" max="16" step="1" value="8">
+          <span id="nLabel">8</span>
+        </div>
+        <div class="slider-row">
+          <span>当前 k</span>
+          <input type="range" id="kSlider" min="0" max="15" step="1" value="0">
+          <span id="kLabel">0</span>
+        </div>
+        <button class="primary" id="btnStep">× ω₁ 跳一格</button>
+        <button id="btnAuto">自动连跳</button>
+        <button id="btnReset">回到 ω₀=1</button>
+      </div>
+      <canvas id="cv" width="900" height="420"></canvas>
+      <div class="info">
+        <div class="info-card"><h3>N</h3><div class="val" id="nVal">8</div></div>
+        <div class="info-card"><h3>当前 k</h3><div class="val" id="kVal">0</div></div>
+        <div class="info-card"><h3>ωₖ</h3><div class="val" id="wVal">—</div></div>
+        <div class="info-card"><h3>角度</h3><div class="val" id="angVal">—</div></div>
+        <div class="info-card"><h3>ωₖᴺ</h3><div class="val" id="powVal">应 = 1</div></div>
+      </div>
+      <div class="formula" id="formula">
+        ωₖ = cos(2πk/N) + i·sin(2πk/N) · 乘 ω₁ 一次转 2π/N
+      </div>
+      <div class="explain">
+        <strong>绿点</strong> = 全部 N 个单位根 ·
+        <strong>橙箭头</strong> = 当前 ωₖ ·
+        <strong>灰弧</strong> = 从 1 转过的角。
+        N=4 时就是 1, i, −1, −i；DFT 用这些方向做频率分解。
+      </div>
+    </div>
+    <footer>Roots of unity · 19-complex-numbers</footer>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    let N = 8;
+    let k = 0;
+    let autoId = null;
+    let animAngle = 0; // for smooth step animation
+    let animTarget = 0;
+    let animating = false;
+
+    function root(kk) {
+      const ang = (2 * Math.PI * kk) / N;
+      return { x: Math.cos(ang), y: Math.sin(ang), ang };
+    }
+
+    function draw() {
+      ctx.fillStyle = '#12141c';
+      ctx.fillRect(0, 0, W, H);
+
+      const cx = W * 0.42, cy = H * 0.52;
+      const sc = 140;
+
+      // axes
+      ctx.strokeStyle = '#2a2e3a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 180, cy); ctx.lineTo(cx + 180, cy);
+      ctx.moveTo(cx, cy - 180); ctx.lineTo(cx, cy + 180);
+      ctx.stroke();
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Re', cx + 170, cy + 14);
+      ctx.fillText('Im', cx + 6, cy - 170);
+
+      // unit circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, sc, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(138,180,248,0.35)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // all roots
+      for (let i = 0; i < N; i++) {
+        const r = root(i);
+        const px = cx + r.x * sc;
+        const py = cy - r.y * sc;
+        ctx.beginPath();
+        ctx.arc(px, py, i === k ? 9 : 6, 0, Math.PI * 2);
+        ctx.fillStyle = i === k ? '#fdd663' : '#81c995';
+        ctx.fill();
+        // labels for small N
+        if (N <= 12) {
+          ctx.fillStyle = '#9aa0a6';
+          ctx.font = '11px sans-serif';
+          const lx = cx + r.x * (sc + 18);
+          const ly = cy - r.y * (sc + 18);
+          ctx.fillText('ω' + i, lx - 8, ly + 4);
+        }
+      }
+
+      // spokes
+      for (let i = 0; i < N; i++) {
+        const r = root(i);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + r.x * sc, cy - r.y * sc);
+        ctx.strokeStyle = 'rgba(129,201,149,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // current arrow (use animAngle when animating)
+      const displayAng = animating ? animAngle : (2 * Math.PI * k) / N;
+      const dx = Math.cos(displayAng);
+      const dy = Math.sin(displayAng);
+      const ex = cx + dx * sc;
+      const ey = cy - dy * sc;
+
+      // arc from 0 to current
+      if (displayAng > 0.01) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, sc * 0.35, 0, -displayAng, true);
+        ctx.strokeStyle = 'rgba(253,214,99,0.7)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = '#fdd663';
+      ctx.fillStyle = '#fdd663';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      const a = Math.atan2(ey - cy, ex - cx);
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - 12 * Math.cos(a - 0.4), ey - 12 * Math.sin(a - 0.4));
+      ctx.lineTo(ex - 12 * Math.cos(a + 0.4), ey - 12 * Math.sin(a + 0.4));
+      ctx.closePath();
+      ctx.fill();
+
+      // side panel list
+      ctx.fillStyle = '#9aa0a6';
+      ctx.font = '12px sans-serif';
+      ctx.fillText('单位圆上的 N 个根', 20, 28);
+
+      const r = root(k);
+      const deg = (r.ang * 180 / Math.PI);
+      document.getElementById('nVal').textContent = N;
+      document.getElementById('kVal').textContent = k;
+      document.getElementById('wVal').textContent =
+        r.x.toFixed(2) + (r.y >= 0 ? '+' : '') + r.y.toFixed(2) + 'i';
+      document.getElementById('angVal').textContent =
+        deg.toFixed(1) + '° = 2π·' + k + '/' + N;
+      document.getElementById('powVal').textContent = 'ωₖᴺ = 1 ✓';
+      document.getElementById('formula').textContent =
+        'ω_' + k + ' = e^(2πi·' + k + '/' + N + ') = cos(' +
+        (2 * k / N).toFixed(3) + 'π) + i sin(...) ·  下一步 ×ω₁ → k=' + ((k + 1) % N);
+    }
+
+    function stepOnce() {
+      if (animating) return;
+      const from = (2 * Math.PI * k) / N;
+      k = (k + 1) % N;
+      document.getElementById('kSlider').value = k;
+      document.getElementById('kLabel').textContent = k;
+      const to = from + (2 * Math.PI) / N;
+      animating = true;
+      animAngle = from;
+      animTarget = to;
+      const start = performance.now();
+      const dur = 400;
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / dur);
+        const e = 1 - Math.pow(1 - t, 3);
+        animAngle = from + (to - from) * e;
+        draw();
+        if (t < 1) requestAnimationFrame(tick);
+        else {
+          animating = false;
+          animAngle = (2 * Math.PI * k) / N;
+          draw();
+        }
+      };
+      requestAnimationFrame(tick);
+    }
+
+    document.getElementById('nSlider').oninput = e => {
+      N = parseInt(e.target.value, 10);
+      document.getElementById('nLabel').textContent = N;
+      document.getElementById('kSlider').max = N - 1;
+      if (k >= N) k = 0;
+      document.getElementById('kSlider').value = k;
+      document.getElementById('kLabel').textContent = k;
+      draw();
+    };
+    document.getElementById('kSlider').oninput = e => {
+      k = parseInt(e.target.value, 10);
+      document.getElementById('kLabel').textContent = k;
+      draw();
+    };
+    document.getElementById('btnStep').onclick = stepOnce;
+    document.getElementById('btnAuto').onclick = () => {
+      if (autoId) {
+        clearInterval(autoId);
+        autoId = null;
+        return;
+      }
+      autoId = setInterval(() => {
+        if (!animating) stepOnce();
+      }, 550);
+    };
+    document.getElementById('btnReset').onclick = () => {
+      k = 0;
+      document.getElementById('kSlider').value = 0;
+      document.getElementById('kLabel').textContent = '0';
+      draw();
+    };
+
+    draw();
+  </script>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>19 Complex Numbers · 复习</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --card: #f8f9fb;
+      --border: #e3e6ec;
+      --text: #1f1f1f;
+      --muted: #5f6368;
+      --blue: #1a73e8;
+      --green: #188038;
+      --orange: #e37400;
+      --red: #d93025;
+      --lb: #e8f0fe;
+      --lg: #e6f4ea;
+      --lo: #fef7e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      padding: 2rem 1rem 4rem;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.85rem; margin-bottom: 0.35rem; }
+    .subtitle { color: var(--muted); margin-bottom: 1.5rem; font-size: 0.95rem; }
+    h2 {
+      font-size: 1.28rem;
+      color: var(--blue);
+      margin: 2.3rem 0 0.85rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 2px solid var(--blue);
+    }
+    h3 { font-size: 1.05rem; margin: 1.2rem 0 0.4rem; }
+    p, li { margin-bottom: 0.45rem; }
+    ul, ol { padding-left: 1.35rem; margin-bottom: 0.8rem; }
+    .scene {
+      background: var(--lo);
+      border-left: 4px solid var(--orange);
+      padding: 0.85rem 1.1rem;
+      margin: 0.9rem 0;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.97rem;
+    }
+    .scene::before {
+      content: "场景引入";
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--orange);
+      margin-bottom: 0.25rem;
+    }
+    .one {
+      background: var(--lb);
+      border-left: 4px solid var(--blue);
+      padding: 0.85rem 1.1rem;
+      margin: 1rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .note {
+      background: var(--lg);
+      border-left: 4px solid var(--green);
+      padding: 0.75rem 1rem;
+      margin: 0.8rem 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.85rem 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--lb); color: #174ea6; }
+    .formula {
+      background: #f1f3f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1.05rem;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 0.9rem;
+      margin: 0.75rem 0;
+      line-height: 1.7;
+      color: #174ea6;
+    }
+    .diagram {
+      background: #fafbfc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+    .diagram .cap {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+    }
+    .tag {
+      display: inline-block;
+      background: var(--lb);
+      color: var(--blue);
+      font-size: 0.76rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-right: 0.2rem;
+      font-weight: 500;
+    }
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.3rem;
+      margin-bottom: 1.6rem;
+    }
+    .toc a { color: var(--blue); text-decoration: none; }
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>19 Complex Numbers for AI · 复习</h1>
+    <p class="subtitle">旋转 · 欧拉公式 · 相量 · 单位根 · DFT / RoPE</p>
+
+    <div class="one">
+      <strong>整章一句话：</strong>复数是旋转与振动的语言；乘法=转角+缩放；e^(iθ) 在单位圆上转；单位根是 DFT 的频率时钟；Transformer 位置编码和 RoPE 都在用这套几何。
+    </div>
+
+    <div class="toc">
+      <strong>目录</strong>
+      <ol>
+        <li><a href="#s1">复数是什么</a></li>
+        <li><a href="#s2">四则运算与共轭</a></li>
+        <li><a href="#s3">极坐标与欧拉公式</a></li>
+        <li><a href="#s4">为什么乘法会旋转</a></li>
+        <li><a href="#s5">相量：旋转箭头代替正弦波</a></li>
+        <li><a href="#s6">单位根与 DFT</a></li>
+        <li><a href="#s7">和 Transformer / RoPE 的关系</a></li>
+        <li><a href="#s8">速查</a></li>
+      </ol>
+    </div>
+
+    <!-- 1 -->
+    <h2 id="s1">1. 复数是什么</h2>
+    <div class="scene">
+      实数是一条线。复数把数扩成平面：横轴实部、纵轴虚部。每个复数既是一个点，也是从原点出发的箭头。
+    </div>
+    <div class="formula">z = a + bi　（i² = −1）</div>
+    <div class="diagram">
+      <svg viewBox="0 0 280 140" width="280" height="140">
+        <line x1="20" y1="100" x2="260" y2="100" stroke="#ccc" stroke-width="1"/>
+        <line x1="100" y1="20" x2="100" y2="130" stroke="#ccc" stroke-width="1"/>
+        <line x1="100" y1="100" x2="180" y2="50" stroke="#1a73e8" stroke-width="2.5"/>
+        <circle cx="180" cy="50" r="5" fill="#1a73e8"/>
+        <text x="190" y="48" fill="#1a73e8" font-size="13">3+2i</text>
+        <text x="240" y="115" fill="#5f6368" font-size="12">Re</text>
+        <text x="105" y="30" fill="#5f6368" font-size="12">Im</text>
+      </svg>
+      <div class="cap">复平面：点 (3,2) = 3+2i</div>
+    </div>
+    <div class="note">
+      i 可理解为「转 90°」：乘一次 i 转四分之一圈；i²=−1 就是转半圈。
+    </div>
+
+    <!-- 2 -->
+    <h2 id="s2">2. 四则运算与共轭</h2>
+    <table>
+      <tr><th>运算</th><th>做法</th></tr>
+      <tr><td>加法</td><td>实部加实部，虚部加虚部（向量相加）</td></tr>
+      <tr><td>乘法</td><td>展开并用 i²=−1；极坐标下：长度乘、角度加</td></tr>
+      <tr><td>共轭</td><td>a+bi → a−bi（关于实轴反射）</td></tr>
+      <tr><td>除法</td><td>分子分母同乘分母的共轭</td></tr>
+      <tr><td>模长</td><td>|z|=√(a²+b²)</td></tr>
+    </table>
+    <div class="formula">(a+bi)(a−bi) = a²+b²　（模长的平方，为实数）</div>
+
+    <!-- 3 -->
+    <h2 id="s3">3. 极坐标与欧拉公式</h2>
+    <div class="scene">
+      同一个点可用「往东 a、往北 b」描述，也可用「距离 r、转角 θ」描述。后者对旋转更自然。
+    </div>
+    <div class="formula">
+      z = r (cosθ + i sinθ) = r · e^(iθ)<br>
+      r = |z|，θ = atan2(b,a)
+    </div>
+    <div class="one">
+      <strong>欧拉公式（本课核心）：</strong><br>
+      e^(iθ) = cosθ + i·sinθ<br>
+      特别地：e^(iπ) = −1，故 e^(iπ)+1=0
+    </div>
+    <p>θ 从 0 变到 2π，e^(iθ) 沿单位圆转一整圈。</p>
+
+    <!-- 4 -->
+    <h2 id="s4">4. 为什么乘法会旋转</h2>
+    <div class="scene">
+      极坐标下一眼能看清：两个复数相乘 = 半径相乘、角度相加。
+    </div>
+    <div class="formula">
+      z·w = |z|·|w| · e^(i(∠z+∠w))
+    </div>
+    <ul>
+      <li>|w|=1（单位圆上）→ 只旋转、不缩放</li>
+      <li>w = i = e^(iπ/2) → 逆时针转 90°</li>
+      <li>与二维旋转矩阵是同一件事的两种写法</li>
+    </ul>
+    <div class="diagram">
+      <svg viewBox="0 0 320 110" width="320" height="110">
+        <line x1="30" y1="90" x2="120" y2="40" stroke="#1a73e8" stroke-width="2.5"/>
+        <line x1="30" y1="90" x2="100" y2="90" stroke="#e37400" stroke-width="2"/>
+        <line x1="30" y1="90" x2="80" y2="30" stroke="#188038" stroke-width="2.5"/>
+        <text x="125" y="38" fill="#1a73e8" font-size="12">z</text>
+        <text x="105" y="100" fill="#e37400" font-size="12">w</text>
+        <text x="85" y="28" fill="#188038" font-size="12">z·w</text>
+        <text x="160" y="55" fill="#5f6368" font-size="12">角度相加 · 长度相乘</text>
+      </svg>
+      <div class="cap">乘法的几何：转 + 缩放</div>
+    </div>
+
+    <!-- 5 -->
+    <h2 id="s5">5. 相量：旋转箭头代替正弦波</h2>
+    <div class="scene">
+      与其盯着扭动的正弦曲线，不如盯着匀速旋转的箭头。波形只是箭头在实轴上的影子。
+    </div>
+    <table>
+      <tr><th>信号语言</th><th>相量语言</th></tr>
+      <tr><td>幅度 A</td><td>箭头长度</td></tr>
+      <tr><td>相位 φ</td><td>固定偏角</td></tr>
+      <tr><td>频率 ω</td><td>旋转角速度</td></tr>
+      <tr><td>两信号相加</td><td>两箭头矢量相加</td></tr>
+    </table>
+    <div class="formula">
+      e^(iωt) = cos(ωt) + i sin(ωt)<br>
+      实部 = 余弦波，虚部 = 正弦波
+    </div>
+
+    <!-- 6 -->
+    <h2 id="s6">6. 单位根与 DFT</h2>
+    <div class="scene">
+      把单位圆均分成 N 份，得到 N 个点——N 次单位根。它们是 DFT 的「标准频率」。
+    </div>
+    <div class="formula">
+      ωₖ = e^(2πi·k/N)　k=0,1,…,N−1<br>
+      满足 (ωₖ)ᴺ = 1
+    </div>
+    <div class="note">
+      <strong>和 e^(iπ) 的关系：</strong>所有 e^(iθ) 都在单位圆上。
+      e^(iπ)=−1 是半圈那个点；e^(2πi·k/N) 是一圈 N 等分后的第 k 个点。
+      N=2、k=1 时两者相同。
+    </div>
+    <div class="formula">
+      DFT:　X[k] = Σₙ x[n] · e^(−2πi·k·n/N)
+    </div>
+    <p>每个 k 对应一种转速；DFT 测量信号与这些旋转有多同频。</p>
+
+    <!-- 7 -->
+    <h2 id="s7">7. 和 Transformer / RoPE 的关系</h2>
+    <ul>
+      <li><strong>正弦位置编码：</strong>sin/cos 对 = 不同频率复数指数的实部/虚部；低频粗定位、高频细定位</li>
+      <li><strong>RoPE：</strong>对 query/key 做复数旋转，相对位置变成转角差，注意力自然带上相对位置信息</li>
+    </ul>
+    <div class="diagram">
+      <svg viewBox="0 0 400 70" width="400" height="70">
+        <text x="20" y="30" fill="#174ea6" font-size="13">e^(iθ) 旋转</text>
+        <text x="130" y="30" fill="#5f6368" font-size="13">→</text>
+        <text x="160" y="30" fill="#174ea6" font-size="13">单位根 / DFT</text>
+        <text x="280" y="30" fill="#5f6368" font-size="13">→</text>
+        <text x="310" y="30" fill="#174ea6" font-size="13">RoPE / 位置编码</text>
+      </svg>
+      <div class="cap">从几何到模型的一条线</div>
+    </div>
+
+    <!-- 8 -->
+    <h2 id="s8">8. 一句话速查</h2>
+    <div class="card">
+      <ul>
+        <li><span class="tag">复数</span> 平面上的点/箭头；i = 转 90°</li>
+        <li><span class="tag">欧拉</span> e^(iθ)=cosθ+i sinθ，单位圆</li>
+        <li><span class="tag">乘法</span> 角度加、长度乘；|w|=1 则纯旋转</li>
+        <li><span class="tag">相量</span> 旋转箭头；影子=正弦；相加=矢量加</li>
+        <li><span class="tag">单位根</span> e^(2πi k/N)，圆上 N 等分；DFT 频率</li>
+        <li><span class="tag">RoPE</span> 用旋转把位置写进 q/k</li>
+      </ul>
+    </div>
+
+    <div class="one">
+      <strong>复习口诀：</strong>复数是旋转的数 · 乘法在转圈 · 欧拉连起三角与指数 · 单位根给 DFT 钟表 · 位置编码和 RoPE 都在借这套几何。
+    </div>
+
+    <footer>
+      基于 rohitg00/ai-engineering-from-scratch · 19-complex-numbers<br>
+      结合问答：乘法为何旋转、相量、单位根、e^(iπ) 与 e^(2πi k/N)
+    </footer>
+  </div>
+</body>
+</html>

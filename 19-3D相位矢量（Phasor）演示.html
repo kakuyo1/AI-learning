@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D 相位矢量演示 - 可调振幅与相位</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 12px 24px;
+      border-radius: 30px;
+      pointer-events: none;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      z-index: 100;
+      font-size: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    #caption {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 15px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      background: linear-gradient(90deg, transparent, rgba(0,0,0,0.6), transparent);
+      padding: 12px;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #controls-panel {
+      position: absolute;
+      bottom: 80px;
+      left: 20px;
+      background: rgba(20, 20, 30, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 20px 28px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 170, 0, 0.3);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      color: #eee;
+      z-index: 200;
+      width: 260px;
+      pointer-events: auto;
+    }
+    #controls-panel h3 {
+      margin: 0 0 18px 0;
+      font-weight: 400;
+      text-align: center;
+      color: #ffaa00;
+      letter-spacing: 2px;
+      font-size: 16px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 8px;
+    }
+    .slider-container {
+      margin-bottom: 20px;
+    }
+    .slider-container label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #ccc;
+    }
+    .slider-container input[type="range"] {
+      width: 100%;
+      margin: 5px 0;
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    .slider-container input[type="range"]:focus {
+      outline: none;
+    }
+    .slider-container input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #333;
+      border-radius: 3px;
+      border: 1px solid #555;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffaa00;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -7px;
+      box-shadow: 0 0 8px #ffaa00;
+      border: 1px solid #fff;
+    }
+    .slider-container input[type="range"]::-moz-range-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: #333;
+      border-radius: 3px;
+      border: 1px solid #555;
+    }
+    .slider-container input[type="range"]::-moz-range-thumb {
+      height: 18px;
+      width: 18px;
+      border-radius: 50%;
+      background: #ffaa00;
+      cursor: pointer;
+      border: 1px solid #fff;
+      box-shadow: 0 0 8px #ffaa00;
+    }
+    .value-display {
+      color: #ffaa00;
+      font-weight: bold;
+      font-family: monospace;
+      font-size: 15px;
+    }
+    .note {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: #aaa;
+      font-size: 13px;
+      background: rgba(20, 20, 30, 0.8);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border-left: 4px solid #ffaa00;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .controls-hint {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #ccc;
+      font-size: 13px;
+      background: rgba(0,0,0,0.4);
+      padding: 6px 12px;
+      border-radius: 8px;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">🌀 <strong>相位矢量 (Phasor) 演示</strong> — 旋转箭头代替正弦波：长度=振幅，角度=相位</div>
+  <div id="caption">振幅变化 → 矢量长度变化 | 相位变化 → 矢量角度偏移 | 正弦波跟随矢量垂直投影</div>
+  <div class="note">⚡ 箭头尖端投影到正弦波</div>
+  <div class="controls-hint">🖱️ 拖动旋转视角</div>
+
+  <!-- 控制面板 -->
+  <div id="controls-panel">
+    <h3>参数调节</h3>
+    <div class="slider-container">
+      <label>振幅 <span id="amp-value" class="value-display">2.00</span></label>
+      <input type="range" id="amp-slider" min="0.5" max="4.0" step="0.01" value="2.0">
+    </div>
+    <div class="slider-container">
+      <label>相位 <span id="phase-value" class="value-display">0.00°</span></label>
+      <input type="range" id="phase-slider" min="0" max="360" step="0.5" value="0">
+    </div>
+  </div>
+
+  <!-- 导入 Three.js 和 OrbitControls -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- 初始化场景 ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0b1a);
+
+    // --- 相机 ---
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(6, 4, 10);
+    camera.lookAt(3, 0, 0);
+
+    // --- 渲染器 ---
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = false;
+    document.body.appendChild(renderer.domElement);
+
+    // --- 轨道控制器 ---
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = false;
+    controls.target.set(3, 0, 0);
+    controls.enableZoom = true;
+    controls.rotateSpeed = 0.8;
+
+    // --- 光照 ---
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight1.position.set(3, 5, 4);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0x88aaff, 0.6);
+    dirLight2.position.set(-4, 2, 3);
+    scene.add(dirLight2);
+
+    const backLight = new THREE.PointLight(0xffaa88, 0.5);
+    backLight.position.set(-2, 1, -5);
+    scene.add(backLight);
+
+    // 网格地面，增强空间感
+    const gridHelper = new THREE.GridHelper(14, 20, 0x3355aa, 0x224466);
+    gridHelper.position.set(3, -2.5, 0);
+    scene.add(gridHelper);
+
+    // --- 全局变量 ---
+    let arrowGroup;          // 箭头组（旋转矢量）
+    let tipSphere;           // 箭头尖端的球体（用于获取世界位置）
+    let sineWaveLine;        // 正弦波曲线
+    let marker;              // 正弦波上的标记球
+    let dashLine;            // 连接尖端与标记的虚线
+    let circleLine;          // 矢量端点轨迹圆
+
+    // 参数
+    let amplitude = 2.0;     // 振幅（矢量长度）
+    let phaseDeg = 0;        // 相位偏移（度）
+    let baseRotationSpeed = 1.2; // 基础旋转速度 rad/s（用于动态演示）
+    let accumulatedAngle = 0;    // 累积旋转角度
+
+    // 正弦波绘制范围
+    const waveStartX = 3.5;
+    const waveEndX = 9.0;
+    const waveWidth = waveEndX - waveStartX;
+
+    // 用于计算标记位置的辅助变量
+    let currentAngleMod = 0;
+
+    // --- 创建箭头组 (旋转矢量) ---
+    function createArrow() {
+      arrowGroup = new THREE.Group();
+      
+      // 箭杆（圆柱体）—— 默认沿 Y 轴，旋转后沿 X 轴
+      const shaftGeo = new THREE.CylinderGeometry(0.07, 0.07, 2.0, 8);
+      const shaftMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffaa00, 
+        emissive: 0x442200,
+        roughness: 0.3,
+        metalness: 0.2
+      });
+      const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+      shaft.rotation.z = -Math.PI / 2;
+      shaft.position.x = 1.0; // 箭杆从原点延伸到 x = 2.0
+      arrowGroup.add(shaft);
+      
+      // 箭头（圆锥）
+      const headGeo = new THREE.ConeGeometry(0.22, 0.5, 12);
+      const headMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffcc44, 
+        emissive: 0x553300,
+        roughness: 0.2,
+        metalness: 0.3
+      });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.rotation.z = -Math.PI / 2;
+      head.position.x = 2.25; // 圆锥中心位置
+      arrowGroup.add(head);
+      
+      // 尖端小球（用于视觉强调和获取位置）
+      const tipGeo = new THREE.SphereGeometry(0.12, 12, 12);
+      const tipMat = new THREE.MeshStandardMaterial({ color: 0xffffaa, emissive: 0xffaa00 });
+      tipSphere = new THREE.Mesh(tipGeo, tipMat);
+      tipSphere.position.x = 2.5; // 尖端位置，与箭杆+箭头匹配
+      arrowGroup.add(tipSphere);
+      
+      scene.add(arrowGroup);
+    }
+
+    // --- 创建参考圆（轨迹） ---
+    function createReferenceCircle() {
+      const segments = 80;
+      const radius = 2.5; // 与箭头尖端初始长度一致，后续会动态缩放？但圆只作视觉参考，不缩放更好。
+      const points = [];
+      for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        const x = Math.cos(theta) * radius;
+        const y = Math.sin(theta) * radius;
+        points.push(new THREE.Vector3(x, y, 0));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x3366cc, opacity: 0.2, transparent: true });
+      circleLine = new THREE.Line(geo, mat);
+      scene.add(circleLine);
+    }
+
+    // --- 创建正弦波曲线（固定参考，但会根据振幅缩放？不，我们让波形跟随振幅变化？为了直观，最好让波形也随振幅变化，但相位固定？或者让波形始终代表当前振幅和相位的正弦？我们可以让波形显示当前参数下的完整正弦波，但标记位置根据旋转角度实时计算。）
+    // 这样更好：波形实时反映当前振幅和相位。但相位偏移会使波形左右移动？我们通过标记位置来体现相位偏移。
+    // 决定：波形 Y = amplitude * sin(x_angle + phase_rad) 其中 x_angle 从 0 到 2PI。这样相位偏移会使波形整体左右移动，而标记点根据累积角度定位。
+    // 但这样波形会随相位滑动，可能看起来杂乱。另一种方案：波形固定为 sin(x_angle) 振幅固定为当前振幅？相位偏移通过标记的起始位置体现？不够直观。
+    // 更直观的方案：波形始终显示 amplitude * sin(x_angle + phase_rad)，这样相位偏移会让波形在 X 方向平移，标记点则根据当前旋转角度计算位置。
+    // 但标记点的 X 位置如何确定？我们可以让标记点的 X 位置对应到波形的特定角度，但角度和 X 是线性映射。我们可以让标记点的 X 位置 = waveStartX + (angleMod / (2PI)) * waveWidth，而该点的 Y 值 = amplitude * sin(angleMod + phase_rad)。
+    // 但波形本身是 amplitude * sin( (x - waveStartX)/waveWidth * 2PI + phase_rad )，所以波形和标记点在同一 X 下的 Y 值应该一致。为了视觉上匹配，标记点应该沿着波形移动。
+    // 因此，我们需要根据当前的 amplitude 和 phase 实时更新波形曲线。
+    // 而标记点的 X 位置由当前旋转角度（累积角度 mod 2PI）映射到 X 轴，Y 值则由波形公式得出。
+    // 这样标记点就始终贴在波形上。
+    
+    // 所以我们需要在动画循环中动态更新 sineWaveLine 的几何体。
+    // 这样也能清晰看到振幅和相位变化对波形的影响。
+    
+    // 因此，我们将 sineWaveLine 的几何体设为可更新，并存储其位置属性。
+    
+    let wavePositions; // 存储波形顶点位置数组的引用
+    const waveSegments = 120;
+    
+    function createSineWave() {
+      const points = [];
+      for (let i = 0; i <= waveSegments; i++) {
+        const t = i / waveSegments;
+        const x = waveStartX + t * waveWidth;
+        const y = 0; // 占位，动画中更新
+        points.push(new THREE.Vector3(x, y, 0));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: 0x44aaff, linewidth: 2 });
+      sineWaveLine = new THREE.Line(geo, mat);
+      scene.add(sineWaveLine);
+      
+      // 保存位置数组引用以便更新
+      wavePositions = sineWaveLine.geometry.attributes.position.array;
+    }
+
+    // --- 创建标记球（正弦波上的移动点）---
+    function createMarker() {
+      const geo = new THREE.SphereGeometry(0.15, 16, 16);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xff66aa, emissive: 0x441122 });
+      marker = new THREE.Mesh(geo, mat);
+      marker.position.set(waveStartX, 0, 0);
+      scene.add(marker);
+    }
+
+    // --- 创建虚线（连接尖端与标记）---
+    function createDashLine() {
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(waveStartX, 0, 0)
+      ]);
+      const mat = new THREE.LineDashedMaterial({ color: 0xffaa44, dashSize: 0.15, gapSize: 0.08 });
+      dashLine = new THREE.Line(geo, mat);
+      dashLine.computeLineDistances();
+      scene.add(dashLine);
+    }
+
+    // --- 更新波形几何体（根据当前振幅和相位）---
+    function updateWaveGeometry() {
+      const phaseRad = phaseDeg * Math.PI / 180;
+      for (let i = 0; i <= waveSegments; i++) {
+        const t = i / waveSegments;
+        // 角度从 0 到 2PI
+        const angle = t * Math.PI * 2;
+        const x = waveStartX + t * waveWidth;
+        // 正弦值：振幅 * sin(angle + phase)
+        const y = amplitude * Math.sin(angle + phaseRad);
+        // 更新位置数组 (每个顶点3个值)
+        wavePositions[i*3] = x;
+        wavePositions[i*3+1] = y;
+        wavePositions[i*3+2] = 0;
+      }
+      sineWaveLine.geometry.attributes.position.needsUpdate = true;
+      // 更新包围盒以用于视锥体裁剪？可选
+      sineWaveLine.geometry.computeBoundingSphere();
+    }
+
+    // --- 初始化所有物体 ---
+    function init() {
+      createArrow();
+      createReferenceCircle();
+      createSineWave();
+      createMarker();
+      createDashLine();
+      
+      // 设置初始相位和振幅显示
+      updateUI();
+      
+      // 初始更新波形
+      updateWaveGeometry();
+    }
+
+    // --- UI 元素绑定 ---
+    const ampSlider = document.getElementById('amp-slider');
+    const phaseSlider = document.getElementById('phase-slider');
+    const ampValue = document.getElementById('amp-value');
+    const phaseValue = document.getElementById('phase-value');
+
+    function updateUI() {
+      ampValue.textContent = amplitude.toFixed(2);
+      phaseValue.textContent = phaseDeg.toFixed(1) + '°';
+    }
+
+    ampSlider.addEventListener('input', (e) => {
+      amplitude = parseFloat(e.target.value);
+      updateUI();
+      // 立即更新波形
+      updateWaveGeometry();
+      // 注意：箭头的缩放会在动画循环中根据 amplitude 进行，保证尖端位置同步
+    });
+
+    phaseSlider.addEventListener('input', (e) => {
+      phaseDeg = parseFloat(e.target.value);
+      updateUI();
+      updateWaveGeometry();
+    });
+
+    // 调用初始化
+    init();
+
+    // --- 动画变量 ---
+    let clock = new THREE.Clock();
+
+    // --- 动画循环 ---
+    function animate() {
+      const delta = clock.getDelta();
+      // 累积旋转角度，保持连续旋转
+      accumulatedAngle += delta * baseRotationSpeed;
+      
+      // 将累积角度映射到 [0, 2PI) 用于计算标记位置和正弦波取值
+      const angleMod = accumulatedAngle % (Math.PI * 2);
+      
+      // 1. 更新箭头的旋转和长度（缩放）
+      // 箭头组的旋转：基础旋转角度 + 相位偏移（相位偏移作为固定角度偏移）
+      // 这样箭头方向 = 基础旋转角 + 相位偏移
+      // 注意：相位偏移影响的是箭头的起始角度，我们将其直接加到旋转上，让箭头初始就偏转 phaseRad
+      const phaseRad = phaseDeg * Math.PI / 180;
+      arrowGroup.rotation.z = accumulatedAngle + phaseRad;
+      
+      // 箭头的长度通过缩放来实现：由于我们创建的箭头长度为2.5（尖端位置），
+      // 为了适应振幅，我们需要缩放箭头组，使得尖端到原点的距离 = amplitude。
+      // 原始尖端距离为2.5，所以缩放系数 = amplitude / 2.5
+      const scaleFactor = amplitude / 2.5;
+      arrowGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      
+      // 2. 更新标记球位置（正弦波上的点）
+      // 标记的 X 坐标由角度模 2PI 映射到波形 X 范围
+      const t = angleMod / (Math.PI * 2);
+      const markerX = waveStartX + t * waveWidth;
+      // 标记的 Y 坐标应等于当前波形在该 X 处的值，即 amplitude * sin(angleMod + phaseRad)
+      // 因为波形定义就是 amplitude * sin(angle + phaseRad)，其中 angle = (x - waveStartX)/waveWidth * 2PI
+      // 因此当 x 对应 angleMod 时，y = amplitude * sin(angleMod + phaseRad)
+      const markerY = amplitude * Math.sin(angleMod + phaseRad);
+      
+      marker.position.set(markerX, markerY, 0);
+      
+      // 3. 更新虚线位置：从箭头尖端到标记球
+      // 获取尖端的世界坐标
+      tipSphere.updateWorldMatrix(true, false);
+      const tipWorldPos = new THREE.Vector3();
+      tipSphere.getWorldPosition(tipWorldPos);
+      
+      // 更新虚线几何体
+      const dashPositions = dashLine.geometry.attributes.position.array;
+      dashPositions[0] = tipWorldPos.x;
+      dashPositions[1] = tipWorldPos.y;
+      dashPositions[2] = tipWorldPos.z;
+      dashPositions[3] = marker.position.x;
+      dashPositions[4] = marker.position.y;
+      dashPositions[5] = marker.position.z;
+      dashLine.geometry.attributes.position.needsUpdate = true;
+      dashLine.computeLineDistances();
+      
+      // 4. 更新参考圆的大小？不，参考圆固定，但我们可以让它反映最大振幅？为了简洁，保持不变。
+      // 如果需要，可以调整圆的半径来匹配振幅，但保持固定有助于观察变化。
+      
+      // 5. 轨道控制器更新
+      controls.update();
+      
+      // 6. 渲染
+      renderer.render(scene, camera);
+      
+      requestAnimationFrame(animate);
+    }
+
+    // 启动动画
+    animate();
+
+    // --- 窗口大小自适应 ---
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // 额外：让箭头组初始旋转角度为0（之前可能因为累积旋转而偏移，但初始化后animate会处理）
+    // 注意：我们还需要确保箭头的初始长度正确。在createArrow中，尖端位置为2.5，缩放后长度会变化。
+    // 但为了视觉上箭头从原点出发，这是正确的。
+    
+    // 优化：当振幅变化时，波形和标记点都会更新，但箭头的长度会在下一帧更新，可能会滞后一点点，但可以接受。
+    // 也可以在滑块事件中立即更新箭头缩放，但为了动画流畅，放在循环中更新更好。
+    
+    // 在animate中，我们还应该考虑相位偏移对波形的影响已经通过updateWaveGeometry在滑块事件中更新了。
+    // 而旋转角度是累积的，所以箭头会持续旋转。
+    
+    // 注意：phaseSlider改变的是相位偏移，会影响波形和箭头的初始角度。这是符合预期的。
+    
+    // 但有一个问题：当相位改变时，波形会左右移动，而箭头会额外旋转一个相位角。标记点的位置也会根据新的相位计算Y值，但X位置仍然由累积角度决定，这会导致标记点可能脱离波形吗？
+    // 不会，因为标记点的Y值计算为 amplitude * sin(angleMod + phaseRad)，而波形在对应X处（由angleMod映射）的Y值也是这个值，所以标记点始终在波形上。
+    
+    // 一切正常。
+    
+    // 启动后，由于初始 accumulatedAngle = 0，箭头旋转为 phaseRad，标记点位于 t = (0 mod 2PI)/(2PI) = 0，即 waveStartX，Y = amplitude * sin(phaseRad)。
+    // 波形的起点对应 angle=0，Y = amplitude * sin(phaseRad)，完全匹配。
+    
+  </script>
+</body>
+</html>
